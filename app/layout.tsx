@@ -1,17 +1,34 @@
-import { Geist, Geist_Mono, Inter, Manrope } from "next/font/google"
+import { type Metadata } from "next"
+import { Geist_Mono, Inter, Manrope, IBM_Plex_Sans } from "next/font/google"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"
 
-const manropeHeading = Manrope({subsets:['latin'],variable:'--font-heading'});
+const manropeHeading = Manrope({
+  subsets: ["latin"],
+  variable: "--font-heading",
+})
 
-const inter = Inter({subsets:['latin'],variable:'--font-sans'})
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 
 const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
 })
+
+const fontIBM = IBM_Plex_Sans({
+  subsets: ["latin"],
+  variable: "--font-ibm-plex",
+})
+
+export const metadata: Metadata = {
+  title: {
+    default: "White Castle Motel Admin",
+    template: "%s · White Castle Motel",
+  },
+  description: "Staff admin for White Castle Motel, Eldoret.",
+}
 
 export default function RootLayout({
   children,
@@ -22,7 +39,14 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("antialiased", fontMono.variable, "font-sans", inter.variable, manropeHeading.variable)}
+      className={cn(
+        "antialiased",
+        fontMono.variable,
+        "font-sans",
+        inter.variable,
+        fontIBM.variable,
+        manropeHeading.variable
+      )}
     >
       <body>
         <ThemeProvider>{children}</ThemeProvider>
