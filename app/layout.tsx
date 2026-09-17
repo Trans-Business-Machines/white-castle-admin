@@ -1,5 +1,6 @@
 import { type Metadata } from "next"
 import { Geist_Mono, Inter, Manrope, IBM_Plex_Sans } from "next/font/google"
+import { TooltipProvider } from "@/components/ui/tooltip"
 
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
@@ -49,7 +50,9 @@ export default function RootLayout({
       )}
     >
       <body>
-        <ThemeProvider>{children}</ThemeProvider>
+        <ThemeProvider>
+          <TooltipProvider>{children}</TooltipProvider>
+        </ThemeProvider>
       </body>
     </html>
   )
