@@ -1,15 +1,19 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { AuthField, AuthInput } from "@/components/auth/auth-field"
 import { PasswordInput } from "@/components/auth/password-input"
 import { Button } from "@/components/ui/button"
+import { useAuth } from "@/lib/providers/auth-provider"
 import { loginSchema, type LoginValues } from "@/lib/schemas/auth"
 
 function LoginForm() {
+  const router = useRouter()
+  const { login } = useAuth()
   const {
     register,
     handleSubmit,
@@ -22,11 +26,10 @@ function LoginForm() {
 
   async function onSubmit(values: LoginValues) {
     try {
-      // TODO: call the sign-in endpoint and redirect to /dashboard.
+      // TODO: pass credentials to the sign-in endpoint.
       console.log("login", values)
-      return new Promise((resolve) => {
-        setTimeout(resolve, 1500)
-      })
+      await login()
+      router.replace("/dashboard")
     } catch {
       setError("root", {
         message: "We couldn't sign you in. Check your details and try again.",
