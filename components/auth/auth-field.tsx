@@ -16,7 +16,7 @@ function AuthLabel({
   return (
     <Label
       className={cn(
-        "font-ibm-plex text-base font-semibold text-iron capitalize",
+        "font-ibm-plex text-base font-semibold text-iron",
         className
       )}
       {...props}

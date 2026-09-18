@@ -36,7 +36,7 @@ export const dashboardNav: NavItem[] = [
     icon: Calendars,
   },
   {
-    title: "Guest Management",
+    title: "Guests",
     description: "Everyone who has stayed at the property",
     href: "/guests",
     icon: Users,
@@ -54,7 +54,7 @@ export const dashboardNav: NavItem[] = [
     icon: Files,
   },
   {
-    title: "User Management",
+    title: "Users",
     description: "Staff accounts and permissions",
     href: "/users",
     icon: UserCog,

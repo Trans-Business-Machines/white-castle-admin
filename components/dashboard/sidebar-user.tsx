@@ -15,7 +15,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 import { useLogout } from "@/hooks/use-logout"
-import { getInitials } from "@/lib/format"
+import { getInitials, humanizeSlug } from "@/lib/format"
 import { useAuth } from "@/providers/auth-provider"
 
 const menuItemClassName =
@@ -62,7 +62,7 @@ function SidebarUser({
                   {user.full_name}
                 </span>
                 <span className="truncate text-xs text-white/70">
-                  {user.role}
+                  {humanizeSlug(user.role)}
                 </span>
               </span>
             </SidebarMenuButton>

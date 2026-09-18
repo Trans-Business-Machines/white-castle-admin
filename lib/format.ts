@@ -28,3 +28,16 @@ export function getInitials(name: string) {
     .map((part) => part[0]?.toUpperCase() ?? "")
     .join("")
 }
+
+/** Turns a role slug into a readable fallback label: "super_admin" → "Super admin". */
+export function humanizeSlug(slug: string) {
+  const words = slug.replace(/[_-]+/g, " ").trim()
+  return words.charAt(0).toUpperCase() + words.slice(1)
+}
+
+/** Formats a byte count as "1.2 MB" / "840 KB". */
+export function formatBytes(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}

@@ -8,7 +8,7 @@ import { useForm } from "react-hook-form"
 import { AuthField, AuthInput } from "@/components/auth/auth-field"
 import { PasswordInput } from "@/components/auth/password-input"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/providers/auth-provider"
+import { getLandingPath, useAuth } from "@/providers/auth-provider"
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/errors"
 import { loginSchema, type LoginValues } from "@/lib/schemas/auth"
 
@@ -27,8 +27,8 @@ function LoginForm() {
 
   async function onSubmit(values: LoginValues) {
     try {
-      await login(values)
-      router.replace("/dashboard")
+      const profile = await login(values)
+      router.replace(getLandingPath(profile))
     } catch (error) {
       setError("root", {
         message:
@@ -46,7 +46,7 @@ function LoginForm() {
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
       <fieldset disabled={isSubmitting} className="grid min-w-0 gap-4">
         <AuthField
-          label="Username"
+          label="Username or Email"
           htmlFor="username"
           error={errors.username?.message}
         >
@@ -54,7 +54,7 @@ function LoginForm() {
             id="username"
             autoComplete="username"
             autoFocus
-            placeholder="John Kamau"
+            placeholder="john@gmail.com"
             aria-invalid={Boolean(errors.username)}
             aria-describedby={errors.username ? "username-error" : undefined}
             {...register("username")}

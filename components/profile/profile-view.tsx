@@ -2,6 +2,7 @@
 
 import { Loader, LogOut, ShieldAlert } from "lucide-react"
 import { ChangePasswordDialog } from "@/components/profile/change-password-dialog"
+import { RoleBadge } from "@/components/role-badge"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -71,9 +72,7 @@ function ProfileView() {
                 {user.full_name}
               </h2>
               <div className="mt-1 flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-brand-azure/10 px-2.5 py-0.5 text-xs font-semibold text-brand-azure capitalize">
-                  {user.role}
-                </span>
+                <RoleBadge role={user.role} />
                 <span
                   className={
                     user.active

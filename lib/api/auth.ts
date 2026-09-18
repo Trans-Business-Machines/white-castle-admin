@@ -44,7 +44,6 @@ export async function confirmPasswordReset(token: string, newPassword: string) {
   )
 }
 
-
 export async function changePassword(
   currentPassword: string,
   newPassword: string

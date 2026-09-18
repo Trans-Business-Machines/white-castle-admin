@@ -1,18 +1,27 @@
-import { Card, CardTitle, CardContent } from "@/components/ui/card"
+import { Card, CardContent, CardTitle } from "@/components/ui/card"
 import { cn } from "cn"
+import { getRoleClasses } from "@/lib/roles"
 
 interface Props {
   title: string
   text: string
   label: string
+  role?: string
   className?: string
 }
 
-export function StatCard({ label, text, title, className }: Props) {
+export function StatCard({ label, text, title, role, className }: Props) {
+  const tone = role ? getRoleClasses(role) : null
+
   return (
     <Card className="border-iron shadow-md">
       <CardContent>
-        <CardTitle className="font-heading text-neutral uppercase">
+        <CardTitle
+          className={cn(
+            "font-heading uppercase font-bold",
+            tone ? tone.text : "text-neutral"
+          )}
+        >
           {title}
         </CardTitle>
 

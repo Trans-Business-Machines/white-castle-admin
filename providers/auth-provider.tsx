@@ -32,6 +32,8 @@ interface AuthContextValue {
   isLoggedIn: boolean
   login: (values: LoginValues) => Promise<AuthUser>
   logout: () => Promise<void>
+  /** Re-fetches `/auth/me` and updates `user` (e.g. after a password change). */
+  refreshUser: () => Promise<AuthUser>
 }
 
 /** Screens that are reachable without a session. */
@@ -41,6 +43,14 @@ export function isPublicRoute(pathname: string) {
   return PUBLIC_ROUTES.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`)
   )
+}
+
+/** Screen shown while an account still has a temporary password. */
+export const CHANGE_PASSWORD_ROUTE = "/change-password"
+
+/** Where a signed-in user should land: the dashboard, unless they must first set a new password. */
+export function getLandingPath(user: Pick<AuthUser, "must_change_password">) {
+  return user.must_change_password ? CHANGE_PASSWORD_ROUTE : "/dashboard"
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)
@@ -81,7 +91,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
         const profile = await authApi.fetchMe()
         setUser(profile)
         setStatus("authenticated")
+        const landing = getLandingPath(profile)
+        const onChangePassword = pathname === CHANGE_PASSWORD_ROUTE
         if (pathname === "/" || isPublicRoute(pathname)) {
+          router.replace(landing)
+        } else if (profile.must_change_password && !onChangePassword) {
+          router.replace(landing)
+        } else if (onChangePassword && !profile.must_change_password) {
           router.replace("/dashboard")
         }
       } catch {
@@ -109,6 +125,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
     return profile
   }, [])
 
+  const refreshUser = useCallback(async () => {
+    const profile = await authApi.fetchMe()
+    setUser(profile)
+    return profile
+  }, [])
+
   const logout = useCallback(async () => {
     try {
       await authApi.logout()
@@ -125,8 +147,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
       isLoggedIn: status === "authenticated" && user !== null,
       login,
       logout,
+      refreshUser,
     }),
-    [user, accessToken, status, login, logout]
+    [user, accessToken, status, login, logout, refreshUser]
   )
 
   return (

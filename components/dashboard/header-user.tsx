@@ -9,6 +9,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
+import { RoleBadge } from "@/components/role-badge"
 import { Separator } from "@/components/ui/separator"
 import { useLogout } from "@/hooks/use-logout"
 import { getInitials } from "@/lib/format"
@@ -29,7 +30,7 @@ function HeaderUser() {
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger
         aria-label={`Account menu for ${user.full_name}`}
-        className="group rou flex h-10 max-w-64 items-center gap-2.5 px-2 rounded-xl text-left transition-colors outline-none hover:bg-porcelain focus-visible:ring-3 focus-visible:ring-brand-azure/20 sm:pr-3 dark:hover:bg-muted data-open:bg-porcelain dark:data-open:bg-muted"
+        className="group rou flex h-10 max-w-64 items-center gap-2.5 rounded-xl px-2 text-left transition-colors outline-none hover:bg-porcelain focus-visible:ring-3 focus-visible:ring-brand-azure/20 sm:pr-3 dark:hover:bg-muted data-open:bg-porcelain dark:data-open:bg-muted"
       >
         <span
           aria-hidden="true"
@@ -41,8 +42,8 @@ function HeaderUser() {
           <span className="truncate text-sm font-semibold text-foreground">
             {user.full_name}
           </span>
-          <span className="truncate text-xs text-muted-foreground">
-            {user.email}
+          <span className="truncate text-xs text-muted-foreground capitalize">
+            {user.role}
           </span>
         </span>
         <ChevronDown
@@ -55,16 +56,14 @@ function HeaderUser() {
         side="bottom"
         align="end"
         sideOffset={10}
-        className="w-64 gap-0 bg-porcelain p-1.5 shadow-lg ring-1 ring-foreground/10 dark:bg-popover"
+        className="w-64 gap-0 bg-white p-1.5 shadow-lg ring-1 ring-foreground/10 dark:bg-popover"
       >
         <div className="grid gap-0.5 px-2.5 py-2">
           <p className="truncate text-sm font-semibold text-foreground">
             {user.full_name}
           </p>
           <p className="truncate text-xs text-muted-foreground">{user.email}</p>
-          <p className="mt-1.5 w-fit rounded-full bg-brand-azure/10 px-2 py-0.5 text-xs font-semibold text-brand-azure capitalize">
-            {user.role}
-          </p>
+          <RoleBadge role={user.role} className="mt-1.5 w-fit" />
         </div>
 
         <Separator className="my-1.5" />

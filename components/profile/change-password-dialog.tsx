@@ -5,8 +5,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { KeyRound, Loader } from "lucide-react"
 import { useForm } from "react-hook-form"
 import toast from "react-hot-toast"
-import { AuthField } from "@/components/auth/auth-field"
-import { PasswordInput } from "@/components/auth/password-input"
+import { ChangePasswordFields } from "@/components/auth/change-password-fields"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -27,6 +26,7 @@ import {
 
 function ChangePasswordDialog() {
   const [open, setOpen] = useState(false)
+
   const {
     register,
     handleSubmit,
@@ -82,66 +82,7 @@ function ChangePasswordDialog() {
 
         <form onSubmit={handleSubmit(onSubmit)} noValidate>
           <fieldset disabled={isSubmitting} className="grid min-w-0 gap-4">
-            <AuthField
-              label="Current password"
-              htmlFor="currentPassword"
-              error={errors.currentPassword?.message}
-            >
-              <PasswordInput
-                id="currentPassword"
-                autoComplete="current-password"
-                autoFocus
-                placeholder="Enter your current password"
-                aria-invalid={Boolean(errors.currentPassword)}
-                aria-describedby={
-                  errors.currentPassword ? "currentPassword-error" : undefined
-                }
-                {...register("currentPassword")}
-              />
-            </AuthField>
-
-            <AuthField
-              label="New password"
-              htmlFor="password"
-              error={errors.password?.message}
-            >
-              <PasswordInput
-                id="password"
-                autoComplete="new-password"
-                placeholder="Enter your new password"
-                aria-invalid={Boolean(errors.password)}
-                aria-describedby={
-                  errors.password ? "password-error" : undefined
-                }
-                {...register("password")}
-              />
-            </AuthField>
-
-            <AuthField
-              label="Confirm new password"
-              htmlFor="confirmPassword"
-              error={errors.confirmPassword?.message}
-            >
-              <PasswordInput
-                id="confirmPassword"
-                autoComplete="new-password"
-                placeholder="Re-enter your new password"
-                aria-invalid={Boolean(errors.confirmPassword)}
-                aria-describedby={
-                  errors.confirmPassword ? "confirmPassword-error" : undefined
-                }
-                {...register("confirmPassword")}
-              />
-            </AuthField>
-
-            {errors.root ? (
-              <p
-                role="alert"
-                className="rounded-md bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive"
-              >
-                {errors.root.message}
-              </p>
-            ) : null}
+            <ChangePasswordFields register={register} errors={errors} />
 
             <DialogFooter className="mt-2">
               <DialogClose asChild>
