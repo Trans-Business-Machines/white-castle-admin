@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation"
 import { CalendarDays } from "lucide-react"
+import { HeaderUser } from "@/components/dashboard/header-user"
 import { findNavItem } from "@/components/dashboard/nav"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { formatDate } from "@/lib/format"
@@ -27,13 +28,15 @@ function DashboardHeader() {
       </div>
 
       <div className="flex items-center gap-2">
-        <div className="hidden h-10 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium text-foreground sm:flex">
+        <div className="hidden h-10 shrink-0 items-center gap-2 rounded-full border border-border px-4 text-sm font-medium whitespace-nowrap text-foreground sm:flex">
           <CalendarDays
             aria-hidden="true"
             className="size-4 text-muted-foreground"
           />
           <time dateTime={formatDate(new Date(), "yyyy-MM-dd")}>{today}</time>
         </div>
+
+        <HeaderUser />
       </div>
     </header>
   )

@@ -19,3 +19,12 @@ export function formatDate(
 ) {
   return format(date, pattern)
 }
+
+/** Builds avatar initials from a full name, e.g. "Grace Noor" → "GN". */
+export function getInitials(name: string) {
+  return name
+    .split(" ")
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() ?? "")
+    .join("")
+}

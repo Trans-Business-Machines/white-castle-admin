@@ -8,7 +8,8 @@ import { useForm } from "react-hook-form"
 import { AuthField, AuthInput } from "@/components/auth/auth-field"
 import { PasswordInput } from "@/components/auth/password-input"
 import { Button } from "@/components/ui/button"
-import { useAuth } from "@/lib/providers/auth-provider"
+import { useAuth } from "@/providers/auth-provider"
+import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/errors"
 import { loginSchema, type LoginValues } from "@/lib/schemas/auth"
 
 function LoginForm() {
@@ -26,13 +27,17 @@ function LoginForm() {
 
   async function onSubmit(values: LoginValues) {
     try {
-      // TODO: pass credentials to the sign-in endpoint.
-      console.log("login", values)
-      await login()
+      await login(values)
       router.replace("/dashboard")
-    } catch {
+    } catch (error) {
       setError("root", {
-        message: "We couldn't sign you in. Check your details and try again.",
+        message:
+          getApiErrorStatus(error) === 401
+            ? "We couldn't sign you in. Check your details and try again."
+            : getApiErrorMessage(
+                error,
+                "Something went wrong while signing you in. Try again."
+              ),
       })
     }
   }

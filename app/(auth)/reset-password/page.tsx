@@ -1,3 +1,4 @@
+import { Suspense } from "react"
 import { type Metadata } from "next"
 
 import { AuthPanel } from "@/components/auth/auth-panel"
@@ -13,7 +14,9 @@ export default function ResetPasswordPage() {
       title="Reset password"
       description="Choose a new password for your White Castle admin account."
     >
-      <ResetPasswordForm />
+      <Suspense fallback={null}>
+        <ResetPasswordForm />
+      </Suspense>
     </AuthPanel>
   )
 }

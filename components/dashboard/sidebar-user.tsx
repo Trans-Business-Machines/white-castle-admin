@@ -2,7 +2,6 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { useRouter } from "next/navigation"
 import { Loader, LogOut, UserRound } from "lucide-react"
 import { cn } from "cn"
 import {
@@ -15,15 +14,9 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-import { useAuth } from "@/lib/providers/auth-provider"
-
-function getInitials(name: string) {
-  return name
-    .split(" ")
-    .slice(0, 2)
-    .map((part) => part[0]?.toUpperCase() ?? "")
-    .join("")
-}
+import { useLogout } from "@/hooks/use-logout"
+import { getInitials } from "@/lib/format"
+import { useAuth } from "@/providers/auth-provider"
 
 const menuItemClassName =
   "flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium text-white outline-none transition-colors hover:bg-white/15 focus-visible:bg-white/15 disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0"
@@ -35,24 +28,13 @@ function SidebarUser({
   className?: string
   labelClassName?: string
 }) {
-  const router = useRouter()
-  const { user, logout } = useAuth()
+  const { user } = useAuth()
+  const { isLoggingOut, logout } = useLogout()
   const [open, setOpen] = useState(false)
-  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   if (!user) return null
 
-  async function handleLogout() {
-    setIsLoggingOut(true)
-    try {
-      await logout()
-      router.replace("/login")
-    } finally {
-      setIsLoggingOut(false)
-    }
-  }
-
-  const initials = getInitials(user.name)
+  const initials = getInitials(user.full_name)
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -61,7 +43,7 @@ function SidebarUser({
           <PopoverTrigger asChild>
             <SidebarMenuButton
               size="lg"
-              tooltip={user.name}
+              tooltip={user.full_name}
               className={cn(
                 "gap-3 rounded-lg px-1.5 hover:bg-white/10 data-open:bg-white/10",
                 className
@@ -77,7 +59,7 @@ function SidebarUser({
                 )}
               >
                 <span className="truncate text-sm font-semibold">
-                  {user.name}
+                  {user.full_name}
                 </span>
                 <span className="truncate text-xs text-white/70">
                   {user.role}
@@ -107,7 +89,7 @@ function SidebarUser({
             type="button"
             className={`${menuItemClassName} text-red-200 hover:bg-red-400/25 focus-visible:bg-red-400/25`}
             disabled={isLoggingOut}
-            onClick={handleLogout}
+            onClick={logout}
           >
             {isLoggingOut ? (
               <Loader aria-hidden="true" className="animate-spin" />

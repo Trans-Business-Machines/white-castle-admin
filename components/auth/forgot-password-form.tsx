@@ -1,20 +1,25 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { zodResolver } from "@hookform/resolvers/zod"
+import { Loader, MailCheck } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { AuthField, AuthInput } from "@/components/auth/auth-field"
 import { Button } from "@/components/ui/button"
+import { requestPasswordReset } from "@/lib/api/auth"
+import { getApiErrorMessage } from "@/lib/api/errors"
 import {
   forgotPasswordSchema,
   type ForgotPasswordValues,
 } from "@/lib/schemas/auth"
-import { Loader } from "lucide-react"
 
 function ForgotPasswordForm() {
+  const [sentTo, setSentTo] = useState<string | null>(null)
   const {
     register,
     handleSubmit,
+    setError,
     formState: { errors, isSubmitting },
   } = useForm<ForgotPasswordValues>({
     resolver: zodResolver(forgotPasswordSchema),
@@ -22,11 +27,43 @@ function ForgotPasswordForm() {
   })
 
   async function onSubmit(values: ForgotPasswordValues) {
-    // TODO: request a reset link from the auth endpoint.
-    console.log("forgot-password", values)
-    return new Promise((resolve) => {
-      setTimeout(resolve, 1500)
-    })
+    try {
+      await requestPasswordReset(values.email)
+      setSentTo(values.email)
+    } catch (error) {
+      setError("root", {
+        message: getApiErrorMessage(
+          error,
+          "We couldn't send a reset link. Try again."
+        ),
+      })
+    }
+  }
+
+  if (sentTo) {
+    return (
+      <div className="grid gap-4">
+        <p
+          role="status"
+          className="flex items-start gap-3 rounded-md bg-brand-azure/10 px-3.5 py-3 text-sm text-foreground"
+        >
+          <MailCheck
+            aria-hidden="true"
+            className="mt-0.5 size-5 shrink-0 text-brand-azure"
+          />
+          <span>
+            If an account exists for <strong>{sentTo}</strong>, a reset link is
+            on its way. Check your inbox and spam folder.
+          </span>
+        </p>
+        <Link
+          href="/login"
+          className="mx-auto rounded-sm text-sm font-semibold text-brand-azure underline-offset-4 outline-none hover:underline focus-visible:underline focus-visible:ring-3 focus-visible:ring-brand-azure/20"
+        >
+          Back to sign in
+        </Link>
+      </div>
+    )
   }
 
   return (
@@ -41,10 +78,19 @@ function ForgotPasswordForm() {
           autoComplete="email"
           placeholder="example@gmail.com"
           aria-invalid={Boolean(errors.email)}
-          aria-describedby={errors.email ? "username-error" : undefined}
+          aria-describedby={errors.email ? "email-error" : undefined}
           {...register("email")}
         />
       </AuthField>
+
+      {errors.root ? (
+        <p
+          role="alert"
+          className="rounded-md bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive"
+        >
+          {errors.root.message}
+        </p>
+      ) : null}
 
       <Button
         type="submit"

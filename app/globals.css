@@ -37,8 +37,6 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
-  --signalblue: #0057ff;
-  --azul: #0074d9;
   --navy-azul: #000613;
   --porcelain: #f8f9fa;
   --canvas: #f8fafc;
@@ -123,8 +121,6 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
-  --color-signalblue: var(--signalblue);
-  --color-azul: var(--azul);
   --color-navy-azul: var(--navy-azul);
   --color-porcelain: var(--porcelain);
   --color-canvas: var(--canvas);

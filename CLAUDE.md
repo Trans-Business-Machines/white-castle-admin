@@ -30,13 +30,23 @@ Prettier is configured with **no semicolons**, double quotes, 80 cols, and `pret
 ### Route groups
 
 - `app/(auth)/` — public screens: `/login`, `/forgot-password`, `/reset-password`. Its layout renders the branded split panel (gradient aside + centered form column). Pages are thin: they set `metadata.title` and compose `AuthPanel` + a form component.
-- `app/(dashboard)/` — authenticated area: `/dashboard`, `/bookings`, `/guests`, `/units`, `/requests`, `/reports`, `/users`. Layout and pages are currently stubs.
+- `app/(dashboard)/` — authenticated area: `/dashboard`, `/bookings`, `/guests`, `/units`, `/requests`, `/reports`, `/users`, `/profile`. Most pages are stubs; `/profile` renders `components/profile/profile-view.tsx` (account details, change-password dialog, sign out).
 - `app/page.tsx` redirects `/` → `/login`.
 - `app/layout.tsx` is the root: loads fonts (Inter → `--font-sans`, Manrope → `--font-heading`, IBM Plex Sans → `--font-ibm-plex`, Geist Mono → `--font-mono`) and wraps everything in `ThemeProvider` (next-themes, class strategy) → `AuthProvider` → `TooltipProvider`.
 
 ### Auth
 
-`lib/providers/auth-provider.tsx` exposes `useAuth()` (`isLoggedIn`, `login`, `logout`). Both actions are `setTimeout` mocks with no real endpoint. Form submit handlers in `components/auth/*-form.tsx` also stub out the network call (`// TODO: call the sign-in endpoint`). There is no route protection for `(dashboard)` yet. `axios`, `@tanstack/react-query`, and `react-hot-toast` are installed but not yet wired up.
+The backend is a FastAPI-style API (errors come back as `{ detail: string | ValidationError[] }`; use `getApiErrorMessage` from `lib/api/errors.ts`).
+
+- **The browser never calls the backend origin directly.** `next.config.ts` rewrites `/api/:path*` to `API_PROXY_TARGET` (server-only env), and `NEXT_PUBLIC_API_BASE` is `/api`. This keeps the refresh cookie same-site: the backend sets it `SameSite=Lax` without `Secure`, so a cross-site call from `localhost` would never store or send it and every reload would land on `/login`. See `.env.example`. Restart `npm run dev` after editing `.env`.
+
+- **Token model:** the access token lives only in memory (`lib/auth-token.ts`); the refresh token is an HTTP-only cookie set by the server. Nothing auth-related is written to localStorage.
+- `lib/axios.ts` exports `axiosInstance` (baseURL + `withCredentials`). Its request interceptor injects `Authorization: Bearer`, and its response interceptor refreshes once on a 401 (`POST /auth/refresh`, deduped across concurrent failures) and replays the request. If the refresh fails it fires `onUnauthorized` listeners. Use this instance for every authenticated call.
+- `lib/api/auth.ts` wraps the auth endpoints. `login`, `requestPasswordReset` (`/auth/password-reset`), and `confirmPasswordReset` (`/auth/password-reset/confirm`) use bare `axios` so interceptors never touch them; `fetchMe` (`/auth/me`), `logout`, and `changePassword` (`PATCH /auth/change-password`) use `axiosInstance`.
+- `providers/auth-provider.tsx` exposes `useAuth()` (`user`, `accessToken`, `status`, `isLoggedIn`, `login`, `logout`). On mount it refreshes, fetches `/auth/me`, then routes: signed-in visitors on `/` or a public auth route go to `/dashboard`; failures on a protected route go to `/login`. While that runs it renders `WorkspaceLoader` instead of the app. `isPublicRoute()` is the single source of truth for public paths.
+- `components/auth/require-auth.tsx` wraps the `(dashboard)` layout and bounces unauthenticated users to `/login`.
+- Two account menus share one popover pattern: `components/dashboard/sidebar-user.tsx` (sidebar footer, name + role, gradient popover) and `components/dashboard/header-user.tsx` (header, name + email, porcelain popover, avatar-only under `sm`). Both use the `useLogout()` hook (`hooks/use-logout.ts`) and `getInitials()` from `lib/format.ts`; reuse those rather than re-implementing sign-out or initials.
+- `@tanstack/react-query` is provided (`providers/query-client.tsx`) but no queries exist yet; `react-hot-toast` is mounted once via `components/app-toaster.tsx` in the root layout; call `toast.success(...)` etc. from anywhere.
 
 ### Forms
 

@@ -1,10 +1,12 @@
 import { type Metadata } from "next"
 import { Geist_Mono, Inter, Manrope, IBM_Plex_Sans } from "next/font/google"
 import { TooltipProvider } from "@/components/ui/tooltip"
-import { AuthProvider } from "@/lib/providers/auth-provider"
+import { AuthProvider } from "@/providers/auth-provider"
 import "./globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { cn } from "@/lib/utils"
+import { QueryProvider } from "@/providers/query-client"
+import { AppToaster } from "@/components/app-toaster"
 
 const manropeHeading = Manrope({
   subsets: ["latin"],
@@ -51,9 +53,14 @@ export default function RootLayout({
     >
       <body>
         <ThemeProvider>
-          <AuthProvider>
-            <TooltipProvider>{children}</TooltipProvider>
-          </AuthProvider>
+          <QueryProvider>
+            <AuthProvider>
+              <TooltipProvider>
+                {children}
+                <AppToaster />
+              </TooltipProvider>
+            </AuthProvider>
+          </QueryProvider>
         </ThemeProvider>
       </body>
     </html>
