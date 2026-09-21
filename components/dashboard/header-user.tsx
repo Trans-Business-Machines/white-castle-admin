@@ -14,6 +14,7 @@ import { Separator } from "@/components/ui/separator"
 import { useLogout } from "@/hooks/use-logout"
 import { getInitials } from "@/lib/format"
 import { useAuth } from "@/providers/auth-provider"
+import { humanizeSlug } from "@/lib/format"
 
 const menuItemClassName =
   "flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm font-medium outline-none transition-colors disabled:pointer-events-none disabled:opacity-50 [&_svg]:size-4 [&_svg]:shrink-0"
@@ -43,7 +44,7 @@ function HeaderUser() {
             {user.full_name}
           </span>
           <span className="truncate text-xs text-muted-foreground capitalize">
-            {user.role}
+            {humanizeSlug(user.role)}
           </span>
         </span>
         <ChevronDown
@@ -63,7 +64,7 @@ function HeaderUser() {
             {user.full_name}
           </p>
           <p className="truncate text-xs text-muted-foreground">{user.email}</p>
-          <RoleBadge role={user.role} className="mt-1.5 w-fit" />
+          <RoleBadge role={humanizeSlug(user.role)} className="mt-1.5 w-fit" />
         </div>
 
         <Separator className="my-1.5" />

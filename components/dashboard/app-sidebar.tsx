@@ -4,7 +4,7 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Menu } from "lucide-react"
 import { cn } from "cn"
-import { dashboardNav } from "@/components/dashboard/nav"
+import { canSeeNavItem, dashboardNav } from "@/components/dashboard/nav"
 import { SidebarUser } from "@/components/dashboard/sidebar-user"
 import {
   Sidebar,
@@ -20,6 +20,7 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { useAuth } from "@/providers/auth-provider"
 
 // TODO: read the pending request count from the API.
 const PENDING_REQUESTS = 9
@@ -39,6 +40,10 @@ const collapsedButtonClassName =
 function AppSidebar() {
   const pathname = usePathname()
   const { toggleSidebar } = useSidebar()
+  const { user } = useAuth()
+  const visibleNav = dashboardNav.filter((item) =>
+    canSeeNavItem(item, user?.role)
+  )
 
   return (
     <Sidebar collapsible="icon" className="border-none">
@@ -74,7 +79,7 @@ function AppSidebar() {
           <SidebarGroup className="p-0">
             <SidebarGroupContent>
               <SidebarMenu className="gap-1.5">
-                {dashboardNav.map((item) => {
+                {visibleNav.map((item) => {
                   const isActive =
                     pathname === item.href ||
                     pathname.startsWith(`${item.href}/`)

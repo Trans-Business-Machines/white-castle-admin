@@ -8,12 +8,15 @@ import {
   Users,
   type LucideIcon,
 } from "lucide-react"
+import { USER_MANAGEMENT_ROLES, roleSlug } from "@/lib/roles"
 
 export interface NavItem {
   title: string
   description: string
   href: string
   icon: LucideIcon
+  /** Role slugs that can see this item; omitted means every signed-in user. */
+  roles?: readonly string[]
 }
 
 export const dashboardNav: NavItem[] = [
@@ -36,7 +39,7 @@ export const dashboardNav: NavItem[] = [
     icon: Calendars,
   },
   {
-    title: "Guests",
+    title: "Guest Management",
     description: "Everyone who has stayed at the property",
     href: "/guests",
     icon: Users,
@@ -54,10 +57,11 @@ export const dashboardNav: NavItem[] = [
     icon: Files,
   },
   {
-    title: "Users",
-    description: "Staff accounts and permissions",
+    title: "User Management",
+    description: "Staff account's and permissions",
     href: "/users",
     icon: UserCog,
+    roles: USER_MANAGEMENT_ROLES,
   },
 ]
 
@@ -72,4 +76,10 @@ export function findNavItem(pathname: string) {
   return [...dashboardNav, profileNav].find(
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
   )
+}
+
+/** Whether a nav item should be shown to a user with the given role. */
+export function canSeeNavItem(item: NavItem, role: string | undefined) {
+  if (!item.roles) return true
+  return role !== undefined && item.roles.includes(roleSlug(role))
 }

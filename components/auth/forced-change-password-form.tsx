@@ -3,7 +3,7 @@
 import { useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
-import { Loader, ShieldAlert } from "lucide-react"
+import { Loader, Info } from "lucide-react"
 import { useForm } from "react-hook-form"
 import toast from "react-hot-toast"
 import { ChangePasswordFields } from "@/components/auth/change-password-fields"
@@ -62,13 +62,13 @@ function ForcedChangePasswordForm() {
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
       <fieldset
         disabled={isSubmitting || isLoggingOut}
-        className="grid min-w-0 gap-4"
+        className="grid gap-4"
       >
         <p
           role="status"
           className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 px-3.5 py-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200"
         >
-          <ShieldAlert aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
+          <Info aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
           <span>
             Hi {user.full_name.split(" ")[0]}. For security, you need to replace
             the temporary password you were given before using the dashboard.

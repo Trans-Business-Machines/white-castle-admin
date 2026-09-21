@@ -54,7 +54,6 @@ export function RolesTable() {
         <TableHeader>
           <TableRow className="hover:bg-transparent">
             <TableHead className={tableHeadClassName}>Role</TableHead>
-            <TableHead className={tableHeadClassName}>Key</TableHead>
             <TableHead className={tableHeadClassName}>Description</TableHead>
             <TableHead className={tableHeadClassName}>Created</TableHead>
           </TableRow>
@@ -81,11 +80,7 @@ export function RolesTable() {
                 <TableCell className="px-4">
                   <RoleBadge role={role.name} label={role.label} />
                 </TableCell>
-                <TableCell className="px-4">
-                  <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-muted-foreground">
-                    {role.name}
-                  </code>
-                </TableCell>
+
                 <TableCell className="max-w-md px-4 whitespace-normal text-muted-foreground">
                   {role.description}
                 </TableCell>

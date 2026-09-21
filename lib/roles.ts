@@ -19,6 +19,9 @@ export function roleSlug(value: string) {
     .replace(/[\s-]+/g, "_")
 }
 
+/** Roles allowed into the user management module (`/users`). */
+export const USER_MANAGEMENT_ROLES: readonly string[] = ["super_admin", "admin"]
+
 interface RoleToneClasses {
   /** Tinted pill: background + text. */
   badge: string

@@ -24,6 +24,12 @@ import {
   type ChangePasswordValues,
 } from "@/lib/schemas/auth"
 
+const emptyValues: ChangePasswordValues = {
+  currentPassword: "",
+  password: "",
+  confirmPassword: "",
+}
+
 function ChangePasswordDialog() {
   const [open, setOpen] = useState(false)
 
@@ -36,20 +42,34 @@ function ChangePasswordDialog() {
   } = useForm<ChangePasswordValues>({
     mode: "onTouched",
     resolver: zodResolver(changePasswordSchema),
-    defaultValues: { currentPassword: "", password: "", confirmPassword: "" },
+    defaultValues: emptyValues,
   })
 
+  /**
+   * Wipes the form, then closes. Kept separate from `handleOpenChange` so
+   * the success path never depends on the `isSubmitting` guard, which is
+   * still true while `onSubmit` is running.
+   */
+  function closeDialog() {
+    reset(emptyValues)
+    setOpen(false)
+  }
+
   function handleOpenChange(next: boolean) {
+    // Ignore Escape / backdrop clicks while the request is in flight.
     if (isSubmitting) return
-    setOpen(next)
-    if (!next) reset()
+    if (next) {
+      setOpen(true)
+    } else {
+      closeDialog()
+    }
   }
 
   async function onSubmit(values: ChangePasswordValues) {
     try {
       await changePassword(values.currentPassword, values.password)
       toast.success("Your password has been updated.")
-      handleOpenChange(false)
+      closeDialog()
     } catch (error) {
       setError("root", {
         message: getApiErrorMessage(

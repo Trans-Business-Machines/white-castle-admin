@@ -88,10 +88,10 @@ export function CreateUserDialog({ children }: PropsWithChildren) {
   const mutation = useMutation({
     mutationFn: (values: CreateUserValues) =>
       createUser(toCreateUserPayload(values)),
-    onSuccess: (user) => {
-      queryClient.invalidateQueries({ queryKey: usersQueryKey })
+    onSuccess: async (user) => {
+      await queryClient.invalidateQueries({ queryKey: usersQueryKey })
       toast.success(`Account for ${user.full_name} created.`)
-      handleOpenChange(false)
+      closeDialog()
     },
     onError: (error) => {
       setError("root", {
@@ -103,15 +103,28 @@ export function CreateUserDialog({ children }: PropsWithChildren) {
     },
   })
 
-  function handleOpenChange(next: boolean) {
-    if (mutation.isPending) return
-    setOpen(next)
+  /**
+   * Wipes the form and local state, then closes. This deliberately skips
+   * the pending guard below: TanStack runs `onSuccess` before it flips
+   * `isPending` off, so a guarded close would silently no-op after a
+   * successful save.
+   */
+  function closeDialog() {
+    reset(emptyValues)
     setCopied(false)
+    mutation.reset()
+    setOpen(false)
+  }
+
+  function handleOpenChange(next: boolean) {
+    // Ignore Escape / backdrop clicks while a request is in flight.
+    if (mutation.isPending) return
     if (next) {
       reset({ ...emptyValues, password: generatePassword() })
+      setCopied(false)
+      setOpen(true)
     } else {
-      reset(emptyValues)
-      mutation.reset()
+      closeDialog()
     }
   }
 
@@ -171,7 +184,7 @@ export function CreateUserDialog({ children }: PropsWithChildren) {
                 id="user-full-name"
                 autoFocus
                 autoComplete="off"
-                placeholder="Grace Noor"
+                placeholder="John Doe"
                 className={inputClassName}
                 aria-invalid={Boolean(errors.full_name)}
                 aria-describedby={
@@ -195,7 +208,7 @@ export function CreateUserDialog({ children }: PropsWithChildren) {
                   autoComplete="off"
                   autoCapitalize="none"
                   spellCheck={false}
-                  placeholder="gnoor"
+                  placeholder="John"
                   className={inputClassName}
                   aria-invalid={Boolean(errors.username)}
                   aria-describedby={
@@ -217,7 +230,7 @@ export function CreateUserDialog({ children }: PropsWithChildren) {
                   id="user-email"
                   type="email"
                   autoComplete="off"
-                  placeholder="grace@whitecastle.co.ke"
+                  placeholder="john@gmail.com"
                   className={inputClassName}
                   aria-invalid={Boolean(errors.email)}
                   aria-describedby={

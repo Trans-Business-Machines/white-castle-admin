@@ -6,11 +6,21 @@ interface Props {
   title: string
   text: string
   label: string
+  /** Tints the title with the role's colour (see `lib/roles.ts`). */
   role?: string
+  /** Title colour for cards that aren't about a role; ignored when `role` is set. */
+  titleClassName?: string
   className?: string
 }
 
-export function StatCard({ label, text, title, role, className }: Props) {
+export function StatCard({
+  label,
+  text,
+  title,
+  role,
+  titleClassName,
+  className,
+}: Props) {
   const tone = role ? getRoleClasses(role) : null
 
   return (
@@ -18,8 +28,8 @@ export function StatCard({ label, text, title, role, className }: Props) {
       <CardContent>
         <CardTitle
           className={cn(
-            "font-heading uppercase font-bold",
-            tone ? tone.text : "text-neutral"
+            "font-heading font-bold uppercase",
+            tone ? tone.text : (titleClassName ?? "text-neutral")
           )}
         >
           {title}

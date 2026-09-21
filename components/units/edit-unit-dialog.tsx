@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type PropsWithChildren } from "react"
+import { useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Loader } from "lucide-react"
@@ -15,41 +15,56 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
+import { PhotoUploadError } from "@/components/units/add-unit-dialog"
 import { UnitFormFields } from "@/components/units/unit-form-fields"
 import { getApiErrorMessage } from "@/lib/api/errors"
-import { createUnit, unitsQueryKey, uploadUnitPhoto } from "@/lib/api/units"
+import { unitsQueryKey, updateUnit, uploadUnitPhoto } from "@/lib/api/units"
 import { toUnitPayload, unitsSchema, type UnitType } from "@/lib/schemas/units"
 import type { Unit } from "@/lib/types"
 
-const emptyValues: UnitType = {
-  room_number: "",
-  room_type: "" as UnitType["room_type"],
-  description: "",
-  max_occupancy: Number.NaN,
-  base_rate: Number.NaN,
-  amenities: [],
-  photo: null,
+interface EditUnitDialogProps {
+  unit: Unit
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
-/** Marks a failure that happened after the room itself was saved. */
-export class PhotoUploadError extends Error {
-  constructor(public readonly cause: unknown) {
-    super("Photo upload failed")
+/** Pre-fills the form from the room; the photo picker always starts empty. */
+function toFormValues(unit: Unit): UnitType {
+  return {
+    room_number: unit.room_number,
+    room_type: unit.room_type as UnitType["room_type"],
+    description: unit.description ?? "",
+    max_occupancy: unit.max_occupancy,
+    base_rate: unit.base_rate,
+    amenities: unit.amenities ?? [],
+    photo: null,
   }
 }
 
-export function NewRoomDialog({ children }: PropsWithChildren) {
-  const [open, setOpen] = useState(false)
-  // Set once the room is saved so a failed photo upload can be retried
-  // without creating the room a second time.
-  const [savedUnit, setSavedUnit] = useState<Unit | null>(null)
+/**
+ * Edits an existing room in the same two steps as `NewRoomDialog`:
+ * `PATCH /bookings/rooms/{id}` first, then the photo upload if one was
+ * picked. If the upload fails the details stay saved and resubmitting only
+ * retries the photo.
+ *
+ * The form is only mounted while open so every open re-seeds from the
+ * latest `unit` and no stale values or object URLs linger between edits.
+ */
+function EditUnitDialog(props: EditUnitDialogProps) {
+  if (!props.open) return null
+  return <EditUnitForm {...props} />
+}
+
+function EditUnitForm({ unit, onOpenChange }: EditUnitDialogProps) {
   const queryClient = useQueryClient()
+  // True once the PATCH succeeded, so a failed photo upload can be retried
+  // without sending the details a second time.
+  const [detailsSaved, setDetailsSaved] = useState(false)
 
   const form = useForm<UnitType>({
     resolver: zodResolver(unitsSchema),
-    defaultValues: emptyValues,
+    defaultValues: toFormValues(unit),
   })
   const {
     handleSubmit,
@@ -60,10 +75,10 @@ export function NewRoomDialog({ children }: PropsWithChildren) {
 
   const mutation = useMutation({
     mutationFn: async (values: UnitType) => {
-      let unit = savedUnit
-      if (!unit) {
-        unit = await createUnit(toUnitPayload(values))
-        setSavedUnit(unit)
+      let saved = unit
+      if (!detailsSaved) {
+        saved = await updateUnit(unit.room_id, toUnitPayload(values))
+        setDetailsSaved(true)
         queryClient.invalidateQueries({ queryKey: unitsQueryKey })
       }
       if (values.photo) {
@@ -73,17 +88,17 @@ export function NewRoomDialog({ children }: PropsWithChildren) {
           throw new PhotoUploadError(error)
         }
       }
-      return unit
+      return saved
     },
-    onSuccess: async (unit) => {
+    onSuccess: async (saved) => {
       await queryClient.invalidateQueries({ queryKey: unitsQueryKey })
-      toast.success(`Room ${unit.room_number} added.`)
+      toast.success(`Room ${saved.room_number} updated.`)
       closeDialog()
     },
     onError: (error) => {
       if (error instanceof PhotoUploadError) {
         setError("root", {
-          message: `The room was saved, but the photo didn't upload: ${getApiErrorMessage(
+          message: `The details were saved, but the photo didn't upload: ${getApiErrorMessage(
             error.cause,
             "something went wrong."
           )} Try again to retry the photo, or cancel to add it later.`,
@@ -93,49 +108,40 @@ export function NewRoomDialog({ children }: PropsWithChildren) {
       setError("root", {
         message: getApiErrorMessage(
           error,
-          "We couldn't save the room. Try again."
+          "We couldn't update the room. Try again."
         ),
       })
     },
   })
 
   /**
-   * Wipes every piece of dialog state, then closes. Resetting `photo` to
-   * null unmounts the preview inside `PhotoDropzone`, which revokes its
-   * object URL. This deliberately skips the pending guard below: TanStack
-   * runs `onSuccess` before it flips `isPending` off, so a guarded close
-   * would silently no-op after a successful save.
+   * Resetting `photo` to null unmounts the dropzone preview (revoking its
+   * object URL) before the dialog itself unmounts. Skips the pending guard
+   * for the same reason as `NewRoomDialog`: `onSuccess` runs before
+   * `isPending` flips off.
    */
   function closeDialog() {
-    reset(emptyValues)
-    setSavedUnit(null)
-    mutation.reset()
-    setOpen(false)
+    reset(toFormValues(unit))
+    onOpenChange(false)
   }
 
   function handleOpenChange(next: boolean) {
     // Ignore Escape / backdrop clicks while a request is in flight.
     if (mutation.isPending) return
-    if (next) {
-      setOpen(true)
-    } else {
-      closeDialog()
-    }
+    if (!next) closeDialog()
   }
 
-  const detailsLocked = mutation.isPending || Boolean(savedUnit)
+  const detailsLocked = mutation.isPending || detailsSaved
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-
+    <Dialog open onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="font-heading text-xl font-bold">
-            Add unit
+            Update room {unit.room_number}
           </DialogTitle>
           <DialogDescription>
-            Units listed here become bookable on the public site.
+            Changes apply to new bookings; existing stays keep their rate.
           </DialogDescription>
         </DialogHeader>
 
@@ -148,6 +154,11 @@ export function NewRoomDialog({ children }: PropsWithChildren) {
               form={form}
               detailsLocked={detailsLocked}
               pending={mutation.isPending}
+              photoHint={
+                unit.photos?.length
+                  ? "Only a newly picked photo shows here. Leave it empty to keep the current photos."
+                  : undefined
+              }
             />
 
             {errors.root ? (
@@ -178,12 +189,12 @@ export function NewRoomDialog({ children }: PropsWithChildren) {
                 {mutation.isPending ? (
                   <span className="inline-flex items-center gap-2">
                     <Loader aria-hidden="true" className="animate-spin" />
-                    {savedUnit ? "Uploading photo" : "Saving"}
+                    {detailsSaved ? "Uploading photo" : "Saving"}
                   </span>
-                ) : savedUnit ? (
+                ) : detailsSaved ? (
                   "Retry photo upload"
                 ) : (
-                  "Add unit"
+                  "Save changes"
                 )}
               </Button>
             </DialogFooter>
@@ -193,3 +204,5 @@ export function NewRoomDialog({ children }: PropsWithChildren) {
     </Dialog>
   )
 }
+
+export { EditUnitDialog }

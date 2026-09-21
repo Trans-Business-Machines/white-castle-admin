@@ -91,10 +91,10 @@ function UserActionsMenu({ user }: { user: AuthUser }) {
 
   const mutation = useMutation({
     mutationFn: (pending: UserAction) => actionRequest[pending](user.user_id),
-    onSuccess: (_, pending) => {
-      queryClient.invalidateQueries({ queryKey: usersQueryKey })
+    onSuccess: async (_, pending) => {
+      await queryClient.invalidateQueries({ queryKey: usersQueryKey })
       toast.success(actionCopy[pending].successMessage(user))
-      setAction(null)
+      closeConfirm()
     },
     onError: (err, pending) => {
       setError(getApiErrorMessage(err, actionCopy[pending].failureMessage))
@@ -105,6 +105,12 @@ function UserActionsMenu({ user }: { user: AuthUser }) {
     setError(null)
     mutation.reset()
     setAction(next)
+  }
+
+  /** Clears the error and unmounts the confirm dialog. */
+  function closeConfirm() {
+    setError(null)
+    setAction(null)
   }
 
   const copy = action ? actionCopy[action] : null
@@ -153,7 +159,7 @@ function UserActionsMenu({ user }: { user: AuthUser }) {
         <ConfirmDialog
           open
           onOpenChange={(open) => {
-            if (!open) setAction(null)
+            if (!open) closeConfirm()
           }}
           title={copy.title}
           description={copy.description(user)}

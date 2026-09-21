@@ -1,12 +1,19 @@
 import { axiosInstance } from "@/lib/axios"
 import type { CreateUserPayload } from "@/lib/schemas/users"
-import type { AuthUser } from "@/lib/types"
+import type { AuthUser, UserStats } from "@/lib/types"
 
 export const usersQueryKey = ["users"] as const
+export const userStatsQueryKey = ["users", "stats"] as const
 
-/** GET /auth/users → every staff account. */
+/** GET /auth/users → every staff's account. */
 export async function fetchUsers() {
   const response = await axiosInstance.get<AuthUser[]>("/auth/users")
+  return response.data
+}
+
+/** GET /auth/users/stats → account totals and the count per role. */
+export async function fetchUserStats() {
+  const response = await axiosInstance.get<UserStats>("/auth/users/stats")
   return response.data
 }
 

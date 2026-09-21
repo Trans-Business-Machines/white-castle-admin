@@ -29,6 +29,8 @@ const labelClassName =
 const inputClassName =
   "h-11 rounded-lg border-border bg-canvas px-3.5 text-base focus-visible:border-brand-azure focus-visible:ring-brand-azure/20 md:text-base dark:bg-input/30"
 
+const emptyValues: RoleValues = { name: "", description: "" }
+
 export function NewRoleDialog({ children }: PropsWithChildren) {
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
@@ -40,7 +42,7 @@ export function NewRoleDialog({ children }: PropsWithChildren) {
     formState: { errors },
   } = useForm<RoleValues>({
     resolver: zodResolver(roleSchema),
-    defaultValues: { name: "", description: "" },
+    defaultValues: emptyValues,
   })
 
   const mutation = useMutation({
@@ -48,7 +50,7 @@ export function NewRoleDialog({ children }: PropsWithChildren) {
     onSuccess: (role) => {
       queryClient.invalidateQueries({ queryKey: rolesQueryKey })
       toast.success(`Role "${role.label}" added.`)
-      handleOpenChange(false)
+      closeDialog()
     },
     onError: (error) => {
       setError("root", {
@@ -60,12 +62,24 @@ export function NewRoleDialog({ children }: PropsWithChildren) {
     },
   })
 
+  /**
+   * Wipes the form, then closes. This deliberately skips the pending guard
+   * below: TanStack runs `onSuccess` before it flips `isPending` off, so a
+   * guarded close would silently no-op after a successful save.
+   */
+  function closeDialog() {
+    reset(emptyValues)
+    mutation.reset()
+    setOpen(false)
+  }
+
   function handleOpenChange(next: boolean) {
+    // Ignore Escape / backdrop clicks while a request is in flight.
     if (mutation.isPending) return
-    setOpen(next)
-    if (!next) {
-      reset()
-      mutation.reset()
+    if (next) {
+      setOpen(true)
+    } else {
+      closeDialog()
     }
   }
 

@@ -11,7 +11,6 @@ interface PhotoDropzoneProps {
   id: string
   value: File | null
   onChange: (file: File | null) => void
-  /** Called with a reason when a dropped or picked file is unusable. */
   onReject: (message: string) => void
   disabled?: boolean
   invalid?: boolean
@@ -39,11 +38,19 @@ export function PhotoDropzone({
     [value]
   )
 
-  // Object URLs leak until revoked, so release each one when it's replaced.
+  // Object URLs leak until revoked. This cleanup runs whenever the preview
+  // is replaced, when the parent form resets `value` to null (e.g. after a
+  // successful save), and when the dialog unmounts the dropzone.
   useEffect(() => {
     if (!preview) return
     return () => URL.revokeObjectURL(preview)
   }, [preview])
+
+  // When the value is cleared from outside (form reset), clear the native
+  // input too; otherwise re-picking the same file wouldn't fire `change`.
+  useEffect(() => {
+    if (!value && inputRef.current) inputRef.current.value = ""
+  }, [value])
 
   function accept(files: FileList | null) {
     const file = files?.[0]
@@ -70,7 +77,6 @@ export function PhotoDropzone({
 
   function clear() {
     onChange(null)
-    if (inputRef.current) inputRef.current.value = ""
   }
 
   return (

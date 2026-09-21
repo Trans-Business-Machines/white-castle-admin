@@ -52,7 +52,7 @@ export function UsersTable() {
 
   return (
     <div className="overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-foreground/10">
-      <div className="flex max-w-xl flex-wrap items-center gap-3 p-4">
+      <div className="flex max-w-2xl flex-wrap items-center gap-3 p-4">
         <SearchInput
           value={search}
           onChange={setSearch}
@@ -69,8 +69,8 @@ export function UsersTable() {
             <TableHead className={tableHeadClassName}>Email</TableHead>
             <TableHead className={tableHeadClassName}>Role</TableHead>
             <TableHead className={tableHeadClassName}>Date joined</TableHead>
-            <TableHead className={cn(tableHeadClassName, "w-16 text-right")}>
-              <span className="sr-only">Actions</span>
+            <TableHead className={cn(tableHeadClassName, "w-24 text-center")}>
+              Actions
             </TableHead>
           </TableRow>
         </TableHeader>
@@ -132,7 +132,7 @@ export function UsersTable() {
                 <TableCell className="px-4">
                   {formatDate(user.created_at)}
                 </TableCell>
-                <TableCell className="px-4 text-right">
+                <TableCell className="px-4 text-center">
                   <UserActionsMenu user={user} />
                 </TableCell>
               </TableRow>

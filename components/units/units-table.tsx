@@ -1,7 +1,9 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { useRouter } from "next/navigation"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { cn } from "cn"
 import {
   Table,
   TableBody,
@@ -10,6 +12,10 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import {
+  getUnitHref,
+  UnitActionsMenu,
+} from "@/components/units/unit-actions-menu"
 import { UnitStatusBadge } from "@/components/units/unit-status-badge"
 import { SearchInput } from "@/components/users/table-toolbar"
 import {
@@ -18,16 +24,40 @@ import {
   TableSkeletonRows,
   tableHeadClassName,
 } from "@/components/users/table-state"
-import { fetchUnits, unitsQueryKey } from "@/lib/api/units"
+import {
+  fetchUnitDetails,
+  fetchUnits,
+  unitQueryKey,
+  unitsQueryKey,
+} from "@/lib/api/units"
 import { formatCurrency, humanizeSlug } from "@/lib/format"
 import { getRoomTypeLabel } from "@/lib/units"
 
-const COLUMNS = 5
+const COLUMNS = 6
+
+/** How long a hover-prefetched room stays fresh before another hover refetches it. */
+const PREFETCH_STALE_MS = 30_000
 
 export function UnitsTable() {
   const [search, setSearch] = useState("")
+  const router = useRouter()
+  const queryClient = useQueryClient()
 
   const units = useQuery({ queryKey: unitsQueryKey, queryFn: fetchUnits })
+
+  /**
+   * Warms the room's details query and route chunk when the pointer (or
+   * keyboard focus) lands on its row, so View / Update open instantly.
+   * `prefetchQuery` is a no-op while the cached data is still fresh.
+   */
+  function prefetchUnit(roomId: string) {
+    queryClient.prefetchQuery({
+      queryKey: unitQueryKey(roomId),
+      queryFn: () => fetchUnitDetails(roomId),
+      staleTime: PREFETCH_STALE_MS,
+    })
+    router.prefetch(getUnitHref(roomId))
+  }
 
   const visibleUnits = useMemo(() => {
     const list = units.data ?? []
@@ -61,6 +91,9 @@ export function UnitsTable() {
             <TableHead className={tableHeadClassName}>Max occupancy</TableHead>
             <TableHead className={tableHeadClassName}>Rate / night</TableHead>
             <TableHead className={tableHeadClassName}>Status</TableHead>
+            <TableHead className={cn(tableHeadClassName, "w-24 text-center")}>
+              Actions
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -81,7 +114,12 @@ export function UnitsTable() {
             </TableMessageRow>
           ) : (
             visibleUnits.map((unit) => (
-              <TableRow key={unit.room_id} className="h-14">
+              <TableRow
+                key={unit.room_id}
+                className="h-14"
+                onMouseEnter={() => prefetchUnit(unit.room_id)}
+                onFocus={() => prefetchUnit(unit.room_id)}
+              >
                 <TableCell className="px-4 font-semibold text-foreground">
                   Room {unit.room_number}
                 </TableCell>
@@ -97,6 +135,9 @@ export function UnitsTable() {
                 </TableCell>
                 <TableCell className="px-4">
                   <UnitStatusBadge status={unit.status} />
+                </TableCell>
+                <TableCell className="px-4 text-center">
+                  <UnitActionsMenu unit={unit} />
                 </TableCell>
               </TableRow>
             ))

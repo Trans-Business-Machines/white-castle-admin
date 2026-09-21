@@ -4,10 +4,7 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { useAuth } from "@/providers/auth-provider"
 
-/**
- * Shared sign-out action for the account menus. Tracks its own pending flag so
- * each trigger can show a spinner without lifting state.
- */
+
 export function useLogout() {
   const router = useRouter()
   const { logout } = useAuth()

@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 import { NewRoomDialog } from "@/components/units/add-unit-dialog"
+import { UnitStatsCards } from "@/components/units/unit-stats-card"
 import { UnitsTable } from "@/components/units/units-table"
 
 export default function Units() {
@@ -16,8 +17,13 @@ export default function Units() {
         </NewRoomDialog>
       </div>
 
+      {/* Occupancy statistics */}
+      <UnitStatsCards />
+
       {/* Unit Listings */}
-      <UnitsTable />
+      <div className="mt-6">
+        <UnitsTable />
+      </div>
     </section>
   )
 }

@@ -52,7 +52,7 @@ export default function RootLayout({
       )}
     >
       <body>
-        <ThemeProvider>
+        <ThemeProvider defaultTheme="light">
           <QueryProvider>
             <AuthProvider>
               <TooltipProvider>

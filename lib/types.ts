@@ -25,15 +25,41 @@ export interface Unit {
   description: string
   max_occupancy: number
   base_rate: number
-  /** Slug from the API, e.g. "available" or "occupied". */
   status: string
   amenities: string[]
-  /** Absolute URLs of uploaded room photos. */
   photos: string[]
+  created_at: string
+  updated_at: string
+}
+
+export interface Guest {
+  guest_id: string
+  full_name: string
+  email: string | null
+  phone: string | null
+  national_id: string | null
+  id_type: string
+  nationality: string | null
+  date_of_birth: string | null
   created_at: string
   updated_at: string
 }
 
 export interface RoomPhoto {
   url: string
+}
+
+export interface UserStats {
+  total_users: number
+  active_users: number
+  inactive_users: number
+  by_role: Record<string, number>
+}
+
+export interface UnitsOccupancyStats {
+  total: number,
+  available: number,
+  occupied: number,
+  maintenance: number,
+  other: number
 }
