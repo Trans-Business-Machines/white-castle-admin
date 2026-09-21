@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
+import { cn } from "cn"
 import { RoleBadge } from "@/components/role-badge"
 import {
   Table,
@@ -11,6 +12,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
+import { RoleActionsMenu } from "@/components/users/role-actions-menu"
 import { SearchInput } from "@/components/users/table-toolbar"
 import {
   TableError,
@@ -56,6 +58,9 @@ export function RolesTable() {
             <TableHead className={tableHeadClassName}>Role</TableHead>
             <TableHead className={tableHeadClassName}>Description</TableHead>
             <TableHead className={tableHeadClassName}>Created</TableHead>
+            <TableHead className={cn(tableHeadClassName, "w-24 text-center")}>
+              Actions
+            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -86,6 +91,9 @@ export function RolesTable() {
                 </TableCell>
                 <TableCell className="px-4">
                   {formatDate(role.created_at)}
+                </TableCell>
+                <TableCell className="px-4 text-center">
+                  <RoleActionsMenu role={role} />
                 </TableCell>
               </TableRow>
             ))

@@ -1,4 +1,6 @@
 import { NewGuestDialog } from "@/components/guests/guest-add-dialog"
+import { GuestStatsCards } from "@/components/guests/guest-stats-cards"
+import { GuestsTable } from "@/components/guests/guests-table"
 import { Button } from "@/components/ui/button"
 import { Plus } from "lucide-react"
 
@@ -12,6 +14,14 @@ export default function Guests() {
             <Plus size={22} color="#ffffff" className="font-bold" />
           </Button>
         </NewGuestDialog>
+      </div>
+
+      {/* Guest statistics */}
+      <GuestStatsCards />
+
+      {/* Guest listings */}
+      <div className="mt-6">
+        <GuestsTable />
       </div>
     </section>
   )

@@ -1,17 +1,61 @@
 import { axiosInstance } from "@/lib/axios"
-import type { GuestPayload } from "@/lib/schemas/guests"
-import type { Guest } from "@/lib/types"
-
+import type { BlacklistPayload, GuestPayload } from "@/lib/schemas/guests"
+import type { Guest, GuestsStats } from "@/lib/types"
 export const guestsQueryKey = ["guests"] as const
+export const guestStatsQueryKey = ["guests", "stats"] as const
+export const guestQueryKey = (guestId: string) => ["guests", guestId] as const
 
-/** GET /guests/guests → every guest on record. */
+/** GET /guests/ → every guest on record. */
 export async function fetchGuests() {
-  const response = await axiosInstance.get<Guest[]>("/guests")
+  const response = await axiosInstance.get<Guest[]>("/guests/list")
   return response.data
 }
 
-/** POST /guests/guests → creates a guest record and returns it. */
+/** GET /guests/{id} → a single guest's record. */
+export async function fetchGuestDetails(guestId: string) {
+  const response = await axiosInstance.get<Guest>(
+    `/guests/${encodeURIComponent(guestId)}`
+  )
+  return response.data
+}
+
+/** GET /guests/stats → headline guest totals. */
+export async function fetchGuestsStats() {
+  const response = await axiosInstance.get<GuestsStats>("/guests/stats")
+  return response.data
+}
+
+/** POST /guests/ → creates a guest record and returns it. */
 export async function createGuest(payload: GuestPayload) {
-  const response = await axiosInstance.post<Guest>("/guests", payload)
+  const response = await axiosInstance.post<Guest>("/guests/create", payload)
+  return response.data
+}
+
+/** PATCH /guests/{id} → updates a guest's details and returns them. */
+export async function updateGuest(guestId: string, payload: GuestPayload) {
+  const response = await axiosInstance.patch<Guest>(
+    `/guests/${encodeURIComponent(guestId)}`,
+    payload
+  )
+  return response.data
+}
+
+/** PATCH /guests/{id}/blacklist → blocks the guest from new bookings. */
+export async function blacklistGuest(
+  guestId: string,
+  payload: BlacklistPayload
+) {
+  const response = await axiosInstance.patch<Guest>(
+    `/guests/${encodeURIComponent(guestId)}/blacklist`,
+    payload
+  )
+  return response.data
+}
+
+/** PATCH /guests/{id}/unblacklist → lets the guest book again. */
+export async function unblacklistGuest(guestId: string) {
+  const response = await axiosInstance.patch<Guest>(
+    `/guests/${encodeURIComponent(guestId)}/unblacklist`
+  )
   return response.data
 }

@@ -8,6 +8,7 @@ function AppToaster() {
       position="top-right"
       toastOptions={{
         className: "font-sans text-sm",
+        duration: 6000,
         success: { iconTheme: { primary: "#16659f", secondary: "#ffffff" } },
       }}
     />

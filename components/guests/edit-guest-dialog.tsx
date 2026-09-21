@@ -1,6 +1,5 @@
 "use client"
 
-import { useState, type PropsWithChildren } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { Loader } from "lucide-react"
@@ -16,86 +15,79 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import { getApiErrorMessage } from "@/lib/api/errors"
-import { createGuest, guestsQueryKey } from "@/lib/api/guests"
+import { guestsQueryKey, updateGuest } from "@/lib/api/guests"
 import {
-  DEFAULT_ID_TYPE,
   guestSchema,
+  toGuestFormValues,
   toGuestPayload,
   type GuestValues,
 } from "@/lib/schemas/guests"
+import type { Guest } from "@/lib/types"
 
-const emptyValues: GuestValues = {
-  full_name: "",
-  email: "",
-  phone: "",
-  id_type: DEFAULT_ID_TYPE,
-  national_id: "",
-  nationality: "",
-  date_of_birth: null,
+interface EditGuestDialogProps {
+  guest: Guest
+  open: boolean
+  onOpenChange: (open: boolean) => void
 }
 
-export function NewGuestDialog({ children }: PropsWithChildren) {
-  const [open, setOpen] = useState(false)
+/**
+ * Edits a guest via `PATCH /guests/{id}`. The form is only mounted while
+ * open so every open re-seeds from the latest `guest`.
+ */
+function EditGuestDialog(props: EditGuestDialogProps) {
+  if (!props.open) return null
+  return <EditGuestForm {...props} />
+}
+
+function EditGuestForm({ guest, onOpenChange }: EditGuestDialogProps) {
   const queryClient = useQueryClient()
 
   const form = useForm<GuestValues>({
     resolver: zodResolver(guestSchema),
-    defaultValues: emptyValues,
+    defaultValues: toGuestFormValues(guest),
   })
   const {
     handleSubmit,
     setError,
-    reset,
     formState: { errors },
   } = form
 
   const mutation = useMutation({
-    mutationFn: (values: GuestValues) => createGuest(toGuestPayload(values)),
-    onSuccess: async (guest) => {
+    mutationFn: (values: GuestValues) =>
+      updateGuest(guest.guest_id, toGuestPayload(values)),
+    onSuccess: async (saved) => {
+      // Prefix key: refreshes the list and this guest's details together.
       await queryClient.invalidateQueries({ queryKey: guestsQueryKey })
-      toast.success(`${guest.full_name} added as a guest.`)
-      closeDialog()
+      toast.success(`${saved.full_name}'s details were updated.`)
+      onOpenChange(false)
     },
     onError: (error) => {
       setError("root", {
         message: getApiErrorMessage(
           error,
-          "We couldn't save the guest. Try again."
+          "We couldn't update the guest. Try again."
         ),
       })
     },
   })
 
-  function closeDialog() {
-    reset(emptyValues)
-    mutation.reset()
-    setOpen(false)
-  }
-
   function handleOpenChange(next: boolean) {
     // Ignore Escape / backdrop clicks while a request is in flight.
     if (mutation.isPending) return
-    if (next) {
-      setOpen(true)
-    } else {
-      closeDialog()
-    }
+    if (!next) onOpenChange(false)
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogTrigger asChild>{children}</DialogTrigger>
-
+    <Dialog open onOpenChange={handleOpenChange}>
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
           <DialogTitle className="font-heading text-xl font-bold">
-            Add guest
+            Update {guest.full_name}
           </DialogTitle>
           <DialogDescription>
-            Guest records are reused for walk-ins and future bookings.
+            Changes apply to this guest&apos;s record and future bookings.
           </DialogDescription>
         </DialogHeader>
 
@@ -138,7 +130,7 @@ export function NewGuestDialog({ children }: PropsWithChildren) {
                     Saving
                   </span>
                 ) : (
-                  "Add guest"
+                  "Save changes"
                 )}
               </Button>
             </DialogFooter>
@@ -148,3 +140,5 @@ export function NewGuestDialog({ children }: PropsWithChildren) {
     </Dialog>
   )
 }
+
+export { EditGuestDialog }

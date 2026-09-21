@@ -28,7 +28,7 @@ export function StatCard({
       <CardContent>
         <CardTitle
           className={cn(
-            "font-heading font-bold uppercase",
+            "font-sans font-bold uppercase",
             tone ? tone.text : (titleClassName ?? "text-neutral")
           )}
         >

@@ -41,8 +41,20 @@ export interface Guest {
   id_type: string
   nationality: string | null
   date_of_birth: string | null
+  total_stays: number
+  total_spent: number
+  blacklisted: boolean
+  blacklist_reason: string | null
+  notes: string | null
   created_at: string
   updated_at: string
+  id_documents: string[]
+}
+
+export interface GuestsStats {
+  total_guests: number
+  active: number
+  blacklisted: number
 }
 
 export interface RoomPhoto {
@@ -57,9 +69,9 @@ export interface UserStats {
 }
 
 export interface UnitsOccupancyStats {
-  total: number,
-  available: number,
-  occupied: number,
-  maintenance: number,
+  total: number
+  available: number
+  occupied: number
+  maintenance: number
   other: number
 }

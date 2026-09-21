@@ -20,7 +20,7 @@ import { EditUnitDialog } from "@/components/units/edit-unit-dialog"
 import { UnitStatusBadge } from "@/components/units/unit-status-badge"
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/errors"
 import { fetchUnitDetails, unitQueryKey } from "@/lib/api/units"
-import { formatCurrency, formatDate } from "@/lib/format"
+import { formatCurrency, formatDate,humanizeSlug } from "@/lib/format"
 import { getRoomTypeLabel } from "@/lib/units"
 import type { Unit } from "@/lib/types"
 
@@ -214,8 +214,8 @@ function UnitDetails({ roomId }: { roomId: string }) {
         <div className="flex gap-2">
           <Button
             type="button"
-            variant="outline"
-            className="h-11 rounded-md px-5"
+            variant="default"
+            className="h-11 rounded-md px-5 bg-brand-azure"
             onClick={() => setAction("edit")}
           >
             <SquarePen aria-hidden="true" />
@@ -292,7 +292,7 @@ function UnitDetails({ roomId }: { roomId: string }) {
                       key={amenity}
                       className="rounded-full bg-brand-azure/10 px-3 py-1 text-sm font-medium text-brand-navy dark:bg-brand-azure/20 dark:text-sky-200"
                     >
-                      {amenity}
+                      {humanizeSlug(amenity)}
                     </li>
                   ))}
                 </ul>

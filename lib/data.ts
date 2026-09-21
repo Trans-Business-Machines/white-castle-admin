@@ -2,6 +2,7 @@ export const nationalities = [
   "Afghan",
   "Albanian",
   "Algerian",
+  "American",
   "Andorran",
   "Angolan",
   "Antiguan and Barbudan",
