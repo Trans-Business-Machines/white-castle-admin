@@ -129,6 +129,21 @@ export interface BookingsOccupancyStats {
   occupancy_rate_pct: number
 }
 
+/**
+ * `GET /motel/reports/revenue`: what bookings in a range are expected to
+ * bring in and how many have paid in full vs only their deposit. `period`
+ * echoes the requested dates (`null` when the report was unbounded).
+ */
+export interface RevenueReport {
+  period: { from: string | null; to: string | null }
+  total_bookings: number
+  total_revenue_expected: number
+  total_deposit_expected: number
+  fully_paid_bookings: number
+  deposit_only_bookings: number
+  currency: string
+}
+
 export interface RoomPhoto {
   url: string
 }

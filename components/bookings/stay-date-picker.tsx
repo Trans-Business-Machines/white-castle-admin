@@ -20,6 +20,8 @@ interface StayDatePickerProps {
   ref?: Ref<HTMLButtonElement>
   /** Earliest selectable day; omit to allow any date. */
   minDate?: Date
+  /** Latest selectable day; omit to allow any date. */
+  maxDate?: Date
   placeholder?: string
   clearLabel: string
   disabled?: boolean
@@ -30,9 +32,9 @@ interface StayDatePickerProps {
 
 /**
  * Single-day picker (shadcn Popover + Calendar) used for check-in /
- * check-out and the bookings date filters. Days before `minDate`, when
- * given, are disabled so a stay can't start in the past or end before it
- * begins.
+ * check-out and the bookings date filters. Days before `minDate` and after
+ * `maxDate`, when given, are disabled so a stay can't start in the past or
+ * end before it begins.
  */
 export function StayDatePicker({
   id,
@@ -41,6 +43,7 @@ export function StayDatePicker({
   onBlur,
   ref,
   minDate,
+  maxDate,
   placeholder = "Pick a date",
   clearLabel,
   disabled,
@@ -85,7 +88,11 @@ export function StayDatePicker({
             }}
             defaultMonth={value ?? minDate}
             startMonth={minDate}
-            disabled={minDate ? { before: minDate } : undefined}
+            endMonth={maxDate}
+            disabled={[
+              ...(minDate ? [{ before: minDate }] : []),
+              ...(maxDate ? [{ after: maxDate }] : []),
+            ]}
             autoFocus
             className="p-4 [--cell-size:--spacing(9)]"
           />
