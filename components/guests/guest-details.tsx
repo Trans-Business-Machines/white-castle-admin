@@ -12,7 +12,6 @@ import {
   IdCard,
   Globe,
   Mail,
-  NotebookPen,
   Phone,
   ShieldCheck,
   SquarePen,
@@ -20,6 +19,7 @@ import {
 import { BlacklistGuestDialog } from "@/components/guests/blacklist-guest-dialog"
 import { EditGuestDialog } from "@/components/guests/edit-guest-dialog"
 import { GuestBlacklistBadge } from "@/components/guests/guest-blacklist-badge"
+import { GuestBookingsTable } from "@/components/guests/guest-bookings-table"
 import { StatCard } from "@/components/stat-card"
 import { Button } from "@/components/ui/button"
 import {
@@ -41,7 +41,6 @@ import {
 import { getIdNumberLabel, getIdTypeLabel } from "@/lib/schemas/guests"
 import type { Guest } from "@/lib/types"
 
-/** "12 Mar 1990 (36 years)" from the API's "yyyy-MM-dd", or "—". */
 function formatBirthDate(value: string | null) {
   if (!value) return "—"
   const date = parseISO(value)
@@ -142,14 +141,12 @@ function GuestDetailsSkeleton() {
   )
 }
 
-/** A guest's profile with Update and Blacklist / Unblacklist CTAs top-right. */
 function GuestDetails({ guestId }: { guestId: string }) {
   const [action, setAction] = useState<"edit" | "blacklist" | null>(null)
 
   const query = useQuery({
     queryKey: guestQueryKey(guestId),
     queryFn: () => fetchGuestDetails(guestId),
-    // A missing guest won't appear on retry, so don't keep hammering the API.
     retry: (count, error) => getApiErrorStatus(error) !== 404 && count < 2,
   })
 
@@ -383,31 +380,10 @@ function GuestDetails({ guestId }: { guestId: string }) {
 
       <Card className="border-iron/30 shadow-md">
         <CardHeader>
-          <CardTitle className="text-lg font-bold">Notes</CardTitle>
-          <CardDescription>
-            Internal remarks for staff; the guest never sees these.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {guest.notes?.trim() ? (
-            <p className="flex items-start gap-3 text-base whitespace-pre-line text-foreground">
-              <NotebookPen
-                aria-hidden="true"
-                className="mt-1 size-4 shrink-0 text-muted-foreground"
-              />
-              <span>{guest.notes.trim()}</span>
-            </p>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No notes on this guest yet.
-            </p>
-          )}
-        </CardContent>
-      </Card>
-
-      <Card className="border-iron/30 shadow-md">
-        <CardHeader>
           <CardTitle className="text-lg font-bold">Record</CardTitle>
+          <CardDescription>
+            When {guest.full_name} was added to the system.
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <dl className="grid gap-5 sm:grid-cols-3">
@@ -423,7 +399,10 @@ function GuestDetails({ guestId }: { guestId: string }) {
         </CardContent>
       </Card>
 
-      {/* TODO: bookings for this guest go here once the endpoint exists. */}
+      <GuestBookingsTable
+        guestId={guest.guest_id}
+        guestName={guest.full_name}
+      />
 
       <EditGuestDialog
         guest={guest}

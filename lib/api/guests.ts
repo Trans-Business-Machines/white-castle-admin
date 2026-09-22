@@ -1,9 +1,11 @@
 import { axiosInstance } from "@/lib/axios"
 import type { BlacklistPayload, GuestPayload } from "@/lib/schemas/guests"
-import type { Guest, GuestsStats } from "@/lib/types"
+import type { Booking, Guest, GuestsStats } from "@/lib/types"
 export const guestsQueryKey = ["guests"] as const
 export const guestStatsQueryKey = ["guests", "stats"] as const
 export const guestQueryKey = (guestId: string) => ["guests", guestId] as const
+export const guestBookingsQueryKey = (guestId: string) =>
+  ["guests", guestId, "bookings"] as const
 
 /** GET /guests/ → every guest on record. */
 export async function fetchGuests() {
@@ -15,6 +17,14 @@ export async function fetchGuests() {
 export async function fetchGuestDetails(guestId: string) {
   const response = await axiosInstance.get<Guest>(
     `/guests/${encodeURIComponent(guestId)}`
+  )
+  return response.data
+}
+
+/** GET /guests/{id}/bookings → every booking this guest has made. */
+export async function fetchGuestBookings(guestId: string) {
+  const response = await axiosInstance.get<Booking[]>(
+    `/guests/${encodeURIComponent(guestId)}/bookings`
   )
   return response.data
 }
