@@ -56,13 +56,18 @@ export function GuestsTable() {
     )
   }, [guests.data, search])
 
-  /** Warms the guest's details query and route so View / Update open instantly. */
+  /**
+   * Warms the guest's details query and route so View / Update open
+   * instantly. Failures are swallowed; the profile page surfaces them.
+   */
   function prefetchGuest(guestId: string) {
-    queryClient.prefetchQuery({
-      queryKey: guestQueryKey(guestId),
-      queryFn: () => fetchGuestDetails(guestId),
-      staleTime: PREFETCH_STALE_MS,
-    })
+    queryClient
+      .query({
+        queryKey: guestQueryKey(guestId),
+        queryFn: () => fetchGuestDetails(guestId),
+        staleTime: PREFETCH_STALE_MS,
+      })
+      .catch(() => undefined)
     router.prefetch(getGuestHref(guestId))
   }
 

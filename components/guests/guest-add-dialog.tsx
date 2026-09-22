@@ -89,7 +89,7 @@ export function NewGuestDialog({ children }: PropsWithChildren) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
 
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
+      <DialogContent className="max-h-[90vh] overflow-y-auto md:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="font-heading text-xl font-bold">
             Add guest

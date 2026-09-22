@@ -32,22 +32,27 @@ export function getRoomTypeLabel(slug: string) {
   return ROOM_TYPE_LABELS.get(slug) ?? humanizeSlug(slug)
 }
 
+/**
+ * The occupancy fields that get a card. `other` (reserved, cleaning, …) is
+ * left out on purpose: it's a catch-all with no action attached.
+ */
+export type UnitStatKey = keyof Omit<UnitsOccupancyStats, "other">
+
 /** Text colour that matches each occupancy stat's badge tone. */
-const STAT_TITLE_CLASSES: Record<keyof UnitsOccupancyStats, string> = {
+const STAT_TITLE_CLASSES: Record<UnitStatKey, string> = {
   total: "text-brand-navy dark:text-sky-200",
   available: "text-emerald-700 dark:text-emerald-300",
   occupied: "text-brand-azure dark:text-sky-300",
   maintenance: "text-rose-700 dark:text-rose-300",
-  other: "text-muted-foreground",
 }
 
 /**
  * Cards rendered for `GET /bookings/rooms/stats`, in display order. Keys
- * mirror `UnitsOccupancyStats` so a new field in the API shape fails the
- * typecheck here until it gets a card.
+ * mirror `UnitStatKey` so a new field in the API shape fails the typecheck
+ * here until it gets a card or is excluded.
  */
 export const UNIT_STAT_CARDS: ReadonlyArray<{
-  key: keyof UnitsOccupancyStats
+  key: UnitStatKey
   title: string
   label: string
   titleClassName: string
@@ -75,12 +80,6 @@ export const UNIT_STAT_CARDS: ReadonlyArray<{
     title: "Maintenance",
     label: "out of rotation",
     titleClassName: STAT_TITLE_CLASSES.maintenance,
-  },
-  {
-    key: "other",
-    title: "Other",
-    label: "reserved, cleaning, etc.",
-    titleClassName: STAT_TITLE_CLASSES.other,
   },
 ]
 

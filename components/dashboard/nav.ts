@@ -2,7 +2,6 @@ import {
   Bed,
   Calendars,
   ChartColumnBig,
-  Files,
   NotebookPen,
   UserCog,
   Users,
@@ -15,7 +14,6 @@ export interface NavItem {
   description: string
   href: string
   icon: LucideIcon
-  /** Role slugs that can see this item; omitted means every signed-in user. */
   roles?: readonly string[]
 }
 
@@ -49,12 +47,6 @@ export const dashboardNav: NavItem[] = [
     description: "Rooms, rates and availability",
     href: "/units",
     icon: Bed,
-  },
-  {
-    title: "Reports",
-    description: "Revenue and occupancy over time",
-    href: "/reports",
-    icon: Files,
   },
   {
     title: "User Management",

@@ -48,14 +48,17 @@ export function UnitsTable() {
   /**
    * Warms the room's details query and route chunk when the pointer (or
    * keyboard focus) lands on its row, so View / Update open instantly.
-   * `prefetchQuery` is a no-op while the cached data is still fresh.
+   * `query` is a no-op while the cached data is still fresh; failures are
+   * swallowed because the details page surfaces them itself.
    */
   function prefetchUnit(roomId: string) {
-    queryClient.prefetchQuery({
-      queryKey: unitQueryKey(roomId),
-      queryFn: () => fetchUnitDetails(roomId),
-      staleTime: PREFETCH_STALE_MS,
-    })
+    queryClient
+      .query({
+        queryKey: unitQueryKey(roomId),
+        queryFn: () => fetchUnitDetails(roomId),
+        staleTime: PREFETCH_STALE_MS,
+      })
+      .catch(() => undefined)
     router.prefetch(getUnitHref(roomId))
   }
 

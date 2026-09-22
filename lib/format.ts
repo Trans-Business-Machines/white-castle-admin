@@ -20,6 +20,15 @@ export function formatDate(
   return format(date, pattern)
 }
 
+/** "21 Sep 2026, 11:00 PM" from an ISO timestamp, or "—" when absent/invalid. */
+export function formatTimestamp(value: string | null | undefined) {
+  if (!value) return "—"
+  const date = new Date(value)
+  return Number.isNaN(date.getTime())
+    ? "—"
+    : formatDate(date, "dd MMM yyyy, hh:mm a")
+}
+
 /** Builds avatar initials from a full name, e.g. "Grace Noor" → "GN". */
 export function getInitials(name: string) {
   return name

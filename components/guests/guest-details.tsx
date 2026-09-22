@@ -32,17 +32,14 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/errors"
 import { fetchGuestDetails, guestQueryKey } from "@/lib/api/guests"
-import { formatCurrency, formatDate, getInitials } from "@/lib/format"
+import {
+  formatCurrency,
+  formatDate,
+  formatTimestamp,
+  getInitials,
+} from "@/lib/format"
 import { getIdNumberLabel, getIdTypeLabel } from "@/lib/schemas/guests"
 import type { Guest } from "@/lib/types"
-
-function formatTimestamp(value: string | null | undefined) {
-  if (!value) return "—"
-  const date = new Date(value)
-  return Number.isNaN(date.getTime())
-    ? "—"
-    : formatDate(date, "dd MMM yyyy, hh:mm a")
-}
 
 /** "12 Mar 1990 (36 years)" from the API's "yyyy-MM-dd", or "—". */
 function formatBirthDate(value: string | null) {

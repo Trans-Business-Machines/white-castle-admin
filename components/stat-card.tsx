@@ -24,8 +24,8 @@ export function StatCard({
   const tone = role ? getRoleClasses(role) : null
 
   return (
-    <Card className="border-iron shadow-md">
-      <CardContent>
+    <Card className="h-full border-iron shadow-md">
+      <CardContent className="flex-1">
         <CardTitle
           className={cn(
             "font-sans font-bold uppercase",
@@ -35,7 +35,7 @@ export function StatCard({
           {title}
         </CardTitle>
 
-        <div>
+        <div className="mt-auto">
           <h3
             className={cn(
               "font-heading text-3xl font-bold text-navy-azul",

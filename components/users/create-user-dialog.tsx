@@ -147,7 +147,7 @@ export function CreateUserDialog({ children }: PropsWithChildren) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
 
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto md:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">
             Create new user

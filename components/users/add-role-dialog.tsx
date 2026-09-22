@@ -87,7 +87,7 @@ export function NewRoleDialog({ children }: PropsWithChildren) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
 
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="max-h-[90vh] overflow-y-auto md:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">Add role</DialogTitle>
           <DialogDescription>Define a new level of access.</DialogDescription>

@@ -135,7 +135,7 @@ function EditUnitForm({ unit, onOpenChange }: EditUnitDialogProps) {
 
   return (
     <Dialog open onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto sm:max-w-2xl">
+      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto md:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="font-heading text-xl font-bold">
             Update room {unit.room_number}
