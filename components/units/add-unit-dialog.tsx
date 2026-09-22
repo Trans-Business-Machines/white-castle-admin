@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog"
 import { UnitFormFields } from "@/components/units/unit-form-fields"
 import { getApiErrorMessage } from "@/lib/api/errors"
-import { createUnit, unitsQueryKey, uploadUnitPhoto } from "@/lib/api/units"
+import { createUnit, unitsQueryKey, uploadUnitPhotos } from "@/lib/api/units"
 import { toUnitPayload, unitsSchema, type UnitType } from "@/lib/schemas/units"
 import type { Unit } from "@/lib/types"
 
@@ -30,7 +30,7 @@ const emptyValues: UnitType = {
   max_occupancy: Number.NaN,
   base_rate: Number.NaN,
   amenities: [],
-  photo: null,
+  photos: [],
 }
 
 /** Marks a failure that happened after the room itself was saved. */
@@ -66,9 +66,9 @@ export function NewRoomDialog({ children }: PropsWithChildren) {
         setSavedUnit(unit)
         queryClient.invalidateQueries({ queryKey: unitsQueryKey })
       }
-      if (values.photo) {
+      if (values.photos.length > 0) {
         try {
-          await uploadUnitPhoto(unit.room_id, values.photo)
+          await uploadUnitPhotos(unit.room_id, values.photos)
         } catch (error) {
           throw new PhotoUploadError(error)
         }
@@ -83,10 +83,10 @@ export function NewRoomDialog({ children }: PropsWithChildren) {
     onError: (error) => {
       if (error instanceof PhotoUploadError) {
         setError("root", {
-          message: `The room was saved, but the photo didn't upload: ${getApiErrorMessage(
+          message: `The room was saved, but the photos didn't upload: ${getApiErrorMessage(
             error.cause,
             "something went wrong."
-          )} Try again to retry the photo, or cancel to add it later.`,
+          )} Try again to retry the upload, or cancel to add them later.`,
         })
         return
       }
@@ -100,8 +100,8 @@ export function NewRoomDialog({ children }: PropsWithChildren) {
   })
 
   /**
-   * Wipes every piece of dialog state, then closes. Resetting `photo` to
-   * null unmounts the preview inside `PhotoDropzone`, which revokes its
+   * Wipes every piece of dialog state, then closes. Emptying `photos`
+   * unmounts every preview inside `PhotoDropzone`, each of which revokes its
    * object URL. This deliberately skips the pending guard below: TanStack
    * runs `onSuccess` before it flips `isPending` off, so a guarded close
    * would silently no-op after a successful save.
@@ -178,7 +178,7 @@ export function NewRoomDialog({ children }: PropsWithChildren) {
                 {mutation.isPending ? (
                   <span className="inline-flex items-center gap-2">
                     <Loader aria-hidden="true" className="animate-spin" />
-                    {savedUnit ? "Uploading photo" : "Saving"}
+                    {savedUnit ? "Uploading photos" : "Saving"}
                   </span>
                 ) : savedUnit ? (
                   "Retry photo upload"

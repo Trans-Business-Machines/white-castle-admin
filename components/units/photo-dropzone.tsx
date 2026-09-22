@@ -1,171 +1,243 @@
 "use client"
 
-import { useEffect, useMemo, useRef, useState, type DragEvent } from "react"
+import { useMemo, useRef, useState, type DragEvent } from "react"
 import { cn } from "@/lib/utils"
 import { ImagePlus, X } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { formatBytes } from "@/lib/format"
-import { getRoomPhotoError, ROOM_PHOTO_TYPES } from "@/lib/schemas/units"
+import { PhotoTile } from "@/components/units/photo-tile"
+import {
+  getPhotoKey,
+  getRoomPhotoError,
+  MAX_ROOM_PHOTOS,
+  ROOM_PHOTO_TYPES,
+} from "@/lib/schemas/units"
+
+/** Shared grid for the existing-photo and picked-photo lists. */
+export const photoGridClassName =
+  "grid grid-cols-[repeat(auto-fill,minmax(88px,1fr))] gap-3"
 
 interface PhotoDropzoneProps {
   id: string
-  value: File | null
-  onChange: (file: File | null) => void
+  value: File[]
+  onChange: (files: File[]) => void
   onReject: (message: string) => void
+  /** How many more photos may be picked, with any existing ones deducted. */
+  remaining: number
   disabled?: boolean
   invalid?: boolean
   describedBy?: string
+  /** Accepted MIME types; defaults to the room-photo list. */
+  accept?: readonly string[]
+  /** Returns a message when a file can't be uploaded, or null when it can. */
+  validate?: (file: File) => string | null
+  /** Line under the call to action describing the file rules. */
+  hint?: string
+  /** Shown in place of the call to action once `remaining` hits 0. */
+  fullMessage?: string
+  /** Explains how many files a pick had to drop to stay within `remaining`. */
+  overflowMessage?: (count: number) => string
 }
 
 /**
- * Single-image picker: click or drag a file in, see a preview, clear it.
- * Type and size rules live in `lib/schemas/units.ts` so the form's zod
- * schema and this picker can't drift apart.
+ * One picked file's preview. It owns its object URL, so adding or removing a
+ * photo never disturbs the tiles already on screen.
+ */
+function PickedPhoto({
+  file,
+  index,
+  onRemove,
+  disabled,
+}: {
+  file: File
+  index: number
+  onRemove: () => void
+  disabled?: boolean
+}) {
+  const url = useMemo(() => URL.createObjectURL(file), [file])
+  const released = useRef(false)
+
+  /**
+   * Object URLs leak until revoked, but revoking on unmount is a trap here:
+   * in development React's StrictMode runs an extra mount → unmount → mount
+   * cycle *without* re-running the memo, so the cleanup would free a URL the
+   * `<img>` is still pointing at and every preview would break. Releasing it
+   * once the browser has decoded the image is safe — the decoded bitmap
+   * outlives the URL — and frees the memory sooner than unmount would.
+   */
+  function release() {
+    if (released.current) return
+    released.current = true
+    URL.revokeObjectURL(url)
+  }
+
+  return (
+    <PhotoTile
+      src={url}
+      alt={`New photo ${index + 1}`}
+      actionLabel={`Remove ${file.name}`}
+      actionIcon={X}
+      onAction={onRemove}
+      onLoad={release}
+      onError={release}
+      disabled={disabled}
+    />
+  )
+}
+
+/**
+ * Multi-image picker: click or drag files in, see every one previewed, drop
+ * any of them with the X in its corner. Type and size rules live in
+ * `lib/schemas/units.ts` so the form's zod schema and this picker can't
+ * drift apart; the ten-photo cap is passed in as `remaining` because the
+ * edit dialog has to count the room's existing photos too.
  */
 export function PhotoDropzone({
   id,
   value,
   onChange,
   onReject,
+  remaining,
   disabled,
   invalid,
   describedBy,
+  accept: acceptedTypes = ROOM_PHOTO_TYPES,
+  validate = getRoomPhotoError,
+  hint = `JPG, PNG or WebP, up to 2 MB each — ${remaining} more ${
+    remaining === 1 ? "photo" : "photos"
+  } can be added`,
+  fullMessage = `This room already has ${MAX_ROOM_PHOTOS} photos. Remove one to add another.`,
+  overflowMessage = (count) =>
+    `A room can have at most ${MAX_ROOM_PHOTOS} photos, so ${count} ${
+      count === 1 ? "image was" : "images were"
+    } left out.`,
 }: PhotoDropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
-  const preview = useMemo(
-    () => (value ? URL.createObjectURL(value) : null),
-    [value]
-  )
-
-  // Object URLs leak until revoked. This cleanup runs whenever the preview
-  // is replaced, when the parent form resets `value` to null (e.g. after a
-  // successful save), and when the dialog unmounts the dropzone.
-  useEffect(() => {
-    if (!preview) return
-    return () => URL.revokeObjectURL(preview)
-  }, [preview])
-
-  // When the value is cleared from outside (form reset), clear the native
-  // input too; otherwise re-picking the same file wouldn't fire `change`.
-  useEffect(() => {
-    if (!value && inputRef.current) inputRef.current.value = ""
-  }, [value])
+  const full = remaining <= 0
+  const locked = Boolean(disabled) || full
 
   function accept(files: FileList | null) {
-    const file = files?.[0]
-    if (!file) return
-    const message = getRoomPhotoError(file)
-    if (message) {
-      onReject(message)
-      return
+    // Copy the list out before touching the input below: a file input's
+    // `files` is live, so clearing the input would empty this list too.
+    const picked = files ? Array.from(files) : []
+    // Clear the native input, otherwise re-picking a file that was just
+    // removed wouldn't fire `change`.
+    if (inputRef.current) inputRef.current.value = ""
+    if (picked.length === 0) return
+
+    const seen = new Set(value.map(getPhotoKey))
+    const accepted: File[] = []
+    const problems: string[] = []
+    let overflow = 0
+
+    for (const file of picked) {
+      const message = validate(file)
+      if (message) {
+        problems.push(`${file.name}: ${message}`)
+        continue
+      }
+      const key = getPhotoKey(file)
+      // Silently skip a file that's already in the list — re-picking it is a
+      // no-op, not a mistake worth an error message.
+      if (seen.has(key)) continue
+      if (accepted.length >= remaining) {
+        overflow += 1
+        continue
+      }
+      seen.add(key)
+      accepted.push(file)
     }
-    onChange(file)
+
+    if (overflow > 0) problems.push(overflowMessage(overflow))
+    if (accepted.length > 0) onChange([...value, ...accepted])
+    if (problems.length > 0) onReject(problems.join(" "))
   }
 
   function handleDrop(event: DragEvent<HTMLDivElement>) {
     event.preventDefault()
     setDragging(false)
-    if (disabled) return
+    if (locked) return
     accept(event.dataTransfer.files)
   }
 
   function handleDragOver(event: DragEvent<HTMLDivElement>) {
     event.preventDefault()
-    if (!disabled) setDragging(true)
+    if (!locked) setDragging(true)
   }
 
-  function clear() {
-    onChange(null)
+  function removeAt(index: number) {
+    onChange(value.filter((_, i) => i !== index))
   }
 
   return (
-    <div className="grid gap-2">
+    <div className="grid gap-3">
       <input
         ref={inputRef}
         id={id}
         type="file"
-        accept={ROOM_PHOTO_TYPES.join(",")}
+        multiple
+        accept={acceptedTypes.join(",")}
         className="sr-only"
-        disabled={disabled}
+        disabled={locked}
         aria-invalid={invalid}
         aria-describedby={describedBy}
         onChange={(event) => accept(event.target.files)}
       />
 
-      {value && preview ? (
-        <div className="flex items-center gap-4 rounded-lg border border-border bg-canvas p-3 dark:bg-input/30">
-          {/* Blob URLs gain nothing from next/image optimisation. */}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={preview}
-            alt=""
-            className="size-20 shrink-0 rounded-md object-cover"
-          />
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{value.name}</p>
-            <p className="text-xs text-muted-foreground">
-              {formatBytes(value.size)}
+      <div
+        role="button"
+        tabIndex={locked ? -1 : 0}
+        aria-disabled={locked}
+        onClick={() => !locked && inputRef.current?.click()}
+        onKeyDown={(event) => {
+          if (locked) return
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault()
+            inputRef.current?.click()
+          }
+        }}
+        onDragOver={handleDragOver}
+        onDragEnter={handleDragOver}
+        onDragLeave={() => setDragging(false)}
+        onDrop={handleDrop}
+        className={cn(
+          "flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-canvas px-4 py-8 text-center transition-colors outline-none focus-visible:border-brand-azure focus-visible:ring-3 focus-visible:ring-brand-azure/20 dark:bg-input/30",
+          locked ? "cursor-not-allowed" : "cursor-pointer",
+          dragging && "border-brand-azure bg-brand-azure/5",
+          invalid && "border-destructive",
+          disabled && "opacity-50"
+        )}
+      >
+        <span className="flex size-10 items-center justify-center rounded-full bg-brand-azure/10 text-brand-azure">
+          <ImagePlus aria-hidden="true" className="size-5" />
+        </span>
+        {full ? (
+          <p className="text-sm text-muted-foreground">{fullMessage}</p>
+        ) : (
+          <>
+            <p className="text-sm">
+              <span className="font-semibold text-brand-azure">
+                Click to upload
+              </span>{" "}
+              or drag and drop
             </p>
-            <button
-              type="button"
-              onClick={() => inputRef.current?.click()}
+            <p className="text-xs text-muted-foreground">{hint}</p>
+          </>
+        )}
+      </div>
+
+      {value.length > 0 ? (
+        <ul className={photoGridClassName} aria-label="Photos to upload">
+          {value.map((file, index) => (
+            <PickedPhoto
+              key={getPhotoKey(file)}
+              file={file}
+              index={index}
               disabled={disabled}
-              className="mt-1 text-sm font-semibold text-brand-azure underline-offset-4 hover:underline disabled:opacity-50"
-            >
-              Choose a different image
-            </button>
-          </div>
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={clear}
-            disabled={disabled}
-            aria-label="Remove image"
-            className="shrink-0"
-          >
-            <X aria-hidden="true" />
-          </Button>
-        </div>
-      ) : (
-        <div
-          role="button"
-          tabIndex={disabled ? -1 : 0}
-          aria-disabled={disabled}
-          onClick={() => !disabled && inputRef.current?.click()}
-          onKeyDown={(event) => {
-            if (disabled) return
-            if (event.key === "Enter" || event.key === " ") {
-              event.preventDefault()
-              inputRef.current?.click()
-            }
-          }}
-          onDragOver={handleDragOver}
-          onDragEnter={handleDragOver}
-          onDragLeave={() => setDragging(false)}
-          onDrop={handleDrop}
-          className={cn(
-            "flex cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed border-border bg-canvas px-4 py-8 text-center transition-colors outline-none focus-visible:border-brand-azure focus-visible:ring-3 focus-visible:ring-brand-azure/20 dark:bg-input/30",
-            dragging && "border-brand-azure bg-brand-azure/5",
-            invalid && "border-destructive",
-            disabled && "cursor-not-allowed opacity-50"
-          )}
-        >
-          <span className="flex size-10 items-center justify-center rounded-full bg-brand-azure/10 text-brand-azure">
-            <ImagePlus aria-hidden="true" className="size-5" />
-          </span>
-          <p className="text-sm">
-            <span className="font-semibold text-brand-azure">
-              Click to upload
-            </span>{" "}
-            or drag and drop
-          </p>
-          <p className="text-xs text-muted-foreground">
-            JPEG, PNG or WebP, up to 5 MB
-          </p>
-        </div>
-      )}
+              onRemove={() => removeAt(index)}
+            />
+          ))}
+        </ul>
+      ) : null}
     </div>
   )
 }

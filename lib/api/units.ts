@@ -1,6 +1,6 @@
 import { axiosInstance } from "@/lib/axios"
 import type { UnitPayload } from "@/lib/schemas/units"
-import type { RoomPhoto, Unit, UnitsOccupancyStats } from "@/lib/types"
+import type { Unit, UnitsOccupancyStats } from "@/lib/types"
 import { normalizeUnit } from "@/lib/units"
 
 export const unitsQueryKey = ["units"] as const
@@ -49,17 +49,27 @@ export async function deleteUnit(roomId: string) {
   await axiosInstance.delete(`/bookings/rooms/${encodeURIComponent(roomId)}`)
 }
 
-export async function uploadUnitPhoto(roomId: string, file: File) {
-  console.log("Room ID: ", roomId)
-
+/**
+ * POST /bookings/rooms/{id}/photos → uploads every picked photo in one
+ * multipart request. The backend reads a repeated `files` field and caps a
+ * room at `MAX_ROOM_PHOTOS` in total, so the caller deletes before it adds.
+ */
+export async function uploadUnitPhotos(roomId: string, files: File[]) {
   const body = new FormData()
-  body.append("file", file)
-  const response = await axiosInstance.post<RoomPhoto>(
+  for (const file of files) body.append("files", file)
+  await axiosInstance.post(
     `/bookings/rooms/${encodeURIComponent(roomId)}/photos`,
     body
   )
+}
 
-  console.log("Response object: ", response)
-
-  return response.data
+/**
+ * DELETE /bookings/rooms/{id}/photos?photo_url=… → removes one photo. The
+ * endpoint takes a single URL, so removing several means one call each.
+ */
+export async function deleteUnitPhoto(roomId: string, photoUrl: string) {
+  await axiosInstance.delete(
+    `/bookings/rooms/${encodeURIComponent(roomId)}/photos`,
+    { params: { photo_url: photoUrl } }
+  )
 }

@@ -1,7 +1,17 @@
 import { format, startOfMonth } from "date-fns"
 import type { OccupancyRange } from "@/lib/api/bookings"
 import { formatCurrency } from "@/lib/format"
-import type { BookingsOccupancyStats, BookingStatus } from "@/lib/types"
+import type {
+  Booking,
+  BookingsOccupancyStats,
+  BookingStatus,
+} from "@/lib/types"
+
+/** The fields a booking action dialog needs to name what it is about to do. */
+export type BookingSubject = Pick<
+  Booking,
+  "booking_id" | "reference" | "guest_name" | "guest_id"
+>
 
 /** Every booking status the API knows, in lifecycle order (filter options). */
 export const BOOKING_STATUSES: readonly BookingStatus[] = [
@@ -109,8 +119,8 @@ export const BOOKING_STAT_CARDS: ReadonlyArray<{
   },
   {
     key: "confirmed_bookings",
-    title: "Confirmed bookings",
-    label: "This month",
+    title: "Bookings",
+    label: "Confimed this month",
     titleClassName: STAT_TITLE_CLASSES.confirmed_bookings,
     format: String,
   },

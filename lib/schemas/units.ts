@@ -1,6 +1,5 @@
 import { z } from "zod"
 
-/** Image types `POST /media/upload/room-photo/{room_id}` accepts. */
 export const ROOM_PHOTO_TYPES = [
   "image/jpeg",
   "image/jpg",
@@ -8,17 +7,23 @@ export const ROOM_PHOTO_TYPES = [
   "image/webp",
 ] as const
 
-export const ROOM_PHOTO_MAX_BYTES = 5 * 1024 * 1024
+export const ROOM_PHOTO_MAX_BYTES = 2 * 1024 * 1024
+
+export const MAX_ROOM_PHOTOS = 10
 
 /** Returns a message when `file` can't be uploaded as a room photo. */
 export function getRoomPhotoError(file: File) {
   if (!(ROOM_PHOTO_TYPES as readonly string[]).includes(file.type)) {
-    return "Use a JPEG, PNG or WebP image."
+    return "Use a JPG, PNG or WebP image."
   }
   if (file.size > ROOM_PHOTO_MAX_BYTES) {
-    return "Keep the image under 5 MB."
+    return "Keep the image under 2 MB."
   }
   return null
+}
+
+export function getPhotoKey(file: File) {
+  return `${file.name}-${file.size}-${file.lastModified}`
 }
 
 export const amenitySchema = z
@@ -27,7 +32,6 @@ export const amenitySchema = z
   .min(2, "Enter an amenity of at least 2 characters.")
   .max(50, "Keep the amenity under 50 characters.")
 
-/** Room types staff can pick; the value is what `POST /bookings/rooms` receives. */
 export const ROOM_TYPES = [
   { value: "single", label: "Single" },
   { value: "1_bedroom", label: "1 bedroom" },
@@ -57,19 +61,21 @@ export const unitsSchema = z.object({
     .number({ error: "Enter the nightly rate." })
     .positive("The rate must be greater than 0."),
   amenities: z.array(amenitySchema),
-  // `File` only exists in the browser, so we validate it structurally.
-  photo: z
-    .custom<File | null>((value) => value === null || value instanceof File)
-    .superRefine((file, ctx) => {
-      if (!file) return
-      const message = getRoomPhotoError(file)
-      if (message) ctx.addIssue({ code: "custom", message })
+  photos: z
+    .array(z.custom<File>((value) => value instanceof File))
+    .max(MAX_ROOM_PHOTOS, `Attach at most ${MAX_ROOM_PHOTOS} photos.`)
+    .superRefine((files, ctx) => {
+      for (const file of files) {
+        const message = getRoomPhotoError(file)
+        if (message) {
+          ctx.addIssue({ code: "custom", message: `${file.name}: ${message}` })
+        }
+      }
     }),
 })
 
 export type UnitType = z.infer<typeof unitsSchema>
 
-/** Shapes form values into the body `POST /bookings/rooms` expects. */
 export function toUnitPayload(values: UnitType) {
   return {
     room_number: values.room_number.trim(),

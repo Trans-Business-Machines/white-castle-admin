@@ -20,10 +20,11 @@ import {
   SidebarRail,
   useSidebar,
 } from "@/components/ui/sidebar"
+import { useBookingRequests } from "@/hooks/use-booking-requests"
 import { useAuth } from "@/providers/auth-provider"
 
-// TODO: read the pending request count from the API.
-const PENDING_REQUESTS = 9
+/** Above this the badge would outgrow the rail, so it counts up to "99+". */
+const MAX_BADGE_COUNT = 99
 
 /**
  * Labels fade rather than toggling `display`, so nothing pops while the rail
@@ -41,6 +42,9 @@ function AppSidebar() {
   const pathname = usePathname()
   const { toggleSidebar } = useSidebar()
   const { user } = useAuth()
+  // Shares its query with the /requests table, so approving or rejecting a
+  // request drops the count here without a second fetch.
+  const { count: pendingRequests } = useBookingRequests()
   const visibleNav = dashboardNav.filter((item) =>
     canSeeNavItem(item, user?.role)
   )
@@ -84,8 +88,8 @@ function AppSidebar() {
                     pathname === item.href ||
                     pathname.startsWith(`${item.href}/`)
                   const badge =
-                    item.href === "/requests" && PENDING_REQUESTS > 0
-                      ? PENDING_REQUESTS
+                    item.href === "/requests" && pendingRequests > 0
+                      ? Math.min(pendingRequests, MAX_BADGE_COUNT + 1)
                       : null
 
                   return (
@@ -106,12 +110,17 @@ function AppSidebar() {
                       </SidebarMenuButton>
                       {badge !== null ? (
                         <SidebarMenuBadge
+                          aria-label={`${pendingRequests} pending`}
                           className={cn(
-                            "top-3 right-3 h-5 min-w-5 rounded-full bg-amber-400 px-1.5 text-xs font-semibold text-brand-navy group-data-[collapsible=icon]:flex",
+                            // `top-1/2!` beats the peer-driven `top-1.5` the
+                            // base badge sets, so it centres on the nav link.
+                            "top-1/2! right-3 h-5 min-w-5 -translate-y-1/2 rounded-full bg-rose-600 px-1.5 text-xs font-semibold text-white group-data-[collapsible=icon]:flex",
                             labelClassName
                           )}
                         >
-                          {badge}
+                          {badge > MAX_BADGE_COUNT
+                            ? `${MAX_BADGE_COUNT}+`
+                            : badge}
                         </SidebarMenuBadge>
                       ) : null}
                     </SidebarMenuItem>

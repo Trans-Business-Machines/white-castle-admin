@@ -47,6 +47,8 @@ interface BookingsFiltersProps {
   onChange: (value: BookingListFilters) => void
   /** Greys the controls out, e.g. while a reference lookup overrides them. */
   disabled?: boolean
+  /** Hidden where the list already pins a status, e.g. pending on /requests. */
+  showStatus?: boolean
 }
 
 /** Status + date-range filters for the bookings list; each change refetches. */
@@ -54,6 +56,7 @@ export function BookingsFilters({
   value,
   onChange,
   disabled = false,
+  showStatus = true,
 }: BookingsFiltersProps) {
   const dateFrom = toDate(value.date_from)
   const dateTo = toDate(value.date_to)
@@ -63,35 +66,37 @@ export function BookingsFilters({
       disabled={disabled}
       className="flex flex-wrap items-end gap-3 disabled:opacity-60"
     >
-      <div className="grid min-w-44 flex-1 gap-2 sm:flex-none">
-        <Label htmlFor="bookings-status" className={labelClassName}>
-          Status
-        </Label>
-        <Select
-          value={value.status || ALL_STATUSES}
-          onValueChange={(status) =>
-            onChange({
-              ...value,
-              status: status === ALL_STATUSES ? "" : status,
-            })
-          }
-        >
-          <SelectTrigger
-            id="bookings-status"
-            className={`${controlClassName} w-full data-[size=default]:h-11`}
+      {showStatus ? (
+        <div className="grid min-w-44 flex-1 gap-2 sm:flex-none">
+          <Label htmlFor="bookings-status" className={labelClassName}>
+            Status
+          </Label>
+          <Select
+            value={value.status || ALL_STATUSES}
+            onValueChange={(status) =>
+              onChange({
+                ...value,
+                status: status === ALL_STATUSES ? "" : status,
+              })
+            }
           >
-            <SelectValue placeholder="All statuses" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value={ALL_STATUSES}>All statuses</SelectItem>
-            {BOOKING_STATUSES.map((status) => (
-              <SelectItem key={status} value={status}>
-                {humanizeSlug(status)}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+            <SelectTrigger
+              id="bookings-status"
+              className={`${controlClassName} w-full data-[size=default]:h-11`}
+            >
+              <SelectValue placeholder="All statuses" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={ALL_STATUSES}>All statuses</SelectItem>
+              {BOOKING_STATUSES.map((status) => (
+                <SelectItem key={status} value={status}>
+                  {humanizeSlug(status)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
 
       <div className="grid min-w-44 flex-1 gap-2 sm:flex-none">
         <Label htmlFor="bookings-date-from" className={labelClassName}>

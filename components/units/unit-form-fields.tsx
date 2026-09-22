@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, type KeyboardEvent } from "react"
-import { Plus, X } from "lucide-react"
+import { Plus, Undo2, X } from "lucide-react"
 import { Controller, useWatch, type UseFormReturn } from "react-hook-form"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -14,8 +14,17 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { PhotoDropzone } from "@/components/units/photo-dropzone"
-import { amenitySchema, ROOM_TYPES, type UnitType } from "@/lib/schemas/units"
+import {
+  PhotoDropzone,
+  photoGridClassName,
+} from "@/components/units/photo-dropzone"
+import { PhotoTile } from "@/components/units/photo-tile"
+import {
+  amenitySchema,
+  MAX_ROOM_PHOTOS,
+  ROOM_TYPES,
+  type UnitType,
+} from "@/lib/schemas/units"
 
 const labelClassName =
   "font-ibm-plex text-xs font-semibold tracking-wide text-iron uppercase"
@@ -33,12 +42,16 @@ function FieldError({ id, message }: { id: string; message?: string }) {
 
 interface UnitFormFieldsProps {
   form: UseFormReturn<UnitType>
-  /** Disables the room detail inputs (everything except the photo). */
+  /** Disables the room detail inputs (everything except the photos). */
   detailsLocked: boolean
-  /** Disables the photo picker while a request is in flight. */
+  /** Disables the photo controls while a request is in flight. */
   pending: boolean
-  /** Caption under the photo picker; differs between add and edit. */
-  photoHint?: string
+  /** Photos already on the room; edit dialog only. */
+  existingPhotos?: string[]
+  /** Existing photo URLs the user has marked for deletion on save. */
+  removedPhotos?: string[]
+  /** Marks an existing photo for deletion, or takes the mark back off. */
+  onToggleRemovePhoto?: (url: string) => void
 }
 
 /**
@@ -50,7 +63,9 @@ export function UnitFormFields({
   form,
   detailsLocked,
   pending,
-  photoHint,
+  existingPhotos = [],
+  removedPhotos = [],
+  onToggleRemovePhoto,
 }: UnitFormFieldsProps) {
   const {
     control,
@@ -64,6 +79,15 @@ export function UnitFormFields({
   const [amenityError, setAmenityError] = useState<string | null>(null)
 
   const amenities = useWatch({ control, name: "amenities" })
+  const photos = useWatch({ control, name: "photos" })
+
+  // The ten-photo cap is a property of the room, not of this picker, so
+  // the photos it already keeps count against what can still be added.
+  const keptExisting = existingPhotos.filter(
+    (url) => !removedPhotos.includes(url)
+  ).length
+  const used = keptExisting + photos.length
+  const remaining = Math.max(0, MAX_ROOM_PHOTOS - used)
 
   function addAmenity() {
     const parsed = amenitySchema.safeParse(amenityInput)
@@ -300,33 +324,71 @@ export function UnitFormFields({
       </fieldset>
 
       {/* Photo upload drop zone */}
-      <fieldset disabled={pending} className="grid min-w-0 gap-2">
-        <Label htmlFor="unit-photo" className={labelClassName}>
-          Photo{" "}
-          <span className="font-normal tracking-normal normal-case">
-            (optional)
+      <fieldset disabled={pending} className="grid min-w-0 gap-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <Label htmlFor="unit-photos" className={labelClassName}>
+            Photos{" "}
+            <span className="font-normal tracking-normal normal-case">
+              (optional)
+            </span>
+          </Label>
+          <span className="font-mono text-xs text-iron">
+            {used} of {MAX_ROOM_PHOTOS}
           </span>
-        </Label>
+        </div>
+
+        {existingPhotos.length > 0 ? (
+          <div className="grid gap-2">
+            <p className="text-xs text-iron">
+              Current photos. Removing one deletes it when you save.
+            </p>
+            <ul className={photoGridClassName} aria-label="Current photos">
+              {existingPhotos.map((url, index) => {
+                const marked = removedPhotos.includes(url)
+                return (
+                  <PhotoTile
+                    key={url}
+                    src={url}
+                    alt={`Room photo ${index + 1}`}
+                    dimmed={marked}
+                    caption="Removing"
+                    actionIcon={marked ? Undo2 : X}
+                    actionLabel={
+                      marked
+                        ? `Keep photo ${index + 1}`
+                        : `Remove photo ${index + 1}`
+                    }
+                    // Restoring a photo would put the room back over the cap
+                    // when ten are already accounted for.
+                    disabled={pending || (marked && remaining === 0)}
+                    onAction={() => onToggleRemovePhoto?.(url)}
+                  />
+                )
+              })}
+            </ul>
+          </div>
+        ) : null}
+
         <Controller
           control={control}
-          name="photo"
+          name="photos"
           render={({ field }) => (
             <PhotoDropzone
-              id="unit-photo"
+              id="unit-photos"
               value={field.value}
+              remaining={remaining}
               disabled={pending}
-              invalid={Boolean(errors.photo)}
-              describedBy={errors.photo ? "unit-photo-error" : undefined}
-              onChange={(file) => {
-                clearErrors("photo")
-                field.onChange(file)
+              invalid={Boolean(errors.photos)}
+              describedBy={errors.photos ? "unit-photos-error" : undefined}
+              onChange={(files) => {
+                clearErrors("photos")
+                field.onChange(files)
               }}
-              onReject={(message) => setError("photo", { message })}
+              onReject={(message) => setError("photos", { message })}
             />
           )}
         />
-        <FieldError id="unit-photo-error" message={errors.photo?.message} />
-        {photoHint ? <p className="text-xs text-iron">{photoHint}</p> : null}
+        <FieldError id="unit-photos-error" message={errors.photos?.message} />
       </fieldset>
     </>
   )

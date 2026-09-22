@@ -70,6 +70,33 @@ export interface CreateBookingPayload {
   guest_phone: string
 }
 
+/** Body for `PATCH /bookings/{id}/checkin`. */
+export interface CheckInBookingPayload {
+  /** The guest record being checked in. */
+  guest_id: string
+}
+
+/** Body for `PATCH /bookings/{id}/approve`. */
+export interface ApproveBookingPayload {
+  /** `user_id` of the staff member approving the request. */
+  approved_by: string
+  deposit_required: boolean
+}
+
+/** Body for `PATCH /bookings/{id}/cancel`. */
+export interface CancelBookingPayload {
+  cancellation_reason: string
+  /** `user_id` of the staff member cancelling the booking. */
+  cancelled_by: string
+}
+
+/** Body for `PATCH /bookings/{id}/reject`. */
+export interface RejectBookingPayload {
+  rejection_reason: string
+  /** `user_id` of the staff member rejecting the request. */
+  rejected_by: string
+}
+
 export type BookingStatus =
   | "pending"
   | "approved"
@@ -161,4 +188,53 @@ export interface UnitsOccupancyStats {
   occupied: number
   maintenance: number
   other: number
+}
+
+export type PaymentMethod = "mpesa" | "credit_card" | "debit_card"
+
+export type PaymentType = "full_payment" | "deposit"
+
+/** Body `POST /payments/create` expects. */
+export interface CreatePaymentPayload {
+  booking_id: string
+  /** The booking's human-readable reference, copied from the chosen booking. */
+  booking_ref: string
+  amount: number
+  method: PaymentMethod
+  /** Transaction reference from the payment channel, e.g. an M-Pesa code. */
+  reference: string
+  payment_type: PaymentType
+  notes: string
+  /** `user_id` of the staff member recording the payment. */
+  recorded_by: string
+}
+
+/**
+ * A payment as returned by `POST /payments/create` and `GET /payments/list`.
+ * Everything up to `recorded_by` mirrors `CreatePaymentPayload`; the rest is
+ * set by the backend as the payment is checked.
+ */
+export interface Payment {
+  payment_id: string
+  booking_id: string
+  booking_ref: string
+  amount: number
+  /** ISO currency code; every rate in the app is quoted in KES. */
+  currency: string
+  method: string
+  reference: string
+  payment_type: string
+  notes: string | null
+  /** `user_id` of the staff member who recorded the payment. */
+  recorded_by: string | null
+  status: string
+  /** Proof of payment, set by `POST /payments/{id}/evidence`. */
+  evidence_url: string | null
+  evidence_filename: string | null
+  /** Username of whoever verified the payment, e.g. "alice_finance". */
+  verified_by: string | null
+  verified_at: string | null
+  rejection_reason: string | null
+  created_at: string
+  updated_at: string | null
 }

@@ -2,11 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
-import {
-  keepPreviousData,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { cn } from "cn"
 import {
   BookingActionsMenu,
@@ -37,13 +33,15 @@ import {
   tableHeadClassName,
 } from "@/components/users/table-state"
 import { SearchInput } from "@/components/users/table-toolbar"
+import {
+  BOOKING_REQUEST_STATUS,
+  useBookingsList,
+} from "@/hooks/use-booking-requests"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
 import {
   bookingLookupQueryKey,
   bookingQueryKey,
-  bookingsListQueryKey,
   fetchBookingDetails,
-  fetchBookings,
   lookupBooking,
 } from "@/lib/api/bookings"
 import { getApiErrorStatus } from "@/lib/api/errors"
@@ -54,6 +52,32 @@ const COLUMNS = 9
 
 /** How long a hover-prefetched booking stays fresh before another hover refetches it. */
 const PREFETCH_STALE_MS = 30_000
+
+/**
+ * Copy and behaviour that differ between the two surfaces this table
+ * serves. `requests` pins the list to pending bookings — the requests
+ * guests raise from the website — so its status filter is dropped and its
+ * row menu offers the approve / reject decisions instead of the
+ * lifecycle actions.
+ */
+const VARIANTS = {
+  bookings: {
+    lockedStatus: "",
+    menu: "booking",
+    noun: "booking",
+    plural: "bookings",
+    empty: "No bookings yet. Create the first one above.",
+  },
+  requests: {
+    lockedStatus: BOOKING_REQUEST_STATUS,
+    menu: "request",
+    noun: "booking request",
+    plural: "booking requests",
+    empty: "No pending booking requests right now.",
+  },
+} as const
+
+export type BookingsTableVariant = keyof typeof VARIANTS
 
 function normalizeReference(value: string) {
   return value.trim().toUpperCase()
@@ -67,7 +91,12 @@ function normalizeReference(value: string) {
  * (dimmed) until the new page arrives so the table doesn't collapse to a
  * skeleton on every change.
  */
-export function BookingsTable() {
+export function BookingsTable({
+  variant = "bookings",
+}: {
+  variant?: BookingsTableVariant
+}) {
+  const config = VARIANTS[variant]
   const [filters, setFilters] = useState(EMPTY_BOOKING_FILTERS)
   const [search, setSearch] = useState("")
   const router = useRouter()
@@ -79,12 +108,15 @@ export function BookingsTable() {
   const reference = normalizeReference(useDebouncedValue(search))
   const searching = reference !== ""
 
-  const list = useQuery({
-    queryKey: bookingsListQueryKey(filters),
-    queryFn: () => fetchBookings(filters),
-    placeholderData: keepPreviousData,
-    enabled: !searching,
-  })
+  // The requests view pins `status`, so the filter state only ever holds
+  // its dates and `hasActiveFilters` stays truthful.
+  const listFilters = config.lockedStatus
+    ? { ...filters, status: config.lockedStatus }
+    : filters
+
+  // With no dates set, the requests variant resolves to exactly the query
+  // `useBookingRequests` runs for the sidebar badge, so both share one fetch.
+  const list = useBookingsList(listFilters, { enabled: !searching })
 
   const lookup = useQuery({
     queryKey: bookingLookupQueryKey(reference),
@@ -120,11 +152,23 @@ export function BookingsTable() {
 
   const active = searching ? lookup : list
   const rows = useMemo(() => {
-    if (searching) return lookup.data ? [lookup.data] : []
-    return list.data ?? []
-  }, [searching, lookup.data, list.data])
+    if (!searching) return list.data ?? []
+    // Lookup ignores status, so a reference outside this view's status
+    // (e.g. an already-approved booking on /requests) counts as a miss.
+    if (!lookup.data) return []
+    if (config.lockedStatus && lookup.data.status !== config.lockedStatus) {
+      return []
+    }
+    return [lookup.data]
+  }, [searching, lookup.data, list.data, config.lockedStatus])
 
-  const lookupMissed = searching && getApiErrorStatus(lookup.error) === 404
+  // Either the reference doesn't exist (404) or it resolved to a booking
+  // this view doesn't list; both read as "no such reference here".
+  const lookupMissed =
+    searching &&
+    !lookup.isPending &&
+    rows.length === 0 &&
+    (!lookup.isError || getApiErrorStatus(lookup.error) === 404)
 
   return (
     <div className="overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-foreground/10">
@@ -144,13 +188,14 @@ export function BookingsTable() {
             value={search}
             onChange={setSearch}
             placeholder="Search by reference, e.g. WCM-2026-30A19E61"
-            label="Search bookings by reference"
+            label={`Search ${config.plural} by reference`}
           />
         </div>
         <BookingsFilters
           value={filters}
           onChange={setFilters}
           disabled={searching}
+          showStatus={config.lockedStatus === ""}
         />
       </div>
 
@@ -180,7 +225,7 @@ export function BookingsTable() {
             <TableSkeletonRows columns={COLUMNS} />
           ) : lookupMissed ? (
             <TableMessageRow columns={COLUMNS}>
-              No booking with reference &ldquo;{reference}&rdquo;.
+              No {config.noun} with reference &ldquo;{reference}&rdquo;.
             </TableMessageRow>
           ) : active.isError ? (
             <TableMessageRow columns={COLUMNS}>
@@ -188,7 +233,7 @@ export function BookingsTable() {
                 message={
                   searching
                     ? "We couldn't look up that booking."
-                    : "We couldn't load bookings."
+                    : `We couldn't load ${config.plural}.`
                 }
                 onRetry={() => active.refetch()}
               />
@@ -196,8 +241,8 @@ export function BookingsTable() {
           ) : rows.length === 0 ? (
             <TableMessageRow columns={COLUMNS}>
               {hasActiveFilters(filters)
-                ? "No bookings match the current filters."
-                : "No bookings yet. Create the first one above."}
+                ? `No ${config.plural} match the current filters.`
+                : config.empty}
             </TableMessageRow>
           ) : (
             rows.map((booking) => (
@@ -243,7 +288,7 @@ export function BookingsTable() {
                   <PaymentStatusBadge status={booking.payment_status} />
                 </TableCell>
                 <TableCell className="px-4 text-center">
-                  <BookingActionsMenu booking={booking} />
+                  <BookingActionsMenu booking={booking} variant={config.menu} />
                 </TableCell>
               </TableRow>
             ))

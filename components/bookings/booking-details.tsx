@@ -209,7 +209,7 @@ function BookingDetails({ bookingId }: { bookingId: string }) {
 
       {/* Reference card with status pills and the actions menu */}
       <Card className="border-iron/30 shadow-md">
-        <CardContent className="flex flex-wrap items-start justify-between gap-4">
+        <CardContent className="flex flex-row flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <p className="font-ibm-plex text-xs font-semibold tracking-wide text-muted-foreground uppercase">
               Booking
@@ -221,13 +221,19 @@ function BookingDetails({ bookingId }: { bookingId: string }) {
               <BookingStatusBadge status={booking.status} />
               <PaymentStatusBadge status={booking.payment_status} />
               <span>
-                {formatDate(booking.check_in_date)} →{" "}
+                {formatDate(booking.check_in_date)} to{" "}
                 {formatDate(booking.check_out_date)}
               </span>
             </div>
           </div>
 
-          <BookingActionsMenu booking={booking} showView={false} />
+          {/* A pending booking is still a request, so it gets the
+              approve / reject decisions here too. */}
+          <BookingActionsMenu
+            booking={booking}
+            showView={false}
+            variant={status === "pending" ? "request" : "booking"}
+          />
         </CardContent>
       </Card>
 

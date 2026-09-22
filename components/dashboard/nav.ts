@@ -5,6 +5,7 @@ import {
   NotebookPen,
   UserCog,
   Users,
+  Banknote,
   type LucideIcon,
 } from "lucide-react"
 import { USER_MANAGEMENT_ROLES, roleSlug } from "@/lib/roles"
@@ -47,6 +48,12 @@ export const dashboardNav: NavItem[] = [
     description: "Rooms, rates and availability",
     href: "/units",
     icon: Bed,
+  },
+  {
+    title: "Payments",
+    description: "Booking payments and confirmations",
+    href: "/payments",
+    icon: Banknote,
   },
   {
     title: "User Management",

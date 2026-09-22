@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
-import { ArrowLeft, ImageOff, SquarePen, Trash2 } from "lucide-react"
+import { ArrowLeft, SquarePen, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -17,12 +17,12 @@ import { Separator } from "@/components/ui/separator"
 import { Skeleton } from "@/components/ui/skeleton"
 import { DeleteUnitDialog } from "@/components/units/delete-unit-dialog"
 import { EditUnitDialog } from "@/components/units/edit-unit-dialog"
+import { UnitPhotoGallery } from "@/components/units/unit-photo-gallery"
 import { UnitStatusBadge } from "@/components/units/unit-status-badge"
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/errors"
 import { fetchUnitDetails, unitQueryKey } from "@/lib/api/units"
-import { formatCurrency, formatDate,humanizeSlug } from "@/lib/format"
+import { formatCurrency, formatDate, humanizeSlug } from "@/lib/format"
 import { getRoomTypeLabel } from "@/lib/units"
-import type { Unit } from "@/lib/types"
 
 function formatTimestamp(value: string | null | undefined) {
   if (!value) return "—"
@@ -106,46 +106,6 @@ function UnitDetailsSkeleton() {
   )
 }
 
-function UnitPhotos({ unit }: { unit: Unit }) {
-  const photos = unit.photos ?? []
-
-  if (photos.length === 0) {
-    return (
-      <div className="flex aspect-video w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-canvas text-muted-foreground dark:bg-input/30">
-        <ImageOff aria-hidden="true" className="size-6" />
-        <p className="text-sm">No photos uploaded for this room yet.</p>
-      </div>
-    )
-  }
-
-  const [cover, ...rest] = photos
-
-  return (
-    <div className="grid gap-3">
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={cover}
-        alt={`Room ${unit.room_number}`}
-        className="aspect-video w-full rounded-lg object-cover ring-1 ring-foreground/10"
-      />
-      {rest.length > 0 ? (
-        <ul className="grid grid-cols-[repeat(auto-fill,minmax(120px,1fr))] gap-3">
-          {rest.map((url, index) => (
-            <li key={url}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={url}
-                alt={`Room ${unit.room_number}, photo ${index + 2}`}
-                className="aspect-4/3 w-full rounded-md object-cover ring-1 ring-foreground/10"
-              />
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </div>
-  )
-}
-
 /** Full details for one room, with the update / delete CTAs at the top right. */
 function UnitDetails({ roomId }: { roomId: string }) {
   const router = useRouter()
@@ -154,7 +114,6 @@ function UnitDetails({ roomId }: { roomId: string }) {
   const unit = useQuery({
     queryKey: unitQueryKey(roomId),
     queryFn: () => fetchUnitDetails(roomId),
-    // A missing room won't appear on retry, so don't keep hammering the API.
     retry: (count, error) => getApiErrorStatus(error) !== 404 && count < 2,
   })
 
@@ -215,7 +174,7 @@ function UnitDetails({ roomId }: { roomId: string }) {
           <Button
             type="button"
             variant="default"
-            className="h-11 rounded-md px-5 bg-brand-azure"
+            className="h-11 rounded-md bg-brand-azure px-5"
             onClick={() => setAction("edit")}
           >
             <SquarePen aria-hidden="true" />
@@ -233,12 +192,13 @@ function UnitDetails({ roomId }: { roomId: string }) {
         </div>
       </div>
 
+      <UnitPhotoGallery
+        photos={room.photos ?? []}
+        roomNumber={room.room_number}
+      />
+
       <Card className="border-iron/30 shadow-md">
         <CardContent className="gap-6">
-          <UnitPhotos unit={room} />
-
-          <Separator />
-
           <dl className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
             <DetailItem label="Room number" value={room.room_number} />
             <DetailItem

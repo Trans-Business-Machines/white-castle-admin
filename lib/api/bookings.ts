@@ -1,8 +1,12 @@
 import { axiosInstance } from "@/lib/axios"
 import type {
+  ApproveBookingPayload,
   Booking,
   BookingsOccupancyStats,
+  CancelBookingPayload,
+  CheckInBookingPayload,
   CreateBookingPayload,
+  RejectBookingPayload,
 } from "@/lib/types"
 
 export const bookingsQueryKey = ["bookings"] as const
@@ -72,6 +76,70 @@ export async function createBooking(payload: CreateBookingPayload) {
   const response = await axiosInstance.post<Booking>(
     "/bookings/create",
     payload
+  )
+  return response.data
+}
+
+/** PATCH /bookings/{id}/approve → moves a pending request to approved. */
+export async function approveBooking(
+  bookingId: string,
+  payload: ApproveBookingPayload
+) {
+  const response = await axiosInstance.patch<Booking>(
+    `/bookings/${encodeURIComponent(bookingId)}/approve`,
+    payload
+  )
+  return response.data
+}
+
+/** PATCH /bookings/{id}/reject → rejects a pending request with a reason. */
+export async function rejectBooking(
+  bookingId: string,
+  payload: RejectBookingPayload
+) {
+  const response = await axiosInstance.patch<Booking>(
+    `/bookings/${encodeURIComponent(bookingId)}/reject`,
+    payload
+  )
+  return response.data
+}
+
+/** PATCH /bookings/{id}/confirm-payment → marks the booking as paid. */
+export async function confirmBookingPayment(bookingId: string) {
+  const response = await axiosInstance.patch<Booking>(
+    `/bookings/${encodeURIComponent(bookingId)}/confirm-payment`
+  )
+  return response.data
+}
+
+/** PATCH /bookings/{id}/cancel → cancels the booking and frees the room. */
+export async function cancelBooking(
+  bookingId: string,
+  payload: CancelBookingPayload
+) {
+  const response = await axiosInstance.patch<Booking>(
+    `/bookings/${encodeURIComponent(bookingId)}/cancel`,
+    payload
+  )
+  return response.data
+}
+
+/** PATCH /bookings/{id}/checkin → checks the named guest into their room. */
+export async function checkInBooking(
+  bookingId: string,
+  payload: CheckInBookingPayload
+) {
+  const response = await axiosInstance.patch<Booking>(
+    `/bookings/${encodeURIComponent(bookingId)}/checkin`,
+    payload
+  )
+  return response.data
+}
+
+/** PATCH /bookings/{id}/checkout → checks the guest out and frees the room. */
+export async function checkOutBooking(bookingId: string) {
+  const response = await axiosInstance.patch<Booking>(
+    `/bookings/${encodeURIComponent(bookingId)}/checkout`
   )
   return response.data
 }

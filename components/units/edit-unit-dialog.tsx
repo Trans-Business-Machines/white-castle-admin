@@ -19,7 +19,12 @@ import {
 import { PhotoUploadError } from "@/components/units/add-unit-dialog"
 import { UnitFormFields } from "@/components/units/unit-form-fields"
 import { getApiErrorMessage } from "@/lib/api/errors"
-import { unitsQueryKey, updateUnit, uploadUnitPhoto } from "@/lib/api/units"
+import {
+  deleteUnitPhoto,
+  unitsQueryKey,
+  updateUnit,
+  uploadUnitPhotos,
+} from "@/lib/api/units"
 import { toUnitPayload, unitsSchema, type UnitType } from "@/lib/schemas/units"
 import type { Unit } from "@/lib/types"
 
@@ -27,6 +32,13 @@ interface EditUnitDialogProps {
   unit: Unit
   open: boolean
   onOpenChange: (open: boolean) => void
+}
+
+/** Marks a failure while deleting the photos the user unticked. */
+class PhotoRemovalError extends Error {
+  constructor(public readonly cause: unknown) {
+    super("Photo removal failed")
+  }
 }
 
 /** Pre-fills the form from the room; the photo picker always starts empty. */
@@ -38,15 +50,17 @@ function toFormValues(unit: Unit): UnitType {
     max_occupancy: unit.max_occupancy,
     base_rate: unit.base_rate,
     amenities: unit.amenities ?? [],
-    photo: null,
+    photos: [],
   }
 }
 
 /**
- * Edits an existing room in the same two steps as `NewRoomDialog`:
- * `PATCH /bookings/rooms/{id}` first, then the photo upload if one was
- * picked. If the upload fails the details stay saved and resubmitting only
- * retries the photo.
+ * Edits an existing room in three steps: `PATCH /bookings/rooms/{id}`, then
+ * the photos the user unticked are deleted, then any newly picked ones are
+ * uploaded. Deleting first matters — the backend caps a room at
+ * `MAX_ROOM_PHOTOS`, so swapping all ten would be rejected the other way
+ * round. Each step remembers that it finished, so resubmitting after a
+ * failure only repeats what's left.
  *
  * The form is only mounted while open so every open re-seeds from the
  * latest `unit` and no stale values or object URLs linger between edits.
@@ -58,9 +72,27 @@ function EditUnitDialog(props: EditUnitDialogProps) {
 
 function EditUnitForm({ unit, onOpenChange }: EditUnitDialogProps) {
   const queryClient = useQueryClient()
-  // True once the PATCH succeeded, so a failed photo upload can be retried
+  // True once the PATCH succeeded, so a failed photo step can be retried
   // without sending the details a second time.
   const [detailsSaved, setDetailsSaved] = useState(false)
+  // Existing photo URLs the user has ticked off but that are still on the
+  // server, and the ones a save has actually deleted. Splitting them keeps
+  // a partly-failed save honest: what went through disappears from the grid,
+  // what didn't stays marked for the retry.
+  const [removedPhotos, setRemovedPhotos] = useState<string[]>([])
+  const [deletedPhotos, setDeletedPhotos] = useState<string[]>([])
+
+  const existingPhotos = (unit.photos ?? []).filter(
+    (url) => !deletedPhotos.includes(url)
+  )
+
+  function toggleRemovePhoto(url: string) {
+    setRemovedPhotos((current) =>
+      current.includes(url)
+        ? current.filter((marked) => marked !== url)
+        : [...current, url]
+    )
+  }
 
   const form = useForm<UnitType>({
     resolver: zodResolver(unitsSchema),
@@ -81,9 +113,32 @@ function EditUnitForm({ unit, onOpenChange }: EditUnitDialogProps) {
         setDetailsSaved(true)
         queryClient.invalidateQueries({ queryKey: unitsQueryKey })
       }
-      if (values.photo) {
+
+      if (removedPhotos.length > 0) {
+        // The endpoint takes one URL at a time, so fire them together and
+        // record which landed; a retry then only repeats the failures.
+        const results = await Promise.allSettled(
+          removedPhotos.map((url) => deleteUnitPhoto(unit.room_id, url))
+        )
+        const gone = removedPhotos.filter(
+          (_, index) => results[index].status === "fulfilled"
+        )
+        if (gone.length > 0) {
+          setDeletedPhotos((current) => [...current, ...gone])
+          setRemovedPhotos((current) =>
+            current.filter((url) => !gone.includes(url))
+          )
+        }
+        const failure = results.find(
+          (result): result is PromiseRejectedResult =>
+            result.status === "rejected"
+        )
+        if (failure) throw new PhotoRemovalError(failure.reason)
+      }
+
+      if (values.photos.length > 0) {
         try {
-          await uploadUnitPhoto(unit.room_id, values.photo)
+          await uploadUnitPhotos(unit.room_id, values.photos)
         } catch (error) {
           throw new PhotoUploadError(error)
         }
@@ -96,12 +151,21 @@ function EditUnitForm({ unit, onOpenChange }: EditUnitDialogProps) {
       closeDialog()
     },
     onError: (error) => {
-      if (error instanceof PhotoUploadError) {
+      if (error instanceof PhotoRemovalError) {
         setError("root", {
-          message: `The details were saved, but the photo didn't upload: ${getApiErrorMessage(
+          message: `The details were saved, but some photos couldn't be removed: ${getApiErrorMessage(
             error.cause,
             "something went wrong."
-          )} Try again to retry the photo, or cancel to add it later.`,
+          )} Try again to retry the ones still marked, or cancel to leave them in place.`,
+        })
+        return
+      }
+      if (error instanceof PhotoUploadError) {
+        setError("root", {
+          message: `The details were saved, but the photos didn't upload: ${getApiErrorMessage(
+            error.cause,
+            "something went wrong."
+          )} Try again to retry the upload, or cancel to add them later.`,
         })
         return
       }
@@ -115,8 +179,8 @@ function EditUnitForm({ unit, onOpenChange }: EditUnitDialogProps) {
   })
 
   /**
-   * Resetting `photo` to null unmounts the dropzone preview (revoking its
-   * object URL) before the dialog itself unmounts. Skips the pending guard
+   * Emptying `photos` unmounts the dropzone previews (revoking their object
+   * URLs) before the dialog itself unmounts. Skips the pending guard
    * for the same reason as `NewRoomDialog`: `onSuccess` runs before
    * `isPending` flips off.
    */
@@ -154,11 +218,9 @@ function EditUnitForm({ unit, onOpenChange }: EditUnitDialogProps) {
               form={form}
               detailsLocked={detailsLocked}
               pending={mutation.isPending}
-              photoHint={
-                unit.photos?.length
-                  ? "Only a newly picked photo shows here. Leave it empty to keep the current photos."
-                  : undefined
-              }
+              existingPhotos={existingPhotos}
+              removedPhotos={removedPhotos}
+              onToggleRemovePhoto={toggleRemovePhoto}
             />
 
             {errors.root ? (
@@ -189,10 +251,10 @@ function EditUnitForm({ unit, onOpenChange }: EditUnitDialogProps) {
                 {mutation.isPending ? (
                   <span className="inline-flex items-center gap-2">
                     <Loader aria-hidden="true" className="animate-spin" />
-                    {detailsSaved ? "Uploading photo" : "Saving"}
+                    {detailsSaved ? "Updating photos" : "Saving"}
                   </span>
                 ) : detailsSaved ? (
-                  "Retry photo upload"
+                  "Retry photo changes"
                 ) : (
                   "Save changes"
                 )}

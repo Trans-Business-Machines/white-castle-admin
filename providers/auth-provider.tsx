@@ -48,6 +48,38 @@ export function isPublicRoute(pathname: string) {
 /** Screen shown while an account still has a temporary password. */
 export const CHANGE_PASSWORD_ROUTE = "/change-password"
 
+/**
+ * Every path the app actually serves. Anything else is a 404, and a 404 has to
+ * render its own screen rather than being bounced to `/login` — keep this in
+ * sync when a route is added under `app/(auth)` or `app/(dashboard)`.
+ */
+const APP_ROUTES = [
+  "/",
+  ...PUBLIC_ROUTES,
+  CHANGE_PASSWORD_ROUTE,
+  "/dashboard",
+  "/requests",
+  "/bookings",
+  "/guests",
+  "/units",
+  "/payments",
+  "/reports",
+  "/users",
+  "/profile",
+]
+
+/** Whether the path matches a real route (so a signed-out visitor belongs at login). */
+export function isAppRoute(pathname: string) {
+  return APP_ROUTES.some(
+    (route) => pathname === route || pathname.startsWith(`${route}/`)
+  )
+}
+
+/** Signed-out visitors are sent to login from real routes only, never from a 404. */
+function shouldRedirectToLogin(pathname: string) {
+  return isAppRoute(pathname) && !isPublicRoute(pathname)
+}
+
 /** Where a signed-in user should land: the dashboard, unless they must first set a new password. */
 export function getLandingPath(user: Pick<AuthUser, "must_change_password">) {
   return user.must_change_password ? CHANGE_PASSWORD_ROUTE : "/dashboard"
@@ -102,7 +134,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
       } catch {
         endSession()
-        if (!isPublicRoute(pathname)) router.replace("/login")
+        if (shouldRedirectToLogin(pathname)) router.replace("/login")
       }
     }
 
@@ -113,7 +145,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     return onUnauthorized(() => {
       endSession()
-      if (!isPublicRoute(window.location.pathname)) router.replace("/login")
+      if (shouldRedirectToLogin(window.location.pathname)) {
+        router.replace("/login")
+      }
     })
   }, [router, endSession])
 

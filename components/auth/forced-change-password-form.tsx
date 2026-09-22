@@ -60,10 +60,7 @@ function ForcedChangePasswordForm() {
 
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
-      <fieldset
-        disabled={isSubmitting || isLoggingOut}
-        className="grid gap-4"
-      >
+      <fieldset disabled={isSubmitting || isLoggingOut} className="grid gap-4">
         <p
           role="status"
           className="flex items-start gap-3 rounded-md border border-amber-300 bg-amber-50 px-3.5 py-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200"

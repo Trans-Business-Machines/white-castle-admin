@@ -10,6 +10,14 @@ import type { NextConfig } from "next"
 const API_PROXY_TARGET = process.env.API_PROXY_TARGET
 
 const nextConfig: NextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "pub-e746e37d303f48acb02b0b81815e4b23.r2.dev",
+      },
+    ],
+  },
   async rewrites() {
     if (!API_PROXY_TARGET) return []
     return [

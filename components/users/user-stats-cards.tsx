@@ -15,7 +15,6 @@ const SKELETON_CARDS = 4
 const gridClassName =
   "grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4"
 
-
 export function UserStatsCards() {
   const stats = useQuery({
     queryKey: userStatsQueryKey,
