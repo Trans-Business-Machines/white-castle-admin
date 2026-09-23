@@ -89,6 +89,7 @@
 @theme inline {
   --font-sans: var(--font-sans);
   --font-heading: var(--font-heading);
+  --font-poppins: var(--font-poppins);
   --font-ibm-plex: var(--font-ibm-plex);
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);

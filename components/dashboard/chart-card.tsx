@@ -35,7 +35,7 @@ export function ChartCard({
   return (
     <Card className="h-full border-iron shadow-md">
       <CardHeader>
-        <CardTitle className="font-sans font-bold text-neutral uppercase">
+        <CardTitle className="font-poppins font-bold text-neutral uppercase">
           {title}
         </CardTitle>
         <CardDescription>{description}</CardDescription>

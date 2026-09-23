@@ -1,5 +1,11 @@
 import { type Metadata } from "next"
-import { Geist_Mono, Inter, Manrope, IBM_Plex_Sans } from "next/font/google"
+import {
+  Geist_Mono,
+  Inter,
+  Manrope,
+  IBM_Plex_Sans,
+  Poppins,
+} from "next/font/google"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { AuthProvider } from "@/providers/auth-provider"
 import "./globals.css"
@@ -18,6 +24,12 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" })
 const fontMono = Geist_Mono({
   subsets: ["latin"],
   variable: "--font-mono",
+})
+
+const fontPoppins = Poppins({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
+  variable: "--font-poppins",
 })
 
 const fontIBM = IBM_Plex_Sans({
@@ -47,6 +59,7 @@ export default function RootLayout({
         fontMono.variable,
         "font-sans",
         inter.variable,
+        fontPoppins.variable,
         fontIBM.variable,
         manropeHeading.variable
       )}

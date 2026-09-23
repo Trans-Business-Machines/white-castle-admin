@@ -26,9 +26,10 @@ export function StatCard({
   return (
     <Card className="h-full border-iron shadow-md">
       <CardContent className="flex-1">
+        {/* `font-poppins!` beats CardTitle's own `font-heading`; `cn` doesn't dedupe. */}
         <CardTitle
           className={cn(
-            "font-sans font-bold uppercase",
+            "font-poppins! font-bold uppercase",
             tone ? tone.text : (titleClassName ?? "text-neutral")
           )}
         >
@@ -38,13 +39,13 @@ export function StatCard({
         <div className="mt-auto">
           <h3
             className={cn(
-              "font-heading text-3xl font-bold text-navy-azul",
+              "font-poppins text-3xl font-bold text-navy-azul",
               className
             )}
           >
             {text}
           </h3>
-          <p className="font-sans text-sm text-ring">{label}</p>
+          <p className="font-poppins text-sm text-ring">{label}</p>
         </div>
       </CardContent>
     </Card>

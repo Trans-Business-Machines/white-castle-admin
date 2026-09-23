@@ -4,14 +4,12 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 
 interface NotFoundCopy {
-  /** Where the "go back" button points. */
   href: string
-  /** Label on that button. */
   action: string
   description: string
 }
 
-/** Copy for a visitor who is signed in: send them back into the app. */
+/** Copy for a user who is signed in: send them back into the app. */
 export const DASHBOARD_NOT_FOUND: NotFoundCopy = {
   href: "/dashboard",
   action: "Back to dashboard",
@@ -19,7 +17,7 @@ export const DASHBOARD_NOT_FOUND: NotFoundCopy = {
     "That page doesn't exist, or it may have been moved. Head back to the dashboard and pick up from there.",
 }
 
-/** Copy for a signed-out visitor: send them to the sign-in screen. */
+/** Copy for a user visitor: send them to the sign-in screen. */
 export const AUTH_NOT_FOUND: NotFoundCopy = {
   href: "/login",
   action: "Back to sign in",
