@@ -277,7 +277,7 @@ function GuestDetails({ guestId }: { guestId: string }) {
       ) : null}
 
       {/* Stay history */}
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(200px,100%),1fr))] gap-4">
         <StatCard
           title="Total stays"
           titleClassName="text-brand-navy dark:text-sky-200"

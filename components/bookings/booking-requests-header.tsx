@@ -23,13 +23,13 @@ function BookingRequestsHeader() {
       </h2>
       <p className="mt-1 text-base text-muted-foreground">
         The table below lists the bookings requested by clients from the website
-        home page. They stay here while they are pending — approve a request to
-        turn it into a booking, or reject it with a reason.
+        home page. They stay here while they are pending, approve a request to
+        confirm the booking, or reject it with a reason.
       </p>
       {isPending || isError ? null : (
         <p
           aria-live="polite"
-          className="mt-2 text-base font-semibold text-foreground"
+          className="mt-2 text-base font-semibold text-crimson-red"
         >
           {count === 0
             ? "Nothing is waiting for approval."

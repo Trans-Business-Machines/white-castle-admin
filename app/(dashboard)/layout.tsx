@@ -13,7 +13,7 @@ export default async function DashboardLayout({ children }: PropsWithChildren) {
     <RequireAuth>
       <SidebarProvider defaultOpen={defaultOpen}>
         <AppSidebar />
-        <SidebarInset className="bg-porcelain">
+        <SidebarInset className="min-w-0 bg-porcelain">
           <DashboardHeader />
           <div className="flex-1 px-4 py-6 md:px-8">{children}</div>
         </SidebarInset>

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { EllipsisVertical, Receipt } from "lucide-react"
+import { EllipsisVertical, Pen } from "lucide-react"
 import { RecordPaymentDialog } from "@/components/payments/record-payment-dialog"
 import { Button } from "@/components/ui/button"
 import {
@@ -35,7 +35,7 @@ function PaymentActionsMenu({ payment }: { payment: Payment }) {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-48">
           <DropdownMenuItem onSelect={() => setRecording(true)}>
-            <Receipt aria-hidden="true" />
+            <Pen aria-hidden="true" />
             Record payment
           </DropdownMenuItem>
         </DropdownMenuContent>

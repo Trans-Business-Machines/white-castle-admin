@@ -9,7 +9,7 @@ import { fetchUnitsStats, unitStatsQueryKey } from "@/lib/api/units"
 import { UNIT_STAT_CARDS } from "@/lib/units"
 
 const gridClassName =
-  "grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-4"
+  "grid grid-cols-[repeat(auto-fit,minmax(min(180px,100%),1fr))] gap-4"
 
 /** Occupancy totals from `GET /bookings/rooms/stats`, one card per status. */
 export function UnitStatsCards() {

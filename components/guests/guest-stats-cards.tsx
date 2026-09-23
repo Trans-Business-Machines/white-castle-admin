@@ -9,7 +9,7 @@ import { fetchGuestsStats, guestStatsQueryKey } from "@/lib/api/guests"
 import { GUEST_STAT_CARDS } from "@/lib/guests"
 
 const gridClassName =
-  "grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4"
+  "grid grid-cols-[repeat(auto-fit,minmax(min(200px,100%),1fr))] gap-4"
 
 /** Guest totals from `GET /guests/stats`, one card per figure. */
 export function GuestStatsCards() {

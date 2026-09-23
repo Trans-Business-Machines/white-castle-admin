@@ -111,7 +111,7 @@ function BookingDetailsSkeleton() {
           <Skeleton className="size-9 rounded-full" />
         </CardContent>
       </Card>
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(180px,100%),1fr))] gap-4">
         {Array.from({ length: 4 }, (_, card) => (
           <Card key={card} className="border-iron shadow-md">
             <CardContent className="space-y-3">
@@ -261,7 +261,7 @@ function BookingDetails({ bookingId }: { bookingId: string }) {
       ) : null}
 
       {/* Headline figures */}
-      <div className="grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-4">
+      <div className="grid grid-cols-[repeat(auto-fit,minmax(min(180px,100%),1fr))] gap-4">
         <StatCard
           title="Total"
           titleClassName="text-emerald-700 dark:text-emerald-300"

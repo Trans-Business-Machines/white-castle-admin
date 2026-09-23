@@ -14,7 +14,7 @@ import { BOOKING_STAT_CARDS, getMonthToDateRange } from "@/lib/bookings"
 // 15rem columns: wide enough for a "KES 1,250,000" value, so with the
 // sidebar expanded the fifth card wraps to a new row instead of squeezing.
 const gridClassName =
-  "grid grid-cols-[repeat(auto-fit,minmax(15rem,1fr))] gap-4"
+  "grid grid-cols-[repeat(auto-fit,minmax(min(15rem,100%),1fr))] gap-4"
 
 export function BookingStatsCards() {
   const range = getMonthToDateRange()
