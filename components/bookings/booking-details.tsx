@@ -151,7 +151,6 @@ function BookingDetails({ bookingId }: { bookingId: string }) {
   const query = useQuery({
     queryKey: bookingQueryKey(bookingId),
     queryFn: () => fetchBookingDetails(bookingId),
-    // A missing booking won't appear on retry, so don't keep hammering the API.
     retry: (count, error) => getApiErrorStatus(error) !== 404 && count < 2,
   })
 
@@ -443,21 +442,12 @@ function BookingDetails({ bookingId }: { bookingId: string }) {
           <CardContent>
             <dl className="grid gap-5 sm:grid-cols-2">
               <DetailItem
-                label="Created"
+                label="Created On"
                 value={formatTimestamp(booking.created_at)}
               />
               <DetailItem
-                label="Approved"
-                value={
-                  <>
-                    {formatTimestamp(booking.approved_at)}
-                    {booking.approved_by ? (
-                      <span className="ml-2 text-xs font-normal text-muted-foreground">
-                        by {booking.approved_by}
-                      </span>
-                    ) : null}
-                  </>
-                }
+                label="Approved On"
+                value={<>{formatTimestamp(booking.approved_at)}</>}
               />
               <DetailItem
                 label="Checked in"

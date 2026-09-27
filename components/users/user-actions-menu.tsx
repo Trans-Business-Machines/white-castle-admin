@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   EllipsisVertical,
+  LockOpen,
   Trash2,
   UserRoundCheck,
   UserRoundX,
@@ -23,12 +24,14 @@ import {
   deleteUser,
   disableUser,
   enableUser,
+  unlockUser,
   usersQueryKey,
 } from "@/lib/api/users"
+import { isSuperAdmin } from "@/lib/roles"
 import type { AuthUser } from "@/lib/types"
 import { useAuth } from "@/providers/auth-provider"
 
-type UserAction = "enable" | "disable" | "delete"
+type UserAction = "enable" | "disable" | "unlock" | "delete"
 
 const actionCopy: Record<
   UserAction,
@@ -62,6 +65,17 @@ const actionCopy: Record<
     failureMessage: "We couldn't disable this user. Try again.",
     destructive: false,
   },
+  unlock: {
+    title: "Unlock this account?",
+    description: (user) =>
+      `${user.full_name}'s account was locked after too many failed sign-in attempts. Unlocking lets them try signing in again straight away.`,
+    confirmLabel: "Unlock account",
+    pendingLabel: "Unlocking",
+    successMessage: (user) =>
+      `${user.full_name}'s account is unlocked. They can sign in again.`,
+    failureMessage: "We couldn't unlock this account. Try again.",
+    destructive: false,
+  },
   delete: {
     title: "Delete this user?",
     description: (user) =>
@@ -78,6 +92,7 @@ const actionRequest: Record<UserAction, (userId: string) => Promise<unknown>> =
   {
     enable: enableUser,
     disable: disableUser,
+    unlock: unlockUser,
     delete: deleteUser,
   }
 
@@ -88,6 +103,12 @@ function UserActionsMenu({ user }: { user: AuthUser }) {
   const [error, setError] = useState<string | null>(null)
 
   const isSelf = currentUser?.user_id === user.user_id
+  const actorIsSuperAdmin = isSuperAdmin(currentUser?.role)
+  // Only a super admin may delete accounts; everyone else doesn't see the item.
+  const canDelete = actorIsSuperAdmin
+  // A super admin sits above admins, so only another super admin may
+  // disable their account.
+  const outranked = isSuperAdmin(user.role) && !actorIsSuperAdmin
 
   const mutation = useMutation({
     mutationFn: (pending: UserAction) => actionRequest[pending](user.user_id),
@@ -128,7 +149,7 @@ function UserActionsMenu({ user }: { user: AuthUser }) {
             <EllipsisVertical aria-hidden="true" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
+        <DropdownMenuContent align="end" className="w-52">
           <DropdownMenuItem
             disabled={user.active}
             onSelect={() => openConfirm("enable")}
@@ -137,21 +158,32 @@ function UserActionsMenu({ user }: { user: AuthUser }) {
             Enable user
           </DropdownMenuItem>
           <DropdownMenuItem
-            disabled={!user.active || isSelf}
+            disabled={!user.active || isSelf || outranked}
             onSelect={() => openConfirm("disable")}
           >
             <UserRoundX aria-hidden="true" />
             Disable user
           </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem
-            variant="destructive"
-            disabled={isSelf}
-            onSelect={() => openConfirm("delete")}
-          >
-            <Trash2 aria-hidden="true" />
-            Delete user
-          </DropdownMenuItem>
+          {/* Accounts lock after 5 failed sign-ins; any admin may unlock one. */}
+          {user.is_locked ? (
+            <DropdownMenuItem onSelect={() => openConfirm("unlock")}>
+              <LockOpen aria-hidden="true" />
+              Unlock account
+            </DropdownMenuItem>
+          ) : null}
+          {canDelete ? (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={isSelf}
+                onSelect={() => openConfirm("delete")}
+              >
+                <Trash2 aria-hidden="true" />
+                Delete user
+              </DropdownMenuItem>
+            </>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
 

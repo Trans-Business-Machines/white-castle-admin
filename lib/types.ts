@@ -1,18 +1,25 @@
+import type { RoleName } from "@/lib/roles"
+
 export interface AuthUser {
   user_id: string
   username: string
   email: string
   full_name: string
-  role: string
+  role: RoleName
   active: boolean
   must_change_password: boolean
   last_login_at: string
+  /** Failed sign-ins since the last success; the account locks at 5. */
+  failed_login_attempts: number
+  /** ISO timestamp the lock lifts; null when the account isn't locked. */
+  locked_until: string | null
+  is_locked: boolean
   created_at: string
   updated_at: string
 }
 
 export interface Role {
-  name: string
+  name: RoleName
   label: string
   description: string
   created_at: string
@@ -90,6 +97,24 @@ export interface CancelBookingPayload {
   cancelled_by: string
 }
 
+/** Body for `PATCH /bookings/{id}/extend`. */
+export interface ExtendBookingPayload {
+  /** The later check-out day, "yyyy-MM-dd". */
+  new_check_out_date: string
+  /** `user_id` of the staff member extending the stay. */
+  extended_by: string
+}
+
+/** Body for `PATCH /bookings/{id}/extra-persons`. */
+export interface ExtraPersonsPayload {
+  /** Adults joining the stay, on top of those already booked. */
+  adults: number
+  /** Children joining the stay, on top of those already booked. */
+  children: number
+  /** `user_id` of the staff member adding them. */
+  updated_by: string
+}
+
 /** Body for `PATCH /bookings/{id}/reject`. */
 export interface RejectBookingPayload {
   rejection_reason: string
@@ -156,19 +181,33 @@ export interface BookingsOccupancyStats {
   occupancy_rate_pct: number
 }
 
+/** Bookings and revenue since the start of a week or month ("yyyy-MM-dd"). */
+export interface DashboardPeriod {
+  from: string
+  bookings: number
+  revenue: number
+}
+
 /**
- * `GET /motel/reports/revenue`: what bookings in a range are expected to
- * bring in and how many have paid in full vs only their deposit. `period`
- * echoes the requested dates (`null` when the report was unbounded).
+ * `GET /motel/reports/dashboard`: today's front-desk counts plus week and
+ * month totals, as of `date`. Only the fields the dashboard renders are
+ * typed; the response also carries room counts, housekeeping and
+ * maintenance figures, and arrival/departure/task/issue lists.
  */
-export interface RevenueReport {
-  period: { from: string | null; to: string | null }
-  total_bookings: number
-  total_revenue_expected: number
-  total_deposit_expected: number
-  fully_paid_bookings: number
-  deposit_only_bookings: number
-  currency: string
+export interface DashboardReport {
+  date: string
+  today: {
+    arrivals: number
+    departures: number
+    pending_approvals: number
+    pending_payments: number
+  }
+  this_week: DashboardPeriod
+  this_month: DashboardPeriod
+  details: {
+    /** Newest pending bookings; may be capped below `today.pending_approvals`. */
+    pending_bookings: Booking[]
+  }
 }
 
 export interface RoomPhoto {
@@ -190,7 +229,7 @@ export interface UnitsOccupancyStats {
   other: number
 }
 
-export type PaymentMethod = "mpesa" | "credit_card" | "debit_card"
+export type PaymentMethod = "mpesa" | "cash"
 
 export type PaymentType = "full_payment" | "deposit"
 
@@ -201,10 +240,9 @@ export interface CreatePaymentPayload {
   booking_ref: string
   amount: number
   method: PaymentMethod
-  /** Transaction reference from the payment channel, e.g. an M-Pesa code. */
+  /** Transaction reference from the payment channel, e.g. an M-Pesa code; empty for cash. */
   reference: string
   payment_type: PaymentType
-  notes: string
   /** `user_id` of the staff member recording the payment. */
   recorded_by: string
 }
@@ -237,4 +275,51 @@ export interface Payment {
   rejection_reason: string | null
   created_at: string
   updated_at: string | null
+}
+
+/**
+ * Query params for `POST /payments/complete/{booking_ref}`, which records
+ * the balance on a booking whose deposit is already in.
+ */
+export interface CompletePaymentParams {
+  amount: number
+  method: PaymentMethod
+  /** Transaction reference; left out for cash. */
+  reference?: string
+  /** `user_id` of the staff member recording the payment. */
+  recorded_by: string
+}
+
+/** Body for `PATCH /payments/{id}/verify`. */
+export interface VerifyPaymentPayload {
+  /** `user_id` of the staff member verifying the payment. */
+  verified_by: string
+}
+
+/** Body for `PATCH /payments/{id}/reject`. */
+export interface RejectPaymentPayload {
+  rejection_reason: string
+  /** `user_id` of the staff member rejecting the payment. */
+  rejected_by: string
+}
+
+/** A count of payments and what they add up to, in the report's currency. */
+export interface PaymentTotals {
+  count: number
+  amount: number
+}
+
+/**
+ * `GET /payments/stats`. There is no overall amount; the cards add the
+ * three statuses up (see `getPaymentsTotalAmount` in `lib/payments.ts`).
+ */
+export interface PaymentStats {
+  period: { from: string | null; to: string | null }
+  currency: string
+  total_payments: number
+  verified: PaymentTotals
+  pending: PaymentTotals
+  rejected: PaymentTotals
+  /** Keyed by method slug, e.g. "mpesa", "cash". */
+  by_method: Record<string, PaymentTotals>
 }

@@ -1,5 +1,6 @@
-import { humanizeSlug } from "@/lib/format"
+import { formatCurrency, humanizeSlug } from "@/lib/format"
 import { PAYMENT_METHODS, PAYMENT_TYPES } from "@/lib/schemas/payments"
+import type { PaymentStats } from "@/lib/types"
 
 /**
  * Statuses offered by the payments filter, in lifecycle order: a recorded
@@ -49,3 +50,51 @@ export function getPaymentTypeLabel(slug: string) {
     humanizeSlug(slug)
   )
 }
+
+/** Every recorded payment's amount, whatever its status. */
+export function getPaymentsTotalAmount(stats: PaymentStats) {
+  return stats.verified.amount + stats.pending.amount + stats.rejected.amount
+}
+
+function countPayments(count: number) {
+  return `${count} ${count === 1 ? "payment" : "payments"}`
+}
+
+/** The payments page's summary cards, in display order. */
+export const PAYMENT_STAT_CARDS: ReadonlyArray<{
+  key: string
+  title: string
+  titleClassName: string
+  value: (stats: PaymentStats) => string
+  label: (stats: PaymentStats) => string
+}> = [
+  {
+    key: "total",
+    title: "Total recorded",
+    titleClassName: "text-brand-azure dark:text-sky-300",
+    value: (stats) => formatCurrency(getPaymentsTotalAmount(stats)),
+    label: (stats) => `${countPayments(stats.total_payments)} in total`,
+  },
+  {
+    key: "verified",
+    title: "Verified",
+    titleClassName: "text-emerald-700 dark:text-emerald-300",
+    value: (stats) => formatCurrency(stats.verified.amount),
+    label: (stats) => `${countPayments(stats.verified.count)} confirmed`,
+  },
+  {
+    key: "pending",
+    title: "Pending",
+    titleClassName: "text-amber-700 dark:text-amber-300",
+    value: (stats) => formatCurrency(stats.pending.amount),
+    label: (stats) =>
+      `${countPayments(stats.pending.count)} awaiting verification`,
+  },
+  {
+    key: "rejected",
+    title: "Rejected",
+    titleClassName: "text-rose-700 dark:text-rose-300",
+    value: (stats) => formatCurrency(stats.rejected.amount),
+    label: (stats) => `${countPayments(stats.rejected.count)} turned down`,
+  },
+]

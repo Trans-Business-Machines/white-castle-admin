@@ -2,10 +2,9 @@
 
 import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
-import { CircleCheck, Loader } from "lucide-react"
+import { CircleCheck, Loader, Mail } from "lucide-react"
 import toast from "react-hot-toast"
 import { Button } from "@/components/ui/button"
-import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogClose,
@@ -15,26 +14,30 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { Label } from "@/components/ui/label"
 import { approveBooking, bookingsQueryKey } from "@/lib/api/bookings"
 import { getApiErrorMessage } from "@/lib/api/errors"
+import { guestsQueryKey } from "@/lib/api/guests"
 import { useAuth } from "@/providers/auth-provider"
 import type { Booking } from "@/lib/types"
 
 interface ApproveBookingDialogProps {
-  booking: Pick<Booking, "booking_id" | "reference" | "guest_name">
+  booking: Pick<
+    Booking,
+    "booking_id" | "reference" | "guest_name" | "guest_email"
+  >
   open: boolean
   onOpenChange: (open: boolean) => void
 }
 
 /**
  * Confirms approving a booking request (`PATCH /bookings/{id}/approve`).
- * `approved_by` is the signed-in staff member's `user_id`; the deposit
- * toggle defaults to on, which is how requests from the website are
- * normally held.
+ * `approved_by` is the signed-in staff member's `user_id`. Every online
+ * request must be held with a deposit (so a walk-in can't take the room),
+ * so `deposit_required` is always `true`; the backend then emails the guest
+ * the payment instructions.
  */
 function ApproveBookingDialog(props: ApproveBookingDialogProps) {
-  // Mounted only while open so the deposit toggle resets each time.
+  // Mounted only while open so the error state resets each time.
   if (!props.open) return null
   return <ApproveForm {...props} />
 }
@@ -45,7 +48,6 @@ function ApproveForm({
 }: Omit<ApproveBookingDialogProps, "open">) {
   const queryClient = useQueryClient()
   const { user } = useAuth()
-  const [depositRequired, setDepositRequired] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
   const mutation = useMutation({
@@ -53,11 +55,16 @@ function ApproveForm({
       if (!user) throw new Error("Sign in again to approve this request.")
       return approveBooking(booking.booking_id, {
         approved_by: user.user_id,
-        deposit_required: depositRequired,
+        deposit_required: true,
       })
     },
     onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: bookingsQueryKey })
+      // Approval changes guest data too; `guestsQueryKey` is the prefix of
+      // both the guests list and the guest stats cards.
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: bookingsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: guestsQueryKey }),
+      ])
       toast.success(`Booking ${booking.reference} was approved.`)
       onOpenChange(false)
     },
@@ -94,22 +101,27 @@ function ApproveForm({
         </DialogHeader>
 
         <div className="flex items-start gap-3 rounded-lg bg-canvas px-3.5 py-3 dark:bg-input/30">
-          <Checkbox
-            id="approve-deposit-required"
-            checked={depositRequired}
-            onCheckedChange={(checked) => setDepositRequired(checked === true)}
-            disabled={mutation.isPending}
-            className="mt-0.5"
+          <Mail
+            aria-hidden="true"
+            className="mt-0.5 size-5 shrink-0 text-brand-azure"
           />
           <div className="grid gap-1">
-            <Label
-              htmlFor="approve-deposit-required"
-              className="text-base font-semibold text-foreground"
-            >
-              Require a deposit
-            </Label>
+            <p className="text-base font-semibold text-foreground">
+              A deposit is required
+            </p>
             <p className="text-sm text-muted-foreground">
-              The guest must pay the deposit before the booking is confirmed.
+              {booking.guest_email ? (
+                <>
+                  We&apos;ll email the payment instructions to{" "}
+                  <span className="font-medium break-all text-foreground">
+                    {booking.guest_email}
+                  </span>
+                  .
+                </>
+              ) : (
+                "We'll email the guest the payment instructions."
+              )}{" "}
+              The room is only reserved once the deposit is paid.
             </p>
           </div>
         </div>

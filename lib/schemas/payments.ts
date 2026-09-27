@@ -1,5 +1,10 @@
 import { z } from "zod"
-import type { Booking, CreatePaymentPayload, Payment } from "@/lib/types"
+import type {
+  Booking,
+  CompletePaymentParams,
+  CreatePaymentPayload,
+  RejectPaymentPayload,
+} from "@/lib/types"
 
 /** Image types accepted as proof of payment (an M-Pesa or bank screenshot). */
 export const EVIDENCE_TYPES = [
@@ -24,8 +29,7 @@ export function getEvidenceError(file: File) {
 
 export const PAYMENT_METHODS = [
   { value: "mpesa", label: "M-Pesa" },
-  { value: "credit_card", label: "Credit card" },
-  { value: "debit_card", label: "Debit card" },
+  { value: "cash", label: "Cash" },
 ] as const
 
 export const PAYMENT_TYPES = [
@@ -43,7 +47,12 @@ const typeValues = PAYMENT_TYPES.map((type) => type.value) as [
   ...(typeof PAYMENT_TYPES)[number]["value"][],
 ]
 
-export const paymentSchema = z.object({
+/** Cash leaves no transaction reference, so the field is off for it. */
+export function isCashMethod(method: string) {
+  return method === "cash"
+}
+
+const paymentFields = z.object({
   // Both come from the booking combobox: the API wants the id and the
   // reference, and picking one booking fills in both.
   booking_id: z.string().min(1, "Choose a booking."),
@@ -56,9 +65,7 @@ export const paymentSchema = z.object({
   reference: z
     .string()
     .trim()
-    .min(1, "Enter the transaction reference.")
     .max(100, "Keep the reference under 100 characters."),
-  notes: z.string().trim().max(1000, "Keep notes under 1000 characters."),
   /** Proof of payment; uploaded after the payment record is created. */
   evidence: z
     .array(z.custom<File>((value) => value instanceof File))
@@ -73,6 +80,28 @@ export const paymentSchema = z.object({
     }),
 })
 
+/** Requires a transaction reference for every method except cash. */
+const hasReferenceUnlessCash = (values: {
+  method: string
+  reference: string
+}) => isCashMethod(values.method) || values.reference.length > 0
+
+const referenceRequiredIssue = {
+  message: "Enter the transaction reference.",
+  path: ["reference"],
+  // Still runs while other fields are invalid, so the error shows up
+  // alongside theirs instead of only once everything else passes.
+  when: (payload: z.core.ParsePayload) =>
+    paymentFields.shape.reference.safeParse(
+      (payload.value as { reference?: unknown }).reference
+    ).success,
+}
+
+export const paymentSchema = paymentFields.refine(
+  hasReferenceUnlessCash,
+  referenceRequiredIssue
+)
+
 export type PaymentValues = z.infer<typeof paymentSchema>
 
 export const emptyPaymentValues: PaymentValues = {
@@ -82,7 +111,6 @@ export const emptyPaymentValues: PaymentValues = {
   method: "" as PaymentValues["method"],
   payment_type: "" as PaymentValues["payment_type"],
   reference: "",
-  notes: "",
   evidence: [],
 }
 
@@ -100,42 +128,69 @@ export function toPaymentPayload(
     booking_ref: values.booking_ref,
     amount: values.amount,
     method: values.method,
-    reference: values.reference.trim(),
+    reference: isCashMethod(values.method) ? "" : values.reference.trim(),
     payment_type: values.payment_type,
-    notes: values.notes.trim(),
     recorded_by: recordedBy,
   }
 }
 
-/** Only values the form knows how to render survive a round trip. */
-function knownValue<T extends string>(
-  options: ReadonlyArray<{ value: T }>,
-  slug: string | undefined
-) {
-  return options.some((option) => option.value === slug) ? (slug as T) : ""
+/**
+ * Settling the balance on a deposit: the amount, how it was paid and (for
+ * M-Pesa) the transaction reference. The booking comes from the deposit.
+ */
+export const completePaymentSchema = paymentFields
+  .pick({ amount: true, method: true, reference: true })
+  .refine(hasReferenceUnlessCash, referenceRequiredIssue)
+
+export type CompletePaymentValues = z.infer<typeof completePaymentSchema>
+
+export const emptyCompletePaymentValues: CompletePaymentValues = {
+  amount: Number.NaN,
+  method: "" as CompletePaymentValues["method"],
+  reference: "",
 }
 
 /**
- * Pre-fills the form from an existing payment row, so recording another
- * payment against the same booking only means changing the amount. The
- * transaction reference and proof always start empty — they belong to one
- * transaction, never to the next.
+ * Shapes the form into the query params `POST /payments/complete/{ref}`
+ * expects. Cash sends no `reference`; `recordedBy` is the signed-in staff
+ * member's `user_id`.
  */
-export function toPaymentFormValues(payment: Payment): PaymentValues {
+export function toCompletePaymentParams(
+  values: CompletePaymentValues,
+  recordedBy: string
+): CompletePaymentParams {
   return {
-    ...emptyPaymentValues,
-    booking_id: payment.booking_id,
-    booking_ref: payment.booking_ref,
-    amount: payment.amount,
-    method: knownValue(
-      PAYMENT_METHODS,
-      payment.method
-    ) as PaymentValues["method"],
-    payment_type: knownValue(
-      PAYMENT_TYPES,
-      payment.payment_type
-    ) as PaymentValues["payment_type"],
-    notes: payment.notes ?? "",
+    amount: values.amount,
+    method: values.method,
+    ...(isCashMethod(values.method)
+      ? {}
+      : { reference: values.reference.trim() }),
+    recorded_by: recordedBy,
+  }
+}
+
+/** Rejecting a payment asks for one free-text reason, kept on the record. */
+export const rejectPaymentSchema = z.object({
+  reason: z
+    .string()
+    .trim()
+    .min(5, "Give a reason of at least 5 characters.")
+    .max(500, "Keep the reason under 500 characters."),
+})
+
+export type RejectPaymentValues = z.infer<typeof rejectPaymentSchema>
+
+/**
+ * Shapes the reason form into the body `PATCH /payments/{id}/reject`
+ * expects. `rejectedBy` is the signed-in staff member's `user_id`.
+ */
+export function toRejectPaymentPayload(
+  values: RejectPaymentValues,
+  rejectedBy: string
+): RejectPaymentPayload {
+  return {
+    rejection_reason: values.reason.trim(),
+    rejected_by: rejectedBy,
   }
 }
 

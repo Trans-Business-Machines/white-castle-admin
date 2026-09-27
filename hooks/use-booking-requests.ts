@@ -49,5 +49,7 @@ export function useBookingRequests() {
     count: query.data?.length ?? 0,
     isPending: query.isPending,
     isError: query.isError,
+    error: query.error,
+    refetch: query.refetch,
   }
 }

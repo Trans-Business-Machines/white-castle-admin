@@ -2,7 +2,6 @@
 
 import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { cn } from "cn"
 import { RoleBadge } from "@/components/role-badge"
 import {
   Table,
@@ -12,7 +11,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { RoleActionsMenu } from "@/components/users/role-actions-menu"
 import { SearchInput } from "@/components/users/table-toolbar"
 import {
   TableError,
@@ -23,7 +21,7 @@ import {
 import { fetchRoles, rolesQueryKey } from "@/lib/api/roles"
 import { formatDate } from "@/lib/format"
 
-const COLUMNS = 4
+const COLUMNS = 3
 
 export function RolesTable() {
   const [search, setSearch] = useState("")
@@ -58,9 +56,6 @@ export function RolesTable() {
             <TableHead className={tableHeadClassName}>Role</TableHead>
             <TableHead className={tableHeadClassName}>Description</TableHead>
             <TableHead className={tableHeadClassName}>Created</TableHead>
-            <TableHead className={cn(tableHeadClassName, "w-24 text-center")}>
-              Actions
-            </TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -77,7 +72,7 @@ export function RolesTable() {
             <TableMessageRow columns={COLUMNS}>
               {search
                 ? `No roles match "${search.trim()}".`
-                : "No roles yet. Add the first one above."}
+                : "No roles found."}
             </TableMessageRow>
           ) : (
             visibleRoles.map((role) => (
@@ -91,9 +86,6 @@ export function RolesTable() {
                 </TableCell>
                 <TableCell className="px-4">
                   {formatDate(role.created_at)}
-                </TableCell>
-                <TableCell className="px-4 text-center">
-                  <RoleActionsMenu role={role} />
                 </TableCell>
               </TableRow>
             ))

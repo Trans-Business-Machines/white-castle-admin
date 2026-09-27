@@ -8,14 +8,14 @@ import {
   Banknote,
   type LucideIcon,
 } from "lucide-react"
-import { USER_MANAGEMENT_ROLES, roleSlug } from "@/lib/roles"
+import { USER_MANAGEMENT_ROLES, hasRole, type RoleName } from "@/lib/roles"
 
 export interface NavItem {
   title: string
   description: string
   href: string
   icon: LucideIcon
-  roles?: readonly string[]
+  roles?: readonly RoleName[]
 }
 
 export const dashboardNav: NavItem[] = [
@@ -80,5 +80,5 @@ export function findNavItem(pathname: string) {
 /** Whether a nav item should be shown to a user with the given role. */
 export function canSeeNavItem(item: NavItem, role: string | undefined) {
   if (!item.roles) return true
-  return role !== undefined && item.roles.includes(roleSlug(role))
+  return hasRole(role, item.roles)
 }

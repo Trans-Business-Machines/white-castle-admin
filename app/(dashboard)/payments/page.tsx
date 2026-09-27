@@ -1,3 +1,4 @@
+import { PaymentStatsCards } from "@/components/payments/payment-stats-cards"
 import { PaymentsTable } from "@/components/payments/payments-table"
 import { RecordPaymentButton } from "@/components/payments/record-payment-button"
 
@@ -9,8 +10,13 @@ export default function Payments() {
         <RecordPaymentButton />
       </div>
 
+      {/* Totals by status */}
+      <PaymentStatsCards />
+
       {/* Payment listings */}
-      <PaymentsTable />
+      <div className="mt-6">
+        <PaymentsTable />
+      </div>
     </section>
   )
 }

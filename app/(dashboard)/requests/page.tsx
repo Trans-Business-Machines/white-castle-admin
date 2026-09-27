@@ -1,5 +1,5 @@
 import type { Metadata } from "next"
-import { BookingRequestsHeader } from "@/components/bookings/booking-requests-header"
+import { BookingRequestStatsCards } from "@/components/bookings/booking-request-stats-cards"
 import { BookingsTable } from "@/components/bookings/bookings-table"
 
 export const metadata: Metadata = {
@@ -9,8 +9,14 @@ export const metadata: Metadata = {
 export default function Requests() {
   return (
     <section>
-      <BookingRequestsHeader />
-      <BookingsTable variant="requests" />
+   
+      {/* Totals for the pending requests */}
+      <BookingRequestStatsCards />
+
+      {/* Pending requests */}
+      <div className="mt-6">
+        <BookingsTable variant="requests" />
+      </div>
     </section>
   )
 }

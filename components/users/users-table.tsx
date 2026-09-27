@@ -1,9 +1,18 @@
 "use client"
 
 import { useMemo, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { cn } from "cn"
+import { Lock } from "lucide-react"
 import { RoleBadge } from "@/components/role-badge"
+import { TablePagination } from "@/components/table-pagination"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -21,16 +30,29 @@ import {
 } from "@/components/users/table-state"
 import { UserActionsMenu } from "@/components/users/user-actions-menu"
 import { fetchRoles, rolesQueryKey } from "@/lib/api/roles"
-import { fetchUsers, usersQueryKey } from "@/lib/api/users"
+import {
+  fetchUsers,
+  usersListQueryKey,
+  type UserListFilters,
+} from "@/lib/api/users"
 import { formatDate, getInitials, humanizeSlug } from "@/lib/format"
-import { getRoleClasses } from "@/lib/roles"
+import { ROLE_NAMES, getRoleClasses, isRoleName } from "@/lib/roles"
+import { usePagination } from "@/hooks/use-pagination"
 
 const COLUMNS = 6
+/** Select can't hold "" as an item value, so "every role" uses a sentinel. */
+const ALL_ROLES = "all"
 
 export function UsersTable() {
   const [search, setSearch] = useState("")
+  const [filters, setFilters] = useState<UserListFilters>({ role: "" })
 
-  const users = useQuery({ queryKey: usersQueryKey, queryFn: fetchUsers })
+  const users = useQuery({
+    queryKey: usersListQueryKey(filters),
+    queryFn: () => fetchUsers(filters),
+    // Keep the old rows (dimmed) while another role loads.
+    placeholderData: keepPreviousData,
+  })
   const roles = useQuery({ queryKey: rolesQueryKey, queryFn: fetchRoles })
 
   const roleLabels = useMemo(() => {
@@ -38,6 +60,10 @@ export function UsersTable() {
     roles.data?.forEach((role) => map.set(role.name, role.label))
     return map
   }, [roles.data])
+
+  function getRoleLabel(role: string) {
+    return roleLabels.get(role) ?? humanizeSlug(role)
+  }
 
   const visibleUsers = useMemo(() => {
     const list = users.data ?? []
@@ -50,15 +76,55 @@ export function UsersTable() {
     )
   }, [users.data, search])
 
+  const pagination = usePagination(visibleUsers)
+  const { setPage } = pagination
+
+  function handleSearchChange(value: string) {
+    setSearch(value)
+    setPage(1)
+  }
+
+  function handleRoleChange(value: string) {
+    setFilters({ role: isRoleName(value) ? value : "" })
+    setPage(1)
+  }
+
+  const emptyMessage = search.trim()
+    ? `No users match "${search.trim()}"${
+        filters.role ? ` in ${getRoleLabel(filters.role)}` : ""
+      }.`
+    : filters.role
+      ? `No ${getRoleLabel(filters.role)} accounts yet.`
+      : "No staff accounts yet. Create the first one above."
+
   return (
     <div className="overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-foreground/10">
-      <div className="flex max-w-2xl flex-wrap items-center gap-3 p-4">
+      <div className="flex max-w-3xl flex-wrap items-center gap-3 p-4">
         <SearchInput
           value={search}
-          onChange={setSearch}
+          onChange={handleSearchChange}
           placeholder="Search name, username or email"
           label="Search users"
         />
+        <Select
+          value={filters.role || ALL_ROLES}
+          onValueChange={handleRoleChange}
+        >
+          <SelectTrigger
+            aria-label="Filter by role"
+            className="h-11 w-full rounded-lg border-border bg-background px-3.5 text-base focus-visible:border-brand-azure focus-visible:ring-brand-azure/20 data-[size=default]:h-11 sm:w-52 md:text-base"
+          >
+            <SelectValue placeholder="All roles" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_ROLES}>All roles</SelectItem>
+            {ROLE_NAMES.map((role) => (
+              <SelectItem key={role} value={role}>
+                {getRoleLabel(role)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <Table>
@@ -74,7 +140,13 @@ export function UsersTable() {
             </TableHead>
           </TableRow>
         </TableHeader>
-        <TableBody>
+        <TableBody
+          aria-busy={users.isPlaceholderData}
+          className={cn(
+            "transition-opacity",
+            users.isPlaceholderData && "opacity-60"
+          )}
+        >
           {users.isPending ? (
             <TableSkeletonRows columns={COLUMNS} />
           ) : users.isError ? (
@@ -85,13 +157,9 @@ export function UsersTable() {
               />
             </TableMessageRow>
           ) : visibleUsers.length === 0 ? (
-            <TableMessageRow columns={COLUMNS}>
-              {search
-                ? `No users match "${search.trim()}".`
-                : "No staff accounts yet. Create the first one above."}
-            </TableMessageRow>
+            <TableMessageRow columns={COLUMNS}>{emptyMessage}</TableMessageRow>
           ) : (
-            visibleUsers.map((user) => (
+            pagination.pageItems.map((user) => (
               <TableRow
                 key={user.user_id}
                 className={cn("h-14", !user.active && "text-muted-foreground")}
@@ -118,16 +186,19 @@ export function UsersTable() {
                           Disabled
                         </span>
                       ) : null}
+                      {user.is_locked ? (
+                        <span className="flex items-center gap-1 text-xs font-medium text-destructive">
+                          <Lock aria-hidden="true" className="size-3" />
+                          Locked
+                        </span>
+                      ) : null}
                     </span>
                   </span>
                 </TableCell>
                 <TableCell className="px-4">{user.username}</TableCell>
                 <TableCell className="px-4">{user.email}</TableCell>
                 <TableCell className="px-4">
-                  <RoleBadge
-                    role={user.role}
-                    label={roleLabels.get(user.role) ?? humanizeSlug(user.role)}
-                  />
+                  <RoleBadge role={user.role} label={getRoleLabel(user.role)} />
                 </TableCell>
                 <TableCell className="px-4">
                   {formatDate(user.created_at)}
@@ -140,6 +211,17 @@ export function UsersTable() {
           )}
         </TableBody>
       </Table>
+
+      {users.isSuccess ? (
+        <TablePagination
+          page={pagination.page}
+          pageCount={pagination.pageCount}
+          pageSize={pagination.pageSize}
+          total={pagination.total}
+          onPageChange={setPage}
+          itemLabel="users"
+        />
+      ) : null}
     </div>
   )
 }

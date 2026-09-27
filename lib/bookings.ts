@@ -1,4 +1,11 @@
-import { format, startOfMonth } from "date-fns"
+import {
+  addDays,
+  differenceInCalendarDays,
+  format,
+  parseISO,
+  startOfDay,
+  startOfMonth,
+} from "date-fns"
 import type { OccupancyRange } from "@/lib/api/bookings"
 import { formatCurrency } from "@/lib/format"
 import type {
@@ -39,6 +46,10 @@ const BOOKING_STATUS_BADGES: Record<BookingStatus, string> = {
 }
 
 const PAYMENT_STATUS_BADGES: Record<string, string> = {
+  fully_paid:
+    "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300",
+  deposit_paid:
+    "bg-brand-azure/15 text-brand-navy dark:bg-brand-azure/20 dark:text-sky-200",
   paid: "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300",
   partial:
     "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300",
@@ -62,6 +73,58 @@ export function getBookingStatusClasses(status: string) {
 export function getPaymentStatusClasses(status: string) {
   return PAYMENT_STATUS_BADGES[status.toLowerCase()] ?? NEUTRAL_BADGE
 }
+
+/** Booking payment statuses that clear a guest for check-in. */
+const CHECK_IN_PAYMENT_STATUSES = new Set(["deposit_paid", "fully_paid"])
+
+/** Booking statuses a guest can no longer be checked in from. */
+const NO_CHECK_IN_STATUSES = new Set([
+  "checked_in",
+  "checked_out",
+  "cancelled",
+  "rejected",
+])
+
+/**
+ * A guest may check in once the deposit, or the full amount, is paid, and
+ * only if they haven't already checked in or out and the booking is still
+ * live.
+ */
+export function canCheckIn(
+  booking: Pick<Booking, "payment_status" | "status">
+) {
+  return (
+    CHECK_IN_PAYMENT_STATUSES.has(booking.payment_status.toLowerCase()) &&
+    !NO_CHECK_IN_STATUSES.has(booking.status.toLowerCase())
+  )
+}
+
+/** Booking statuses that can no longer be cancelled. */
+const NO_CANCEL_STATUSES = new Set([
+  "checked_in",
+  "checked_out",
+  "cancelled",
+  "rejected",
+])
+
+/** A booking can be cancelled until the guest checks in (or it's closed). */
+export function canCancel(booking: Pick<Booking, "status">) {
+  return !NO_CANCEL_STATUSES.has(booking.status.toLowerCase())
+}
+
+/** Whether the guest is in the room right now. */
+export function isCheckedIn(booking: Pick<Booking, "status">) {
+  return booking.status.toLowerCase() === "checked_in"
+}
+
+/** Only a guest who is currently checked in can be checked out. */
+export const canCheckOut = isCheckedIn
+
+/**
+ * Extending the stay and adding extra people only apply while the guest is
+ * checked in.
+ */
+export const canChangeStay = isCheckedIn
 
 /** The 1st of the current month through today, for the occupancy stats. */
 export function getMonthToDateRange(today = new Date()): OccupancyRange {
@@ -137,5 +200,94 @@ export const BOOKING_STAT_CARDS: ReadonlyArray<{
     label: "This month",
     titleClassName: STAT_TITLE_CLASSES.occupancy_rate_pct,
     format: formatPercent,
+  },
+]
+
+/** How far ahead a pending request's check-in counts as "arriving soon". */
+export const ARRIVING_SOON_DAYS = 7
+
+/** Figures shown above the `/requests` table, derived from the pending list. */
+export interface BookingRequestStats {
+  pending: number
+  requested_value: number
+  arriving_soon: number
+  /** Whole days the oldest request has waited; `null` when nothing is pending. */
+  oldest_wait_days: number | null
+}
+
+export type BookingRequestStatKey = keyof BookingRequestStats
+
+/**
+ * Totals for the pending requests. There is no stats endpoint for them, so
+ * they come from the same list the table renders.
+ */
+export function getBookingRequestStats(
+  requests: readonly Booking[],
+  today = new Date()
+): BookingRequestStats {
+  const start = startOfDay(today)
+  const soonLimit = addDays(start, ARRIVING_SOON_DAYS)
+  let requestedValue = 0
+  let arrivingSoon = 0
+  let oldest: Date | null = null
+
+  for (const request of requests) {
+    requestedValue += request.total_amount
+    const checkIn = parseISO(request.check_in_date)
+    if (checkIn >= start && checkIn <= soonLimit) arrivingSoon += 1
+    const created = parseISO(request.created_at)
+    if (!oldest || created < oldest) oldest = created
+  }
+
+  return {
+    pending: requests.length,
+    requested_value: requestedValue,
+    arriving_soon: arrivingSoon,
+    oldest_wait_days: oldest ? differenceInCalendarDays(today, oldest) : null,
+  }
+}
+
+/** 0 → "Today", 1 → "1 day", 5 → "5 days"; "—" when nothing is waiting. */
+function formatWaitDays(days: number | null) {
+  if (days === null) return "0"
+  if (days <= 0) return "Today"
+  return days === 1 ? "1 day" : `${days} days`
+}
+
+/** Cards rendered above the `/requests` table, in display order. */
+export const BOOKING_REQUEST_STAT_CARDS: ReadonlyArray<{
+  key: BookingRequestStatKey
+  title: string
+  label: string
+  titleClassName: string
+  value: (stats: BookingRequestStats) => string
+}> = [
+  {
+    key: "pending",
+    title: "Pending requests",
+    label: "Waiting for approval",
+    titleClassName: "text-amber-700 dark:text-amber-300",
+    value: (stats) => String(stats.pending),
+  },
+  {
+    key: "requested_value",
+    title: "Requested value",
+    label: "If every request is approved",
+    titleClassName: "text-emerald-700 dark:text-emerald-300",
+    value: (stats) => formatCurrency(stats.requested_value),
+  },
+  {
+    key: "arriving_soon",
+    title: "Arriving soon",
+    label: `Check in within ${ARRIVING_SOON_DAYS} days`,
+    titleClassName: "text-brand-azure dark:text-sky-300",
+    value: (stats) => String(stats.arriving_soon),
+  },
+  {
+    key: "oldest_wait_days",
+    title: "Longest wait",
+    label: "Oldest request pending",
+    titleClassName: "text-rose-700 dark:text-rose-300",
+    value: (stats) => formatWaitDays(stats.oldest_wait_days),
   },
 ]

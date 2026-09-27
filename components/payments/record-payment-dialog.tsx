@@ -33,7 +33,6 @@ import {
   emptyPaymentValues,
   isUnpaidBooking,
   paymentSchema,
-  toPaymentFormValues,
   toPaymentPayload,
   type PaymentValues,
 } from "@/lib/schemas/payments"
@@ -53,11 +52,6 @@ class EvidenceUploadError extends Error {
 }
 
 interface RecordPaymentDialogProps {
-  /**
-   * Pre-fills the form from an existing row, so recording another payment
-   * against the same booking only means changing the amount.
-   */
-  payment?: Payment
   open: boolean
   onOpenChange: (open: boolean) => void
 }
@@ -69,18 +63,15 @@ interface RecordPaymentDialogProps {
  * dialog keeps the created payment, locks the details and resubmitting only
  * retries the upload.
  *
- * The form is only mounted while open so every open re-seeds from `payment`
- * and no stale values or object URLs linger between records.
+ * The form is only mounted while open so every open starts empty and no
+ * stale values or object URLs linger between records.
  */
 function RecordPaymentDialog(props: RecordPaymentDialogProps) {
   if (!props.open) return null
   return <RecordPaymentForm {...props} />
 }
 
-function RecordPaymentForm({
-  payment,
-  onOpenChange,
-}: RecordPaymentDialogProps) {
+function RecordPaymentForm({ onOpenChange }: RecordPaymentDialogProps) {
   const queryClient = useQueryClient()
   const { user } = useAuth()
   // Set once the payment is saved so a failed upload can be retried without
@@ -97,7 +88,7 @@ function RecordPaymentForm({
 
   const form = useForm<PaymentValues>({
     resolver: zodResolver(paymentSchema),
-    defaultValues: payment ? toPaymentFormValues(payment) : emptyPaymentValues,
+    defaultValues: emptyPaymentValues,
   })
   const {
     handleSubmit,
@@ -180,9 +171,7 @@ function RecordPaymentForm({
             Record a payment
           </DialogTitle>
           <DialogDescription>
-            {payment
-              ? `Recording against booking ${payment.booking_ref}. Check the amount and enter the new transaction reference.`
-              : "Log what a guest has paid and attach the proof you were sent."}
+            Log what a guest has paid and attach the proof you were sent.
           </DialogDescription>
         </DialogHeader>
 

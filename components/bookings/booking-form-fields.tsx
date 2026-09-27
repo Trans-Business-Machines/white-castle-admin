@@ -11,12 +11,12 @@ import { Textarea } from "@/components/ui/textarea"
 import { MAX_OCCUPANTS, type BookingValues } from "@/lib/schemas/bookings"
 import type { Guest, Unit } from "@/lib/types"
 
-const labelClassName =
+export const labelClassName =
   "font-heading text-xs font-semibold tracking-wide text-iron uppercase"
-const inputClassName =
+export const inputClassName =
   "h-11 rounded-lg border-border bg-canvas px-3.5 text-base focus-visible:border-brand-azure focus-visible:ring-brand-azure/20 md:text-base dark:bg-input/30"
 
-function FieldError({ id, message }: { id: string; message?: string }) {
+export function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null
   return (
     <p id={id} className="text-sm text-destructive">

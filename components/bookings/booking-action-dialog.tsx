@@ -6,18 +6,14 @@ import toast from "react-hot-toast"
 import { BookingReasonDialog } from "@/components/bookings/booking-reason-dialog"
 import { CheckInBookingDialog } from "@/components/bookings/check-in-booking-dialog"
 import { ConfirmDialog } from "@/components/confirm-dialog"
-import {
-  bookingsQueryKey,
-  checkOutBooking,
-  confirmBookingPayment,
-} from "@/lib/api/bookings"
+import { bookingsQueryKey, checkOutBooking } from "@/lib/api/bookings"
 import { getApiErrorMessage } from "@/lib/api/errors"
 import { unitsQueryKey } from "@/lib/api/units"
 import type { BookingSubject } from "@/lib/bookings"
 import type { Booking } from "@/lib/types"
 
 /** Lifecycle actions that only need a confirmation, no extra input. */
-export type BookingConfirmAction = "confirm_payment" | "check_out"
+export type BookingConfirmAction = "check_out"
 
 interface ConfirmActionConfig {
   title: (booking: BookingSubject) => string
@@ -32,17 +28,6 @@ interface ConfirmActionConfig {
 }
 
 const CONFIRM_ACTIONS: Record<BookingConfirmAction, ConfirmActionConfig> = {
-  confirm_payment: {
-    title: (booking) => `Confirm payment for ${booking.guest_name}?`,
-    description: (booking) =>
-      `This confirms payment for ${booking.guest_name}'s booking ${booking.reference}. Only do this once the money has actually been received.`,
-    confirmLabel: "Confirm payment",
-    pendingLabel: "Confirming",
-    refreshesUnits: false,
-    success: (booking) => `Payment for ${booking.reference} was confirmed.`,
-    failure: "We couldn't confirm this payment. Try again.",
-    run: (booking) => confirmBookingPayment(booking.booking_id),
-  },
   check_out: {
     title: (booking) => `Check ${booking.guest_name} out?`,
     description: (booking) =>
@@ -67,8 +52,8 @@ interface BookingActionDialogProps {
 }
 
 /**
- * The booking lifecycle dialogs. Confirm payment and check out only need an
- * "are you sure?"; checking in also needs the guest record and cancelling
+ * The booking lifecycle dialogs. Check out only needs an "are you sure?";
+ * checking in also needs the guest record and cancelling
  * needs a written reason, so those two have their own dialogs.
  */
 function BookingActionDialog({

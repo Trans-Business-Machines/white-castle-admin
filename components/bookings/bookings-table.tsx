@@ -17,6 +17,7 @@ import {
   EMPTY_BOOKING_FILTERS,
   hasActiveFilters,
 } from "@/components/bookings/bookings-filters"
+import { TablePagination } from "@/components/table-pagination"
 import {
   Table,
   TableBody,
@@ -25,7 +26,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import { useSidebar } from "@/components/ui/sidebar"
 import {
   TableError,
   TableMessageRow,
@@ -38,11 +38,13 @@ import {
   useBookingsList,
 } from "@/hooks/use-booking-requests"
 import { useDebouncedValue } from "@/hooks/use-debounced-value"
+import { usePagination } from "@/hooks/use-pagination"
 import {
   bookingLookupQueryKey,
   bookingQueryKey,
   fetchBookingDetails,
   lookupBooking,
+  type BookingListFilters,
 } from "@/lib/api/bookings"
 import { getApiErrorStatus } from "@/lib/api/errors"
 import { fetchUnits, unitsQueryKey } from "@/lib/api/units"
@@ -89,7 +91,8 @@ function normalizeReference(value: string) {
  * that one booking (filters are greyed out meanwhile); otherwise the
  * filtered list is shown. Filtering keeps the previous rows on screen
  * (dimmed) until the new page arrives so the table doesn't collapse to a
- * skeleton on every change.
+ * skeleton on every change. Rows are paged client-side (the endpoint
+ * doesn't paginate yet).
  */
 export function BookingsTable({
   variant = "bookings",
@@ -101,10 +104,6 @@ export function BookingsTable({
   const [search, setSearch] = useState("")
   const router = useRouter()
   const queryClient = useQueryClient()
-  // With the sidebar expanded the content column is too narrow for the
-  // search box and three filters on one line, so stack them; collapsed,
-  // they sit side by side.
-  const sidebarExpanded = useSidebar().state === "expanded"
   const reference = normalizeReference(useDebouncedValue(search))
   const searching = reference !== ""
 
@@ -162,6 +161,19 @@ export function BookingsTable({
     return [lookup.data]
   }, [searching, lookup.data, list.data, config.lockedStatus])
 
+  const pagination = usePagination(rows)
+  const { setPage } = pagination
+
+  function handleSearchChange(value: string) {
+    setSearch(value)
+    setPage(1)
+  }
+
+  function handleFiltersChange(value: BookingListFilters) {
+    setFilters(value)
+    setPage(1)
+  }
+
   // Either the reference doesn't exist (404) or it resolved to a booking
   // this view doesn't list; both read as "no such reference here".
   const lookupMissed =
@@ -172,28 +184,21 @@ export function BookingsTable({
 
   return (
     <div className="overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-foreground/10">
-      <div
-        className={cn(
-          "flex gap-3 p-4",
-          sidebarExpanded ? "flex-col" : "flex-wrap items-end"
-        )}
-      >
-        <div
-          className={cn(
-            "flex",
-            sidebarExpanded ? "max-w-xl" : "min-w-64 flex-1"
-          )}
-        >
+      {/* The search box takes whatever the filters leave, down to 12rem, so
+          both stay on one row whether the sidebar is expanded or not; only
+          a genuinely narrow screen wraps the filters below. */}
+      <div className="flex flex-wrap items-end gap-3 p-4">
+        <div className="flex min-w-48 flex-1">
           <SearchInput
             value={search}
-            onChange={setSearch}
-            placeholder="Search by reference, e.g. WCM-2026-30A19E61"
+            onChange={handleSearchChange}
+            placeholder="Search by reference"
             label={`Search ${config.plural} by reference`}
           />
         </div>
         <BookingsFilters
           value={filters}
-          onChange={setFilters}
+          onChange={handleFiltersChange}
           disabled={searching}
           showStatus={config.lockedStatus === ""}
         />
@@ -245,7 +250,7 @@ export function BookingsTable({
                 : config.empty}
             </TableMessageRow>
           ) : (
-            rows.map((booking) => (
+            pagination.pageItems.map((booking) => (
               <TableRow
                 key={booking.booking_id}
                 className="h-14"
@@ -295,6 +300,17 @@ export function BookingsTable({
           )}
         </TableBody>
       </Table>
+
+      {active.isSuccess ? (
+        <TablePagination
+          page={pagination.page}
+          pageCount={pagination.pageCount}
+          pageSize={pagination.pageSize}
+          total={pagination.total}
+          onPageChange={setPage}
+          itemLabel={config.plural}
+        />
+      ) : null}
     </div>
   )
 }

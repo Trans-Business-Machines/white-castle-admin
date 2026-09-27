@@ -1,14 +1,34 @@
-export type RoleTone = "crimson" | "flame" | "green" | "violet" | "blue"
+/** The fixed set of staff roles defined by the backend, highest first. */
+export const ROLE_NAMES = [
+  "super_admin",
+  "admin",
+  "receptionist",
+  "finance",
+  "housekeeping",
+  "catering",
+] as const
 
-const toneByRole: Record<string, RoleTone> = {
+export type RoleName = (typeof ROLE_NAMES)[number]
+
+export function isRoleName(value: string): value is RoleName {
+  return (ROLE_NAMES as readonly string[]).includes(value)
+}
+
+export type RoleTone =
+  "crimson" | "flame" | "green" | "violet" | "amber" | "blue"
+
+const toneByRole: Record<RoleName, RoleTone> = {
   super_admin: "crimson",
   admin: "flame",
+  receptionist: "blue",
   finance: "green",
   housekeeping: "violet",
+  catering: "amber",
 }
 
 export function getRoleTone(role: string): RoleTone {
-  return toneByRole[roleSlug(role)] ?? "blue"
+  const slug = roleSlug(role)
+  return isRoleName(slug) ? toneByRole[slug] : "blue"
 }
 
 /** Accepts a slug ("super_admin") or a label ("Super Admin") and returns the slug. */
@@ -19,8 +39,26 @@ export function roleSlug(value: string) {
     .replace(/[\s-]+/g, "_")
 }
 
+/** The top role: outranks every other, including `admin`. */
+export function isSuperAdmin(role: string | undefined) {
+  return role ? roleSlug(role) === "super_admin" : false
+}
+
+/** Whether `role` (a slug or a label) is one of `allowed`. */
+export function hasRole(
+  role: string | undefined,
+  allowed: readonly RoleName[]
+) {
+  if (!role) return false
+  const slug = roleSlug(role)
+  return isRoleName(slug) && allowed.includes(slug)
+}
+
 /** Roles allowed into the user management module (`/users`). */
-export const USER_MANAGEMENT_ROLES: readonly string[] = ["super_admin", "admin"]
+export const USER_MANAGEMENT_ROLES: readonly RoleName[] = [
+  "super_admin",
+  "admin",
+]
 
 interface RoleToneClasses {
   /** Tinted pill: background + text. */
@@ -63,6 +101,14 @@ export const roleToneClasses: Record<RoleTone, RoleToneClasses> = {
       "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
     text: "text-violet-700 dark:text-violet-300",
     dot: "bg-violet-600",
+  },
+  amber: {
+    badge:
+      "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300",
+    avatar:
+      "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300",
+    text: "text-amber-700 dark:text-amber-300",
+    dot: "bg-amber-500",
   },
   blue: {
     badge: "bg-brand-azure/10 text-brand-azure dark:text-sky-300",

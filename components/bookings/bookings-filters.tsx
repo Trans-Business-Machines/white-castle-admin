@@ -17,7 +17,7 @@ import { BOOKING_STATUSES } from "@/lib/bookings"
 import { humanizeSlug } from "@/lib/format"
 
 /** Select can't hold "" as an item value, so "every status" uses a sentinel. */
-const ALL_STATUSES = "all"
+export const ALL_STATUSES = "all"
 
 const labelClassName =
   "font-heading text-xs font-semibold tracking-wide text-iron uppercase"
@@ -34,11 +34,13 @@ export function hasActiveFilters(filters: BookingListFilters) {
   return Object.values(filters).some((value) => value !== "")
 }
 
-function toDate(value: string) {
+/** "yyyy-MM-dd" (or "") → the picker's `Date | null`. */
+export function toDate(value: string) {
   return value ? parseISO(value) : null
 }
 
-function toIso(date: Date | null) {
+/** The picker's `Date | null` → "yyyy-MM-dd" (or ""). */
+export function toIso(date: Date | null) {
   return date ? format(date, "yyyy-MM-dd") : ""
 }
 

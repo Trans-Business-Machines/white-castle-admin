@@ -1,6 +1,11 @@
 "use client"
 
-import { Controller, type UseFormReturn } from "react-hook-form"
+import {
+  Controller,
+  useWatch,
+  type UseFormRegisterReturn,
+  type UseFormReturn,
+} from "react-hook-form"
 import { PaymentBookingCombobox } from "@/components/payments/payment-booking-combobox"
 import { PhotoDropzone } from "@/components/units/photo-dropzone"
 import { Input } from "@/components/ui/input"
@@ -12,27 +17,113 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Textarea } from "@/components/ui/textarea"
 import {
   EVIDENCE_TYPES,
   getEvidenceError,
+  isCashMethod,
   PAYMENT_METHODS,
   PAYMENT_TYPES,
   type PaymentValues,
 } from "@/lib/schemas/payments"
 import type { Booking } from "@/lib/types"
 
-const labelClassName =
+export const labelClassName =
   "font-ibm-plex text-xs font-semibold tracking-wide text-iron uppercase"
-const inputClassName =
+export const inputClassName =
   "h-11 rounded-lg border-border bg-canvas px-3.5 text-base focus-visible:border-brand-azure focus-visible:ring-brand-azure/20 md:text-base dark:bg-input/30"
 
-function FieldError({ id, message }: { id: string; message?: string }) {
+export function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null
   return (
     <p id={id} className="text-sm text-destructive">
       {message}
     </p>
+  )
+}
+
+/**
+ * The M-Pesa / Cash picker, shared by the record and complete payment
+ * forms. The owning form decides what else changes with the method.
+ */
+export function PaymentMethodField({
+  id,
+  ref,
+  value,
+  onChange,
+  onBlur,
+  disabled,
+  error,
+}: {
+  id: string
+  ref?: React.Ref<HTMLButtonElement>
+  value: string
+  onChange: (method: string) => void
+  onBlur: () => void
+  disabled?: boolean
+  error?: string
+}) {
+  const errorId = `${id}-error`
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor={id} className={labelClassName}>
+        Method
+      </Label>
+      <Select value={value} onValueChange={onChange} disabled={disabled}>
+        <SelectTrigger
+          id={id}
+          ref={ref}
+          onBlur={onBlur}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : undefined}
+          className={`${inputClassName} w-full data-[size=default]:h-11`}
+        >
+          <SelectValue placeholder="Choose a method" />
+        </SelectTrigger>
+        <SelectContent>
+          {PAYMENT_METHODS.map((method) => (
+            <SelectItem key={method.value} value={method.value}>
+              {method.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <FieldError id={errorId} message={error} />
+    </div>
+  )
+}
+
+/**
+ * The transaction reference input, disabled for cash (which leaves no
+ * reference). Spread `register("reference")` onto it.
+ */
+export function TransactionReferenceField({
+  id,
+  cash,
+  error,
+  ...registration
+}: UseFormRegisterReturn & { id: string; cash: boolean; error?: string }) {
+  const errorId = `${id}-error`
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor={id} className={labelClassName}>
+        Transaction reference
+      </Label>
+      {/* The input drops pointer events when disabled, so the not-allowed
+          cursor has to come from this wrapper. */}
+      <div className={cash ? "cursor-not-allowed" : ""}>
+        <Input
+          id={id}
+          placeholder={cash ? "Not needed for cash" : "e.g. SJ48KD92LP"}
+          autoComplete="off"
+          className={inputClassName}
+          aria-invalid={Boolean(error)}
+          aria-describedby={error ? errorId : undefined}
+          {...registration}
+          disabled={cash}
+        />
+      </div>
+      <FieldError id={errorId} message={error} />
+    </div>
   )
 }
 
@@ -94,6 +185,7 @@ export function PaymentFormFields({
     getValues,
     formState: { errors },
   } = form
+  const isCash = isCashMethod(useWatch({ control, name: "method" }))
 
   return (
     <>
@@ -216,91 +308,33 @@ export function PaymentFormFields({
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
-          {/* Method */}
-          <div className="grid gap-2">
-            <Label htmlFor="payment-method" className={labelClassName}>
-              Method
-            </Label>
-            <Controller
-              control={control}
-              name="method"
-              render={({ field }) => (
-                <Select
-                  value={field.value}
-                  onValueChange={field.onChange}
-                  disabled={detailsLocked || pending}
-                >
-                  <SelectTrigger
-                    id="payment-method"
-                    ref={field.ref}
-                    onBlur={field.onBlur}
-                    aria-invalid={Boolean(errors.method)}
-                    aria-describedby={
-                      errors.method ? "payment-method-error" : undefined
-                    }
-                    className={`${inputClassName} w-full data-[size=default]:h-11`}
-                  >
-                    <SelectValue placeholder="Choose a method" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PAYMENT_METHODS.map((method) => (
-                      <SelectItem key={method.value} value={method.value}>
-                        {method.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
-            />
-            <FieldError
-              id="payment-method-error"
-              message={errors.method?.message}
-            />
-          </div>
-
-          {/* Transaction reference */}
-          <div className="grid gap-2">
-            <Label htmlFor="payment-reference" className={labelClassName}>
-              Transaction reference
-            </Label>
-            <Input
-              id="payment-reference"
-              placeholder="e.g. SJ48KD92LP"
-              autoComplete="off"
-              className={inputClassName}
-              aria-invalid={Boolean(errors.reference)}
-              aria-describedby={
-                errors.reference ? "payment-reference-error" : undefined
-              }
-              {...register("reference")}
-            />
-            <FieldError
-              id="payment-reference-error"
-              message={errors.reference?.message}
-            />
-          </div>
-        </div>
-
-        {/* Notes */}
-        <div className="grid gap-2">
-          <Label htmlFor="payment-notes" className={labelClassName}>
-            Notes{" "}
-            <span className="font-normal text-muted-foreground normal-case">
-              (optional)
-            </span>
-          </Label>
-          <Textarea
-            id="payment-notes"
-            rows={3}
-            placeholder="Paid at the front desk, balance due on arrival…"
-            className="min-h-24 rounded-lg border-border bg-canvas px-3.5 py-2.5 text-base focus-visible:border-brand-azure focus-visible:ring-brand-azure/20 md:text-base dark:bg-input/30"
-            aria-invalid={Boolean(errors.notes)}
-            aria-describedby={errors.notes ? "payment-notes-error" : undefined}
-            {...register("notes")}
+          <Controller
+            control={control}
+            name="method"
+            render={({ field }) => (
+              <PaymentMethodField
+                id="payment-method"
+                ref={field.ref}
+                value={field.value}
+                onBlur={field.onBlur}
+                onChange={(method) => {
+                  field.onChange(method)
+                  // Cash has no reference; drop anything typed for M-Pesa.
+                  if (isCashMethod(method)) {
+                    setValue("reference", "")
+                    clearErrors("reference")
+                  }
+                }}
+                disabled={detailsLocked || pending}
+                error={errors.method?.message}
+              />
+            )}
           />
-          <FieldError
-            id="payment-notes-error"
-            message={errors.notes?.message}
+          <TransactionReferenceField
+            id="payment-reference"
+            cash={isCash}
+            error={errors.reference?.message}
+            {...register("reference")}
           />
         </div>
       </fieldset>

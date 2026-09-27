@@ -3,14 +3,15 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import {
-  BadgeCheck,
   Ban,
+  CalendarPlus,
   CircleCheck,
   CircleX,
   EllipsisVertical,
   Eye,
   LogIn,
   LogOut,
+  UserPlus,
 } from "lucide-react"
 import { ApproveBookingDialog } from "@/components/bookings/approve-booking-dialog"
 import {
@@ -18,6 +19,8 @@ import {
   type BookingDialogAction,
 } from "@/components/bookings/booking-action-dialog"
 import { BookingReasonDialog } from "@/components/bookings/booking-reason-dialog"
+import { ExtendBookingDialog } from "@/components/bookings/extend-booking-dialog"
+import { ExtraPersonsDialog } from "@/components/bookings/extra-persons-dialog"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -26,6 +29,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  canCancel,
+  canChangeStay,
+  canCheckIn,
+  canCheckOut,
+} from "@/lib/bookings"
 import type { Booking } from "@/lib/types"
 
 /** Builds the details route for a booking. */
@@ -33,8 +42,22 @@ export function getBookingHref(bookingId: string) {
   return `/bookings/${encodeURIComponent(bookingId)}`
 }
 
+/** Dialogs the menu renders itself rather than via `BookingActionDialog`. */
+type OwnDialog = "approve" | "reject" | "extend" | "extra_persons"
+
 /** Which action opened a dialog, if any. */
-type BookingDialog = "approve" | "reject" | BookingDialogAction
+type BookingDialog = OwnDialog | BookingDialogAction
+
+const OWN_DIALOGS: ReadonlySet<string> = new Set<OwnDialog>([
+  "approve",
+  "reject",
+  "extend",
+  "extra_persons",
+])
+
+function isOwnDialog(dialog: BookingDialog): dialog is OwnDialog {
+  return OWN_DIALOGS.has(dialog)
+}
 
 interface BookingActionsMenuProps {
   booking: Booking
@@ -100,21 +123,37 @@ function BookingActionsMenu({
             </>
           ) : (
             <>
-              <DropdownMenuItem onSelect={() => setDialog("confirm_payment")}>
-                <BadgeCheck aria-hidden="true" />
-                Confirm payment
-              </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setDialog("check_in")}>
+              <DropdownMenuItem
+                disabled={!canCheckIn(booking)}
+                onSelect={() => setDialog("check_in")}
+              >
                 <LogIn aria-hidden="true" />
                 Check in
               </DropdownMenuItem>
-              <DropdownMenuItem onSelect={() => setDialog("check_out")}>
+              <DropdownMenuItem
+                disabled={!canCheckOut(booking)}
+                onSelect={() => setDialog("check_out")}
+              >
                 <LogOut aria-hidden="true" />
                 Check out
               </DropdownMenuItem>
+              {/* Only a stay that's underway can grow. */}
+              {canChangeStay(booking) ? (
+                <>
+                  <DropdownMenuItem onSelect={() => setDialog("extend")}>
+                    <CalendarPlus aria-hidden="true" />
+                    Extend booking
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onSelect={() => setDialog("extra_persons")}>
+                    <UserPlus aria-hidden="true" />
+                    Extra person
+                  </DropdownMenuItem>
+                </>
+              ) : null}
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 variant="destructive"
+                disabled={!canCancel(booking)}
                 onSelect={() => setDialog("cancel")}
               >
                 <Ban aria-hidden="true" />
@@ -140,11 +179,23 @@ function BookingActionsMenu({
           />
         </>
       ) : (
-        <BookingActionDialog
-          booking={booking}
-          action={dialog === "approve" || dialog === "reject" ? null : dialog}
-          onClose={() => setDialog(null)}
-        />
+        <>
+          <BookingActionDialog
+            booking={booking}
+            action={dialog && !isOwnDialog(dialog) ? dialog : null}
+            onClose={() => setDialog(null)}
+          />
+          <ExtendBookingDialog
+            booking={booking}
+            open={dialog === "extend"}
+            onOpenChange={(open) => setDialog(open ? "extend" : null)}
+          />
+          <ExtraPersonsDialog
+            booking={booking}
+            open={dialog === "extra_persons"}
+            onOpenChange={(open) => setDialog(open ? "extra_persons" : null)}
+          />
+        </>
       )}
     </>
   )

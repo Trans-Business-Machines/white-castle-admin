@@ -1,5 +1,6 @@
 import { z } from "zod"
 import { passwordSchema } from "@/lib/schemas/auth"
+import { ROLE_NAMES } from "@/lib/roles"
 
 export const createUserSchema = z.object({
   full_name: z
@@ -17,7 +18,7 @@ export const createUserSchema = z.object({
       "Use letters, numbers, dots, hyphens or underscores only."
     ),
   email: z.email("Enter a valid email address."),
-  role: z.string().min(1, "Choose a role."),
+  role: z.enum(ROLE_NAMES, { error: "Choose a role." }),
   password: passwordSchema,
 })
 

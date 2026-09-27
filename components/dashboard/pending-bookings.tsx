@@ -3,7 +3,7 @@
 import { useMemo } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { useQueryClient } from "@tanstack/react-query"
 import { ArrowRight } from "lucide-react"
 import { getBookingHref } from "@/components/bookings/booking-actions-menu"
 import { PaymentStatusBadge } from "@/components/bookings/booking-status-badge"
@@ -22,52 +22,34 @@ import {
   TableSkeletonRows,
   tableHeadClassName,
 } from "@/components/users/table-state"
-import {
-  bookingQueryKey,
-  bookingsListQueryKey,
-  fetchBookingDetails,
-  fetchBookings,
-  type BookingListFilters,
-} from "@/lib/api/bookings"
+import { useDashboardReport } from "@/hooks/use-dashboard-report"
+import { bookingQueryKey, fetchBookingDetails } from "@/lib/api/bookings"
 import { getApiErrorMessage } from "@/lib/api/errors"
 import { formatCurrency, formatDate } from "@/lib/format"
 
 const COLUMNS = 5
 
-/** How many pending bookings the dashboard lists before pointing at /bookings. */
-const MAX_ROWS = 5
-
 /** How long a hover-prefetched booking stays fresh before another hover refetches it. */
 const PREFETCH_STALE_MS = 30_000
 
-/** Same filter object the bookings page builds, so the cache entry is shared. */
-const PENDING_FILTERS: BookingListFilters = {
-  status: "pending",
-  date_from: "",
-  date_to: "",
-}
-
 /**
- * Bookings waiting for approval, newest first. Deliberately ignores the
- * dashboard's date range: a pending request needs attention whenever it was
- * made.
+ * Bookings waiting for approval, newest first, from the dashboard report.
+ * The report may cap the list, so the badge counts every pending approval
+ * and a footer says when some aren't shown.
  */
 export function PendingBookings() {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const pending = useQuery({
-    queryKey: bookingsListQueryKey(PENDING_FILTERS),
-    queryFn: () => fetchBookings(PENDING_FILTERS),
-  })
+  const pending = useDashboardReport()
 
   const rows = useMemo(
     () =>
-      [...(pending.data ?? [])]
-        .sort((a, b) => b.created_at.localeCompare(a.created_at))
-        .slice(0, MAX_ROWS),
+      [...(pending.data?.details.pending_bookings ?? [])].sort((a, b) =>
+        b.created_at.localeCompare(a.created_at)
+      ),
     [pending.data]
   )
-  const count = pending.data?.length ?? 0
+  const count = pending.data?.today.pending_approvals ?? 0
 
   function prefetchBooking(bookingId: string) {
     queryClient
@@ -93,12 +75,12 @@ export function PendingBookings() {
             ) : null}
           </h3>
           <p className="text-sm text-muted-foreground">
-            Bookings waiting for approval, regardless of the dates above.
+            Bookings waiting for approval.
           </p>
         </div>
         <Button asChild variant="ghost" className="h-10 rounded-full px-4">
-          <Link href="/bookings">
-            All bookings
+          <Link href="/requests">
+            All booking requests
             <ArrowRight aria-hidden="true" />
           </Link>
         </Button>
@@ -167,9 +149,9 @@ export function PendingBookings() {
           )}
         </TableBody>
       </Table>
-      {count > MAX_ROWS ? (
+      {count > rows.length && rows.length > 0 ? (
         <p className="border-t px-4 py-3 text-sm text-muted-foreground">
-          Showing the {MAX_ROWS} most recent of {count}.
+          Showing the {rows.length} most recent of {count}.
         </p>
       ) : null}
     </div>

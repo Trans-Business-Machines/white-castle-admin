@@ -1,8 +1,10 @@
-import { format, isAfter, isBefore, startOfToday } from "date-fns"
+import { format, isAfter, isBefore, parseISO, startOfToday } from "date-fns"
 import { z } from "zod"
 import type {
   CancelBookingPayload,
   CreateBookingPayload,
+  ExtendBookingPayload,
+  ExtraPersonsPayload,
   Guest,
   RejectBookingPayload,
 } from "@/lib/types"
@@ -120,5 +122,72 @@ export function toCancelBookingPayload(
   return {
     cancellation_reason: values.reason.trim(),
     cancelled_by: cancelledBy,
+  }
+}
+
+/**
+ * Extending a stay asks for the new check-out day, which has to fall after
+ * the current one (`"yyyy-MM-dd"`, straight off the booking).
+ */
+export function makeExtendBookingSchema(currentCheckOut: string) {
+  const current = parseISO(currentCheckOut)
+  return z.object({
+    new_check_out_date: dateField("Pick the new check-out date.").refine(
+      (value) => value === null || isAfter(value, current),
+      "The new check-out must be after the current one."
+    ),
+  })
+}
+
+export type ExtendBookingValues = z.infer<
+  ReturnType<typeof makeExtendBookingSchema>
+>
+
+/**
+ * Shapes the form into the body `PATCH /bookings/{id}/extend` expects.
+ * `extendedBy` is the signed-in staff member's `user_id`.
+ */
+export function toExtendBookingPayload(
+  values: ExtendBookingValues,
+  extendedBy: string
+): ExtendBookingPayload {
+  return {
+    new_check_out_date: toIsoDate(values.new_check_out_date),
+    extended_by: extendedBy,
+  }
+}
+
+const extraCount = (label: string) =>
+  z
+    .number({ error: `Enter the number of extra ${label}.` })
+    .int("Use a whole number.")
+    .min(0, "Can't be negative.")
+    .max(MAX_OCCUPANTS, `Keep it at ${MAX_OCCUPANTS} or fewer.`)
+
+/** Extra people joining a checked-in stay; at least one of them. */
+export const extraPersonsSchema = z
+  .object({
+    adults: extraCount("adults"),
+    children: extraCount("children"),
+  })
+  .refine((values) => values.adults + values.children > 0, {
+    message: "Add at least one extra adult or child.",
+    path: ["adults"],
+  })
+
+export type ExtraPersonsValues = z.infer<typeof extraPersonsSchema>
+
+/**
+ * Shapes the form into the body `PATCH /bookings/{id}/extra-persons`
+ * expects. `updatedBy` is the signed-in staff member's `user_id`.
+ */
+export function toExtraPersonsPayload(
+  values: ExtraPersonsValues,
+  updatedBy: string
+): ExtraPersonsPayload {
+  return {
+    adults: values.adults,
+    children: values.children,
+    updated_by: updatedBy,
   }
 }

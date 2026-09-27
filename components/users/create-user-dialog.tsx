@@ -3,8 +3,13 @@
 import { useState, type PropsWithChildren } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { Check, Copy, Info, Loader, RefreshCw } from "lucide-react"
-import { Controller, useForm, useWatch } from "react-hook-form"
+import { Info, Loader } from "lucide-react"
+import {
+  Controller,
+  useForm,
+  useWatch,
+  type DefaultValues,
+} from "react-hook-form"
 import toast from "react-hot-toast"
 import { Button } from "@/components/ui/button"
 import {
@@ -26,6 +31,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  FieldError,
+  TemporaryPasswordField,
+  inputClassName,
+  labelClassName,
+} from "@/components/users/temporary-password-field"
 import { getApiErrorMessage } from "@/lib/api/errors"
 import { fetchRoles, rolesQueryKey } from "@/lib/api/roles"
 import { createUser, usersQueryKey } from "@/lib/api/users"
@@ -36,31 +47,16 @@ import {
   type CreateUserValues,
 } from "@/lib/schemas/users"
 
-const labelClassName =
-  "font-ibm-plex text-xs text-iron font-semibold tracking-wide uppercase"
-const inputClassName =
-  "h-11 rounded-lg border-border bg-canvas px-3.5 text-base focus-visible:border-brand-azure focus-visible:ring-brand-azure/20 md:text-base dark:bg-input/30"
-
-const emptyValues: CreateUserValues = {
+// `role` stays unset until one is picked, so the Select shows its placeholder.
+const emptyValues: DefaultValues<CreateUserValues> = {
   full_name: "",
   username: "",
   email: "",
-  role: "",
   password: "",
-}
-
-function FieldError({ id, message }: { id: string; message?: string }) {
-  if (!message) return null
-  return (
-    <p id={id} className="text-sm text-destructive">
-      {message}
-    </p>
-  )
 }
 
 export function CreateUserDialog({ children }: PropsWithChildren) {
   const [open, setOpen] = useState(false)
-  const [copied, setCopied] = useState(false)
   const queryClient = useQueryClient()
 
   const {
@@ -111,7 +107,6 @@ export function CreateUserDialog({ children }: PropsWithChildren) {
    */
   function closeDialog() {
     reset(emptyValues)
-    setCopied(false)
     mutation.reset()
     setOpen(false)
   }
@@ -121,7 +116,6 @@ export function CreateUserDialog({ children }: PropsWithChildren) {
     if (mutation.isPending) return
     if (next) {
       reset({ ...emptyValues, password: generatePassword() })
-      setCopied(false)
       setOpen(true)
     } else {
       closeDialog()
@@ -130,17 +124,6 @@ export function CreateUserDialog({ children }: PropsWithChildren) {
 
   function regeneratePassword() {
     setValue("password", generatePassword(), { shouldValidate: true })
-    setCopied(false)
-  }
-
-  async function copyPassword() {
-    try {
-      await navigator.clipboard.writeText(password)
-      setCopied(true)
-      toast.success("Temporary password copied.")
-    } catch {
-      toast.error("Couldn't copy. Select the password and copy it manually.")
-    }
   }
 
   return (
@@ -254,7 +237,7 @@ export function CreateUserDialog({ children }: PropsWithChildren) {
                 name="role"
                 render={({ field }) => (
                   <Select
-                    value={field.value}
+                    value={field.value ?? ""}
                     onValueChange={field.onChange}
                     disabled={roles.isPending || roles.isError}
                   >
@@ -303,54 +286,14 @@ export function CreateUserDialog({ children }: PropsWithChildren) {
               )}
             </div>
 
-            <div className="grid gap-2">
-              <Label htmlFor="user-password" className={labelClassName}>
-                Temporary password
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  id="user-password"
-                  readOnly
-                  autoComplete="off"
-                  spellCheck={false}
-                  className={`${inputClassName} font-mono tracking-wide`}
-                  aria-invalid={Boolean(errors.password)}
-                  aria-describedby={
-                    errors.password ? "user-password-error" : undefined
-                  }
-                  onFocus={(event) => event.currentTarget.select()}
-                  {...register("password")}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon-lg"
-                  className="size-11 shrink-0 rounded-lg"
-                  onClick={copyPassword}
-                  aria-label="Copy temporary password"
-                >
-                  {copied ? (
-                    <Check aria-hidden="true" className="text-emerald-600" />
-                  ) : (
-                    <Copy aria-hidden="true" />
-                  )}
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon-lg"
-                  className="size-11 shrink-0 rounded-lg"
-                  onClick={regeneratePassword}
-                  aria-label="Generate a new temporary password"
-                >
-                  <RefreshCw aria-hidden="true" />
-                </Button>
-              </div>
-              <FieldError
-                id="user-password-error"
-                message={errors.password?.message}
-              />
-            </div>
+            <TemporaryPasswordField
+              id="user-password"
+              label="Temporary password"
+              value={password}
+              registration={register("password")}
+              error={errors.password?.message}
+              onRegenerate={regeneratePassword}
+            />
 
             {errors.root ? (
               <p
