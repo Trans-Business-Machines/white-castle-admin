@@ -3,12 +3,18 @@ import {
   Calendars,
   ChartColumnBig,
   NotebookPen,
+  Settings,
   UserCog,
   Users,
   Banknote,
   type LucideIcon,
 } from "lucide-react"
-import { USER_MANAGEMENT_ROLES, hasRole, type RoleName } from "@/lib/roles"
+import {
+  SETTINGS_ROLES,
+  USER_MANAGEMENT_ROLES,
+  hasRole,
+  type RoleName,
+} from "@/lib/roles"
 
 export interface NavItem {
   title: string
@@ -71,8 +77,17 @@ export const profileNav: NavItem = {
   icon: Users,
 }
 
+/** Lives in the sidebar footer rather than the main list; super admins only. */
+export const settingsNav: NavItem = {
+  title: "Settings",
+  description: "Motel-wide rules, deadlines and contacts",
+  href: "/settings",
+  icon: Settings,
+  roles: SETTINGS_ROLES,
+}
+
 export function findNavItem(pathname: string) {
-  return [...dashboardNav, profileNav].find(
+  return [...dashboardNav, settingsNav, profileNav].find(
     (item) => pathname === item.href || pathname.startsWith(`${item.href}/`)
   )
 }

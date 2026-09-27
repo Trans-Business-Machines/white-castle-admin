@@ -5,8 +5,18 @@ import type { Guest } from "@/lib/types"
 
 /** ID documents a guest can register with; `value` is what the API receives. */
 export const ID_TYPES = [
-  { value: "national_id", label: "National ID", numberLabel: "ID number" },
-  { value: "passport", label: "Passport", numberLabel: "Passport number" },
+  {
+    value: "national_id",
+    label: "National ID",
+    numberLabel: "ID number",
+    documentLabel: "National ID image",
+  },
+  {
+    value: "passport",
+    label: "Passport",
+    numberLabel: "Passport number",
+    documentLabel: "Passport image",
+  },
 ] as const
 
 export type IdType = (typeof ID_TYPES)[number]["value"]
@@ -27,6 +37,34 @@ export function getIdNumberLabel(idType: string) {
   )
 }
 
+/** Label for the ID document upload that matches the chosen document. */
+export function getIdDocumentLabel(idType: string) {
+  return (
+    ID_TYPES.find((type) => type.value === idType)?.documentLabel ?? "ID image"
+  )
+}
+
+/** File types accepted for a guest's ID scan: an image or a PDF. */
+export const ID_DOCUMENT_TYPES = [
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "application/pdf",
+] as const
+
+export const ID_DOCUMENT_MAX_BYTES = 5 * 1024 * 1024
+
+/** Returns a message when `file` can't be uploaded as an ID document. */
+export function getIdDocumentError(file: File) {
+  if (!(ID_DOCUMENT_TYPES as readonly string[]).includes(file.type)) {
+    return "Use a PNG, JPG or PDF file."
+  }
+  if (file.size > ID_DOCUMENT_MAX_BYTES) {
+    return "Keep the file under 5 MB."
+  }
+  return null
+}
+
 const PHONE_PATTERN = /^\+?[\d\s()-]{7,20}$/
 
 export const guestSchema = z.object({
@@ -45,8 +83,8 @@ export const guestSchema = z.object({
   national_id: z
     .string()
     .trim()
-    .min(1, "Enter the ID number.")
-    .max(50, "Keep the ID number under 50 characters."),
+    .min(8, "Enter the ID number.")
+    .max(14, "Keep the ID number under 14 characters."),
   nationality: z
     .string()
     .min(1, "Choose a nationality.")
@@ -62,6 +100,21 @@ export const guestSchema = z.object({
       (value) => value === null || !isAfter(value, startOfToday()),
       "Date of birth can't be in the future."
     ),
+  /**
+   * Optional ID scan; uploaded to `/guests/{id}/id-document` once the
+   * guest record is saved, so it isn't part of `toGuestPayload`.
+   */
+  id_document: z
+    .array(z.custom<File>((value) => value instanceof File))
+    .max(1, "Attach one file.")
+    .superRefine((files, ctx) => {
+      for (const file of files) {
+        const message = getIdDocumentError(file)
+        if (message) {
+          ctx.addIssue({ code: "custom", message: `${file.name}: ${message}` })
+        }
+      }
+    }),
 })
 
 export type GuestValues = z.infer<typeof guestSchema>
@@ -101,6 +154,7 @@ export function toGuestFormValues(guest: Guest): GuestValues {
     national_id: guest.national_id ?? "",
     nationality: guest.nationality ?? "",
     date_of_birth: dob && isValid(dob) ? dob : null,
+    id_document: [],
   }
 }
 

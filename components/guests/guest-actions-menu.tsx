@@ -8,8 +8,10 @@ import {
   Eye,
   ShieldCheck,
   SquarePen,
+  Trash2,
 } from "lucide-react"
 import { BlacklistGuestDialog } from "@/components/guests/blacklist-guest-dialog"
+import { DeleteGuestDialog } from "@/components/guests/delete-guest-dialog"
 import { EditGuestDialog } from "@/components/guests/edit-guest-dialog"
 import { Button } from "@/components/ui/button"
 import {
@@ -19,18 +21,23 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { GUEST_DELETE_ROLES, hasRole } from "@/lib/roles"
 import type { Guest } from "@/lib/types"
+import { useAuth } from "@/providers/auth-provider"
 
 /** Builds the profile route for a guest. */
 export function getGuestHref(guestId: string) {
   return `/guests/${encodeURIComponent(guestId)}`
 }
 
-type GuestAction = "edit" | "blacklist"
+type GuestAction = "edit" | "blacklist" | "delete"
 
 function GuestActionsMenu({ guest }: { guest: Guest }) {
   const router = useRouter()
+  const { user } = useAuth()
   const [action, setAction] = useState<GuestAction | null>(null)
+  // Only admins and super admins see the item at all.
+  const canDelete = hasRole(user?.role, GUEST_DELETE_ROLES)
 
   return (
     <>
@@ -71,6 +78,15 @@ function GuestActionsMenu({ guest }: { guest: Guest }) {
               Blacklist guest
             </DropdownMenuItem>
           )}
+          {canDelete ? (
+            <DropdownMenuItem
+              variant="destructive"
+              onSelect={() => setAction("delete")}
+            >
+              <Trash2 aria-hidden="true" />
+              Delete guest
+            </DropdownMenuItem>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -84,6 +100,13 @@ function GuestActionsMenu({ guest }: { guest: Guest }) {
         open={action === "blacklist"}
         onOpenChange={(open) => setAction(open ? "blacklist" : null)}
       />
+      {canDelete ? (
+        <DeleteGuestDialog
+          guest={guest}
+          open={action === "delete"}
+          onOpenChange={(open) => setAction(open ? "delete" : null)}
+        />
+      ) : null}
     </>
   )
 }

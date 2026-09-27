@@ -8,17 +8,22 @@ import {
 import { StatCard } from "@/components/stat-card"
 import { getApiErrorMessage } from "@/lib/api/errors"
 import { fetchPaymentStats, paymentStatsQueryKey } from "@/lib/api/payments"
-import { PAYMENT_STAT_CARDS } from "@/lib/payments"
+import { getCurrentMonthRange, PAYMENT_STAT_CARDS } from "@/lib/payments"
 
 // Same grid as the bookings page's cards so the pages line up.
 const gridClassName =
   "grid grid-cols-[repeat(auto-fit,minmax(min(15rem,100%),1fr))] gap-4"
 
-/** All-time payment totals by status, from `GET /payments/stats`. */
+/**
+ * This month's payment totals by status, from `GET /payments/stats` with
+ * `date_from` / `date_to` pinned to the current month.
+ */
 export function PaymentStatsCards() {
+  // Recomputed each render, so the cards follow the calendar month.
+  const range = getCurrentMonthRange()
   const stats = useQuery({
-    queryKey: paymentStatsQueryKey,
-    queryFn: fetchPaymentStats,
+    queryKey: paymentStatsQueryKey(range),
+    queryFn: () => fetchPaymentStats(range),
   })
 
   if (stats.isPending) {

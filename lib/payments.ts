@@ -1,6 +1,27 @@
+import { endOfMonth, format, startOfMonth } from "date-fns"
+import type { DateRange } from "@/lib/api/payments"
 import { formatCurrency, humanizeSlug } from "@/lib/format"
 import { PAYMENT_METHODS, PAYMENT_TYPES } from "@/lib/schemas/payments"
 import type { PaymentStats } from "@/lib/types"
+
+/** The 1st through the last day of the current month. */
+export function getCurrentMonthRange(today = new Date()): DateRange {
+  return {
+    date_from: format(startOfMonth(today), "yyyy-MM-dd"),
+    date_to: format(endOfMonth(today), "yyyy-MM-dd"),
+  }
+}
+
+/**
+ * Statuses offered by the payments CSV export. These are the *booking*
+ * payment statuses the export endpoint filters on, not the `pending` /
+ * `verified` / `rejected` of a payment record.
+ */
+export const PAYMENT_EXPORT_STATUSES = [
+  "unpaid",
+  "deposit_paid",
+  "fully_paid",
+] as const
 
 /**
  * Statuses offered by the payments filter, in lifecycle order: a recorded
@@ -56,10 +77,6 @@ export function getPaymentsTotalAmount(stats: PaymentStats) {
   return stats.verified.amount + stats.pending.amount + stats.rejected.amount
 }
 
-function countPayments(count: number) {
-  return `${count} ${count === 1 ? "payment" : "payments"}`
-}
-
 /** The payments page's summary cards, in display order. */
 export const PAYMENT_STAT_CARDS: ReadonlyArray<{
   key: string
@@ -73,28 +90,27 @@ export const PAYMENT_STAT_CARDS: ReadonlyArray<{
     title: "Total recorded",
     titleClassName: "text-brand-azure dark:text-sky-300",
     value: (stats) => formatCurrency(getPaymentsTotalAmount(stats)),
-    label: (stats) => `${countPayments(stats.total_payments)} in total`,
+    label: (stats) => `${stats.total_payments} in total this month`,
   },
   {
     key: "verified",
     title: "Verified",
     titleClassName: "text-emerald-700 dark:text-emerald-300",
     value: (stats) => formatCurrency(stats.verified.amount),
-    label: (stats) => `${countPayments(stats.verified.count)} confirmed`,
+    label: (stats) => `${stats.verified.count} confirmed this month`,
   },
   {
     key: "pending",
     title: "Pending",
     titleClassName: "text-amber-700 dark:text-amber-300",
     value: (stats) => formatCurrency(stats.pending.amount),
-    label: (stats) =>
-      `${countPayments(stats.pending.count)} awaiting verification`,
+    label: (stats) => `${stats.pending.count} awaiting verification this month`,
   },
   {
     key: "rejected",
     title: "Rejected",
     titleClassName: "text-rose-700 dark:text-rose-300",
     value: (stats) => formatCurrency(stats.rejected.amount),
-    label: (stats) => `${countPayments(stats.rejected.count)} turned down`,
+    label: (stats) => `${stats.rejected.count} turned down this month`,
   },
 ]

@@ -4,6 +4,14 @@ import { useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { cn } from "cn"
+import { TablePagination } from "@/components/table-pagination"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import {
   Table,
   TableBody,
@@ -24,6 +32,7 @@ import {
   TableSkeletonRows,
   tableHeadClassName,
 } from "@/components/users/table-state"
+import { usePagination } from "@/hooks/use-pagination"
 import {
   fetchUnitDetails,
   fetchUnits,
@@ -31,15 +40,20 @@ import {
   unitsQueryKey,
 } from "@/lib/api/units"
 import { formatCurrency, humanizeSlug } from "@/lib/format"
-import { getRoomTypeLabel } from "@/lib/units"
+import { getRoomTypeLabel, UNIT_STATUSES } from "@/lib/units"
 
 const COLUMNS = 6
+
+/** Select can't hold "" as an item value, so "every status" uses a sentinel. */
+const ALL_STATUSES = "all"
 
 /** How long a hover-prefetched room stays fresh before another hover refetches it. */
 const PREFETCH_STALE_MS = 30_000
 
 export function UnitsTable() {
   const [search, setSearch] = useState("")
+  // "" means every status; filtered here since the endpoint lists all rooms.
+  const [status, setStatus] = useState("")
   const router = useRouter()
   const queryClient = useQueryClient()
 
@@ -63,27 +77,67 @@ export function UnitsTable() {
   }
 
   const visibleUnits = useMemo(() => {
-    const list = units.data ?? []
     const term = search.trim().toLowerCase()
-    if (!term) return list
-    return list.filter((unit) =>
-      [
-        unit.room_number,
-        getRoomTypeLabel(unit.room_type),
-        humanizeSlug(unit.status),
-      ].some((value) => value.toLowerCase().includes(term))
+    return (units.data ?? []).filter(
+      (unit) =>
+        (!status || unit.status.toLowerCase() === status) &&
+        (!term ||
+          [unit.room_number, getRoomTypeLabel(unit.room_type)].some((value) =>
+            value.toLowerCase().includes(term)
+          ))
     )
-  }, [units.data, search])
+  }, [units.data, search, status])
+
+  // Paged client-side; the endpoint returns every room at once.
+  const pagination = usePagination(visibleUnits)
+  const { setPage } = pagination
+
+  function handleSearchChange(value: string) {
+    setSearch(value)
+    setPage(1)
+  }
+
+  function handleStatusChange(value: string) {
+    setStatus(value === ALL_STATUSES ? "" : value)
+    setPage(1)
+  }
+
+  const term = search.trim()
+  const statusLabel = status ? humanizeSlug(status).toLowerCase() : ""
+  const emptyMessage = term
+    ? `No ${statusLabel ? `${statusLabel} ` : ""}units match "${term}".`
+    : statusLabel
+      ? `No ${statusLabel} units right now.`
+      : "No units yet. Add the first one above."
 
   return (
     <div className="overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-foreground/10">
-      <div className="flex max-w-xl flex-wrap items-center gap-3 p-4">
+      <div className="flex max-w-3xl flex-wrap items-center gap-3 p-4">
         <SearchInput
           value={search}
-          onChange={setSearch}
-          placeholder="Search room number, type or status"
+          onChange={handleSearchChange}
+          placeholder="Search room number or type"
           label="Search units"
         />
+        <Select
+          value={status || ALL_STATUSES}
+          onValueChange={handleStatusChange}
+        >
+          <SelectTrigger
+            aria-label="Filter by status"
+            className="h-11 w-full rounded-lg border-border bg-background px-3.5 text-base focus-visible:border-brand-azure focus-visible:ring-brand-azure/20 data-[size=default]:h-11 sm:w-52 md:text-base"
+          >
+            <SelectValue placeholder="All statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_STATUSES}>All statuses</SelectItem>
+            {UNIT_STATUSES.map((value) => (
+              <SelectItem key={value} value={value}>
+                {humanizeSlug(value)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <Table>
@@ -110,13 +164,9 @@ export function UnitsTable() {
               />
             </TableMessageRow>
           ) : visibleUnits.length === 0 ? (
-            <TableMessageRow columns={COLUMNS}>
-              {search
-                ? `No units match "${search.trim()}".`
-                : "No units yet. Add the first one above."}
-            </TableMessageRow>
+            <TableMessageRow columns={COLUMNS}>{emptyMessage}</TableMessageRow>
           ) : (
-            visibleUnits.map((unit) => (
+            pagination.pageItems.map((unit) => (
               <TableRow
                 key={unit.room_id}
                 className="h-14"
@@ -147,6 +197,17 @@ export function UnitsTable() {
           )}
         </TableBody>
       </Table>
+
+      {units.isSuccess ? (
+        <TablePagination
+          page={pagination.page}
+          pageCount={pagination.pageCount}
+          pageSize={pagination.pageSize}
+          total={pagination.total}
+          onPageChange={setPage}
+          itemLabel="units"
+        />
+      ) : null}
     </div>
   )
 }

@@ -2,6 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useState } from "react"
 import { Loader } from "lucide-react"
 import { useForm } from "react-hook-form"
 import toast from "react-hot-toast"
@@ -17,7 +18,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { getApiErrorMessage } from "@/lib/api/errors"
-import { guestsQueryKey, updateGuest } from "@/lib/api/guests"
+import {
+  guestsQueryKey,
+  IdDocumentUploadError,
+  updateGuest,
+  uploadPickedIdDocument,
+} from "@/lib/api/guests"
 import {
   guestSchema,
   toGuestFormValues,
@@ -33,8 +39,10 @@ interface EditGuestDialogProps {
 }
 
 /**
- * Edits a guest via `PATCH /guests/{id}`. The form is only mounted while
- * open so every open re-seeds from the latest `guest`.
+ * Edits a guest via `PATCH /guests/{id}`, then uploads a newly picked ID
+ * document to `POST /guests/{id}/id-document`. If only the upload fails the
+ * details lock and resubmitting retries just the upload. The form is only
+ * mounted while open so every open re-seeds from the latest `guest`.
  */
 function EditGuestDialog(props: EditGuestDialogProps) {
   if (!props.open) return null
@@ -43,6 +51,9 @@ function EditGuestDialog(props: EditGuestDialogProps) {
 
 function EditGuestForm({ guest, onOpenChange }: EditGuestDialogProps) {
   const queryClient = useQueryClient()
+  // Set once the details are saved so a failed upload can be retried
+  // without patching the guest again.
+  const [savedGuest, setSavedGuest] = useState<Guest | null>(null)
 
   const form = useForm<GuestValues>({
     resolver: zodResolver(guestSchema),
@@ -55,8 +66,16 @@ function EditGuestForm({ guest, onOpenChange }: EditGuestDialogProps) {
   } = form
 
   const mutation = useMutation({
-    mutationFn: (values: GuestValues) =>
-      updateGuest(guest.guest_id, toGuestPayload(values)),
+    mutationFn: async (values: GuestValues) => {
+      let saved = savedGuest
+      if (!saved) {
+        saved = await updateGuest(guest.guest_id, toGuestPayload(values))
+        setSavedGuest(saved)
+        queryClient.invalidateQueries({ queryKey: guestsQueryKey })
+      }
+      await uploadPickedIdDocument(saved.guest_id, values.id_document)
+      return saved
+    },
     onSuccess: async (saved) => {
       // Prefix key: refreshes the list and this guest's details together.
       await queryClient.invalidateQueries({ queryKey: guestsQueryKey })
@@ -64,6 +83,15 @@ function EditGuestForm({ guest, onOpenChange }: EditGuestDialogProps) {
       onOpenChange(false)
     },
     onError: (error) => {
+      if (error instanceof IdDocumentUploadError) {
+        setError("root", {
+          message: `The details were saved, but the ID document didn't upload: ${getApiErrorMessage(
+            error.cause,
+            "something went wrong."
+          )} Try again to retry the upload, or cancel to add it later.`,
+        })
+        return
+      }
       setError("root", {
         message: getApiErrorMessage(
           error,
@@ -99,7 +127,11 @@ function EditGuestForm({ guest, onOpenChange }: EditGuestDialogProps) {
             disabled={mutation.isPending}
             className="grid min-w-0 gap-4"
           >
-            <GuestFormFields form={form} pending={mutation.isPending} />
+            <GuestFormFields
+              form={form}
+              pending={mutation.isPending}
+              detailsLocked={Boolean(savedGuest)}
+            />
 
             {errors.root ? (
               <p

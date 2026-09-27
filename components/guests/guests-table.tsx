@@ -9,6 +9,7 @@ import {
   GuestActionsMenu,
 } from "@/components/guests/guest-actions-menu"
 import { GuestBlacklistBadge } from "@/components/guests/guest-blacklist-badge"
+import { TablePagination } from "@/components/table-pagination"
 import {
   Table,
   TableBody,
@@ -24,6 +25,7 @@ import {
   TableSkeletonRows,
   tableHeadClassName,
 } from "@/components/users/table-state"
+import { usePagination } from "@/hooks/use-pagination"
 import {
   fetchGuestDetails,
   fetchGuests,
@@ -56,6 +58,15 @@ export function GuestsTable() {
     )
   }, [guests.data, search])
 
+  // Paged client-side; the endpoint returns every guest at once.
+  const pagination = usePagination(visibleGuests)
+  const { setPage } = pagination
+
+  function handleSearchChange(value: string) {
+    setSearch(value)
+    setPage(1)
+  }
+
   /**
    * Warms the guest's details query and route so View / Update open
    * instantly. Failures are swallowed; the profile page surfaces them.
@@ -76,7 +87,7 @@ export function GuestsTable() {
       <div className="flex max-w-xl flex-wrap items-center gap-3 p-4">
         <SearchInput
           value={search}
-          onChange={setSearch}
+          onChange={handleSearchChange}
           placeholder="Search name, phone or email"
           label="Search guests"
         />
@@ -112,7 +123,7 @@ export function GuestsTable() {
                 : "No guests yet. Add the first one above."}
             </TableMessageRow>
           ) : (
-            visibleGuests.map((guest) => (
+            pagination.pageItems.map((guest) => (
               <TableRow
                 key={guest.guest_id}
                 className="h-14"
@@ -171,6 +182,17 @@ export function GuestsTable() {
           )}
         </TableBody>
       </Table>
+
+      {guests.isSuccess ? (
+        <TablePagination
+          page={pagination.page}
+          pageCount={pagination.pageCount}
+          pageSize={pagination.pageSize}
+          total={pagination.total}
+          onPageChange={setPage}
+          itemLabel="guests"
+        />
+      ) : null}
     </div>
   )
 }

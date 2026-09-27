@@ -19,13 +19,19 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { getApiErrorMessage } from "@/lib/api/errors"
-import { createGuest, guestsQueryKey } from "@/lib/api/guests"
+import {
+  createGuest,
+  guestsQueryKey,
+  IdDocumentUploadError,
+  uploadPickedIdDocument,
+} from "@/lib/api/guests"
 import {
   DEFAULT_ID_TYPE,
   guestSchema,
   toGuestPayload,
   type GuestValues,
 } from "@/lib/schemas/guests"
+import type { Guest } from "@/lib/types"
 
 const emptyValues: GuestValues = {
   full_name: "",
@@ -35,11 +41,22 @@ const emptyValues: GuestValues = {
   national_id: "",
   nationality: "",
   date_of_birth: null,
+  id_document: [],
 }
 
+/**
+ * Adds a guest in two steps, because the ID document hangs off a guest that
+ * already exists: `POST /guests/create`, then `POST
+ * /guests/{id}/id-document` for the picked file. If the upload fails the
+ * dialog keeps the created guest, locks the details and resubmitting only
+ * retries the upload.
+ */
 export function NewGuestDialog({ children }: PropsWithChildren) {
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
+  // Set once the guest is saved so a failed upload can be retried without
+  // creating the guest a second time.
+  const [savedGuest, setSavedGuest] = useState<Guest | null>(null)
 
   const form = useForm<GuestValues>({
     resolver: zodResolver(guestSchema),
@@ -53,13 +70,31 @@ export function NewGuestDialog({ children }: PropsWithChildren) {
   } = form
 
   const mutation = useMutation({
-    mutationFn: (values: GuestValues) => createGuest(toGuestPayload(values)),
+    mutationFn: async (values: GuestValues) => {
+      let saved = savedGuest
+      if (!saved) {
+        saved = await createGuest(toGuestPayload(values))
+        setSavedGuest(saved)
+        queryClient.invalidateQueries({ queryKey: guestsQueryKey })
+      }
+      await uploadPickedIdDocument(saved.guest_id, values.id_document)
+      return saved
+    },
     onSuccess: async (guest) => {
       await queryClient.invalidateQueries({ queryKey: guestsQueryKey })
       toast.success(`${guest.full_name} added as a guest.`)
       closeDialog()
     },
     onError: (error) => {
+      if (error instanceof IdDocumentUploadError) {
+        setError("root", {
+          message: `The guest was added, but the ID document didn't upload: ${getApiErrorMessage(
+            error.cause,
+            "something went wrong."
+          )} Try again to retry the upload, or cancel to add it later.`,
+        })
+        return
+      }
       setError("root", {
         message: getApiErrorMessage(
           error,
@@ -71,6 +106,7 @@ export function NewGuestDialog({ children }: PropsWithChildren) {
 
   function closeDialog() {
     reset(emptyValues)
+    setSavedGuest(null)
     mutation.reset()
     setOpen(false)
   }
@@ -107,7 +143,11 @@ export function NewGuestDialog({ children }: PropsWithChildren) {
             disabled={mutation.isPending}
             className="grid min-w-0 gap-4"
           >
-            <GuestFormFields form={form} pending={mutation.isPending} />
+            <GuestFormFields
+              form={form}
+              pending={mutation.isPending}
+              detailsLocked={Boolean(savedGuest)}
+            />
 
             {errors.root ? (
               <p

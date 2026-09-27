@@ -4,6 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { ChevronDown, Loader, LogOut, UserRound } from "lucide-react"
 import { cn } from "cn"
+import { canSeeNavItem, settingsNav } from "@/components/dashboard/nav"
 import {
   Popover,
   PopoverContent,
@@ -26,6 +27,13 @@ function HeaderUser() {
   const [open, setOpen] = useState(false)
 
   if (!user) return null
+
+  // Same rule as the sidebar footer link: super admins only.
+  const showSettings = canSeeNavItem(settingsNav, user.role)
+  const linkClassName = cn(
+    menuItemClassName,
+    "text-foreground hover:bg-brand-azure/10 hover:text-brand-azure focus-visible:bg-brand-azure/10 focus-visible:text-brand-azure"
+  )
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -73,14 +81,21 @@ function HeaderUser() {
           <Link
             href="/profile"
             onClick={() => setOpen(false)}
-            className={cn(
-              menuItemClassName,
-              "text-foreground hover:bg-brand-azure/10 hover:text-brand-azure focus-visible:bg-brand-azure/10 focus-visible:text-brand-azure"
-            )}
+            className={linkClassName}
           >
             <UserRound aria-hidden="true" />
             Profile
           </Link>
+          {showSettings ? (
+            <Link
+              href={settingsNav.href}
+              onClick={() => setOpen(false)}
+              className={linkClassName}
+            >
+              <settingsNav.icon aria-hidden="true" />
+              {settingsNav.title}
+            </Link>
+          ) : null}
           <button
             type="button"
             disabled={isLoggingOut}

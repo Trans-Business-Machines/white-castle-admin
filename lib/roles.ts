@@ -60,6 +60,12 @@ export const USER_MANAGEMENT_ROLES: readonly RoleName[] = [
   "admin",
 ]
 
+/** Roles allowed into the motel settings page (`/settings`). */
+export const SETTINGS_ROLES: readonly RoleName[] = ["super_admin"]
+
+/** Roles allowed to delete a guest record. */
+export const GUEST_DELETE_ROLES: readonly RoleName[] = ["super_admin", "admin"]
+
 interface RoleToneClasses {
   /** Tinted pill: background + text. */
   badge: string

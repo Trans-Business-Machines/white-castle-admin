@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState, type DragEvent } from "react"
 import { cn } from "@/lib/utils"
 import { ImagePlus, X } from "lucide-react"
-import { PhotoTile } from "@/components/units/photo-tile"
+import { DocumentTile, PhotoTile } from "@/components/units/photo-tile"
 import {
   getPhotoKey,
   getRoomPhotoError,
@@ -37,8 +37,27 @@ interface PhotoDropzoneProps {
   overflowMessage?: (count: number) => string
 }
 
+/** One picked file: an image preview, or a document tile for a PDF. */
+function PickedFile(props: {
+  file: File
+  index: number
+  onRemove: () => void
+  disabled?: boolean
+}) {
+  if (props.file.type.startsWith("image/")) return <PickedPhoto {...props} />
+  return (
+    <DocumentTile
+      name={props.file.name}
+      actionLabel={`Remove ${props.file.name}`}
+      actionIcon={X}
+      onAction={props.onRemove}
+      disabled={props.disabled}
+    />
+  )
+}
+
 /**
- * One picked file's preview. It owns its object URL, so adding or removing a
+ * One picked image's preview. It owns its object URL, so adding or removing a
  * photo never disturbs the tiles already on screen.
  */
 function PickedPhoto({
@@ -228,7 +247,7 @@ export function PhotoDropzone({
       {value.length > 0 ? (
         <ul className={photoGridClassName} aria-label="Photos to upload">
           {value.map((file, index) => (
-            <PickedPhoto
+            <PickedFile
               key={getPhotoKey(file)}
               file={file}
               index={index}

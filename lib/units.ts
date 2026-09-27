@@ -2,6 +2,14 @@ import { ROOM_TYPES } from "@/lib/schemas/units"
 import { humanizeSlug } from "@/lib/format"
 import type { Unit, UnitsOccupancyStats } from "@/lib/types"
 
+/** Room statuses offered by the units table's status filter. */
+export const UNIT_STATUSES = [
+  "available",
+  "occupied",
+  "housekeeping",
+  "maintenance",
+] as const
+
 const STATUS_BADGES: Record<string, string> = {
   available:
     "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300",
@@ -9,6 +17,8 @@ const STATUS_BADGES: Record<string, string> = {
     "bg-brand-azure/15 text-brand-navy dark:bg-brand-azure/20 dark:text-sky-200",
   reserved:
     "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300",
+  housekeeping:
+    "bg-violet-100 text-violet-800 dark:bg-violet-500/15 dark:text-violet-300",
   cleaning:
     "bg-violet-100 text-violet-800 dark:bg-violet-500/15 dark:text-violet-300",
   maintenance:

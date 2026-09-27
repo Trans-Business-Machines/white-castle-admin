@@ -4,7 +4,11 @@ import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Menu } from "lucide-react"
 import { cn } from "cn"
-import { canSeeNavItem, dashboardNav } from "@/components/dashboard/nav"
+import {
+  canSeeNavItem,
+  dashboardNav,
+  settingsNav,
+} from "@/components/dashboard/nav"
 import { SidebarUser } from "@/components/dashboard/sidebar-user"
 import {
   Sidebar,
@@ -48,6 +52,9 @@ function AppSidebar() {
   const visibleNav = dashboardNav.filter((item) =>
     canSeeNavItem(item, user?.role)
   )
+  const showSettings = canSeeNavItem(settingsNav, user?.role)
+  const settingsActive =
+    pathname === settingsNav.href || pathname.startsWith(`${settingsNav.href}/`)
 
   return (
     <Sidebar collapsible="icon" className="border-none">
@@ -131,7 +138,27 @@ function AppSidebar() {
           </SidebarGroup>
         </SidebarContent>
 
-        <SidebarFooter className="border-t border-white/15 px-4 py-3">
+        <SidebarFooter className="gap-1.5 border-t border-white/15 px-4 py-3">
+          {showSettings ? (
+            <SidebarMenu>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={settingsActive}
+                  tooltip={settingsNav.title}
+                  className={cn(
+                    "h-11 gap-3 rounded-lg px-3 text-[0.9375rem] text-white/85 hover:text-white data-active:bg-white/16 data-active:text-white [&_svg]:size-5",
+                    collapsedButtonClassName
+                  )}
+                >
+                  <Link href={settingsNav.href}>
+                    <settingsNav.icon aria-hidden="true" />
+                    <span className={labelClassName}>{settingsNav.title}</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          ) : null}
           <SidebarUser
             className={collapsedButtonClassName}
             labelClassName={labelClassName}

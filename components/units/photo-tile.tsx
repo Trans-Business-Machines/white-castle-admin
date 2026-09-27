@@ -1,16 +1,22 @@
 "use client"
 
+import { FileText } from "lucide-react"
 import { cn } from "@/lib/utils"
+
+type TileIcon = React.ComponentType<{
+  className?: string
+  "aria-hidden"?: boolean
+}>
+
+const tileActionClassName =
+  "absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-foreground/75 text-background shadow-sm backdrop-blur-xs transition-colors hover:bg-destructive focus-visible:ring-3 focus-visible:ring-brand-azure/40 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40"
 
 interface PhotoTileProps {
   src: string
   alt: string
   /** Accessible name for the corner button, e.g. "Remove photo 2". */
   actionLabel: string
-  actionIcon: React.ComponentType<{
-    className?: string
-    "aria-hidden"?: boolean
-  }>
+  actionIcon: TileIcon
   onAction: () => void
   disabled?: boolean
   /** Fades the image and shows `caption` — used for photos marked for removal. */
@@ -63,7 +69,46 @@ export function PhotoTile({
         onClick={onAction}
         disabled={disabled}
         aria-label={actionLabel}
-        className="absolute top-1.5 right-1.5 flex size-6 items-center justify-center rounded-full bg-foreground/75 text-background shadow-sm backdrop-blur-xs transition-colors hover:bg-destructive focus-visible:ring-3 focus-visible:ring-brand-azure/40 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-40"
+        className={tileActionClassName}
+      >
+        <ActionIcon aria-hidden className="size-3.5" />
+      </button>
+    </li>
+  )
+}
+
+/**
+ * `PhotoTile`'s counterpart for a file the browser can't preview as an
+ * image (a PDF): a document icon and the file name in the same square,
+ * with the same corner action.
+ */
+export function DocumentTile({
+  name,
+  actionLabel,
+  actionIcon: ActionIcon,
+  onAction,
+  disabled,
+}: {
+  name: string
+  actionLabel: string
+  actionIcon: TileIcon
+  onAction: () => void
+  disabled?: boolean
+}) {
+  return (
+    <li className="relative">
+      <div className="flex aspect-square w-full flex-col items-center justify-center gap-1.5 rounded-lg bg-canvas px-2 text-center ring-1 ring-foreground/10 dark:bg-input/30">
+        <FileText aria-hidden="true" className="size-7 text-brand-azure" />
+        <span className="line-clamp-2 text-[11px] leading-tight break-all text-muted-foreground">
+          {name}
+        </span>
+      </div>
+      <button
+        type="button"
+        onClick={onAction}
+        disabled={disabled}
+        aria-label={actionLabel}
+        className={tileActionClassName}
       >
         <ActionIcon aria-hidden className="size-3.5" />
       </button>

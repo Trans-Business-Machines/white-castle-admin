@@ -50,6 +50,46 @@ export async function updateGuest(guestId: string, payload: GuestPayload) {
   return response.data
 }
 
+/**
+ * POST /guests/{id}/id-document → attaches the guest's ID scan (PNG, JPG or
+ * PDF) as multipart `file`. The guest has to exist first, so the dialogs
+ * save the details before they upload.
+ */
+export async function uploadGuestIdDocument(guestId: string, file: File) {
+  const body = new FormData()
+  body.append("file", file)
+  await axiosInstance.post(
+    `/guests/${encodeURIComponent(guestId)}/id-document`,
+    body
+  )
+}
+
+/** DELETE /guests/{id} → permanently removes the guest record. */
+export async function deleteGuest(guestId: string) {
+  await axiosInstance.delete(`/guests/${encodeURIComponent(guestId)}`)
+}
+
+/** Marks a failure that happened after the guest itself was saved. */
+export class IdDocumentUploadError extends Error {
+  constructor(public readonly cause: unknown) {
+    super("ID document upload failed")
+  }
+}
+
+/**
+ * Uploads the picked ID document, if any, for a guest that's already
+ * saved. A failure is rethrown as `IdDocumentUploadError` so the dialog can
+ * tell it apart from a failed save.
+ */
+export async function uploadPickedIdDocument(guestId: string, files: File[]) {
+  if (files.length === 0) return
+  try {
+    await uploadGuestIdDocument(guestId, files[0])
+  } catch (error) {
+    throw new IdDocumentUploadError(error)
+  }
+}
+
 /** PATCH /guests/{id}/blacklist → blocks the guest from new bookings. */
 export async function blacklistGuest(
   guestId: string,

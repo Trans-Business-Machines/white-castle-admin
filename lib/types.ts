@@ -323,3 +323,13 @@ export interface PaymentStats {
   /** Keyed by method slug, e.g. "mpesa", "cash". */
   by_method: Record<string, PaymentTotals>
 }
+
+/** One motel-wide setting from `GET /motel/settings`. Values are strings. */
+export interface MotelSetting {
+  /** Snake-case identifier, e.g. "bb_cutoff_time". */
+  key: string
+  /** Always a string; "" when the setting hasn't been filled in. */
+  value: string
+  description: string
+  updated_at: string
+}

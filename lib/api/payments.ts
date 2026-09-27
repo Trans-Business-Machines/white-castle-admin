@@ -1,4 +1,5 @@
 import { axiosInstance } from "@/lib/axios"
+import { downloadCsv, type ExportFilters } from "@/lib/api/files"
 import type {
   CompletePaymentParams,
   CreatePaymentPayload,
@@ -13,7 +14,14 @@ export const paymentsListQueryKey = (filters: PaymentListFilters) =>
   ["payments", "list", filters] as const
 // Under the payments prefix (not `["reports"]`) so recording a payment,
 // which invalidates `paymentsQueryKey`, refreshes the cards too.
-export const paymentStatsQueryKey = ["payments", "stats"] as const
+export const paymentStatsQueryKey = (range: DateRange) =>
+  ["payments", "stats", range.date_from, range.date_to] as const
+
+/** Inclusive "yyyy-MM-dd" bounds. */
+export interface DateRange {
+  date_from: string
+  date_to: string
+}
 
 export interface PaymentListFilters {
   /** Payment status slug; "" means every status. */
@@ -36,10 +44,20 @@ export async function fetchPayments(filters: PaymentListFilters) {
   return response.data
 }
 
-/** GET /payments/stats → payment counts and totals by status. */
-export async function fetchPaymentStats() {
-  const response = await axiosInstance.get<PaymentStats>("/payments/stats")
+/** GET /payments/stats → payment counts and totals by status for a range. */
+export async function fetchPaymentStats(range: DateRange) {
+  const response = await axiosInstance.get<PaymentStats>("/payments/stats", {
+    params: range,
+  })
   return response.data
+}
+
+/**
+ * GET /payments/export/payments → the payments matching the filters as a
+ * CSV file (empty filters are omitted).
+ */
+export function exportPayments(filters: ExportFilters) {
+  return downloadCsv("/payments/export/payments", filters, "payments")
 }
 
 /** POST /payments/create → records a payment against a booking. */

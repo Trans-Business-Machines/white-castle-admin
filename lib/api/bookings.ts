@@ -1,7 +1,5 @@
-import { format } from "date-fns"
-import { isAxiosError } from "axios"
 import { axiosInstance } from "@/lib/axios"
-import { getDispositionFilename } from "@/lib/download"
+import { downloadCsv, type ExportFilters } from "@/lib/api/files"
 import type {
   ApproveBookingPayload,
   Booking,
@@ -59,39 +57,10 @@ export async function fetchBookings(filters: BookingListFilters) {
 }
 /**
  * GET /bookings/export/bookings → the bookings matching the filters as a CSV
- * file (every filter is optional; empty ones are omitted). The file name
- * comes from `Content-Disposition` when the server sends one.
+ * file (every filter is optional; empty ones are omitted).
  */
-export async function exportBookings(filters: BookingListFilters) {
-  const params = Object.fromEntries(
-    Object.entries(filters).filter(([, value]) => value !== "")
-  )
-  try {
-    const response = await axiosInstance.get<Blob>(
-      "/bookings/export/bookings",
-      {
-        params,
-        responseType: "blob",
-      }
-    )
-    return {
-      blob: response.data,
-      filename:
-        getDispositionFilename(response.headers["content-disposition"]) ??
-        `bookings-${format(new Date(), "yyyy-MM-dd")}.csv`,
-    }
-  } catch (error) {
-    // A blob request gets its error body as a Blob too; turn the JSON
-    // `detail` back into an object so `getApiErrorMessage` can read it.
-    if (isAxiosError(error) && error.response?.data instanceof Blob) {
-      try {
-        error.response.data = JSON.parse(await error.response.data.text())
-      } catch {
-        // Not JSON; the caller falls back to its generic message.
-      }
-    }
-    throw error
-  }
+export function exportBookings(filters: ExportFilters) {
+  return downloadCsv("/bookings/export/bookings", filters, "bookings")
 }
 
 export const bookingStatsQueryKey = (range: OccupancyRange) =>
