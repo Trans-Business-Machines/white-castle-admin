@@ -1,5 +1,6 @@
 "use client"
 
+import { useEffect } from "react"
 import {
   Controller,
   useWatch,
@@ -17,6 +18,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { formatCurrency } from "@/lib/format"
+import { getSuggestedPaymentAmount } from "@/lib/payments"
 import {
   EVIDENCE_TYPES,
   getEvidenceError,
@@ -157,6 +160,12 @@ interface PaymentFormFieldsProps {
     isError: boolean
     refetch: () => void
   }
+  /** The `deposit_percentage` setting, `null` when unset or invalid. */
+  depositPercentage: {
+    data: number | null | undefined
+    isPending: boolean
+    isError: boolean
+  }
   /**
    * Locks the details once the payment itself is saved, so a retry only
    * repeats the proof upload.
@@ -167,12 +176,38 @@ interface PaymentFormFieldsProps {
 }
 
 /**
+ * Explains the pre-filled amount, or why there isn't one for a deposit.
+ */
+function getAmountHint(
+  booking: Booking | undefined,
+  paymentType: string,
+  depositPercentage: PaymentFormFieldsProps["depositPercentage"]
+) {
+  if (!booking) return null
+  if (paymentType === "full_payment") {
+    return `The booking total, ${formatCurrency(booking.total_amount)}.`
+  }
+  if (paymentType !== "deposit") return null
+  if (depositPercentage.isPending) return "Loading the deposit percentage…"
+  if (depositPercentage.isError) {
+    return "We couldn't load the deposit percentage, so enter the amount."
+  }
+  if (depositPercentage.data == null) {
+    return "No deposit percentage is set in Settings, so enter the amount."
+  }
+  return `${depositPercentage.data}% of the ${formatCurrency(
+    booking.total_amount
+  )} booking total.`
+}
+
+/**
  * Every payment input. The owning dialog holds the form, the bookings
  * lookup and the mutation.
  */
 export function PaymentFormFields({
   form,
   bookings,
+  depositPercentage,
   detailsLocked,
   pending,
 }: PaymentFormFieldsProps) {
@@ -186,6 +221,26 @@ export function PaymentFormFields({
     formState: { errors },
   } = form
   const isCash = isCashMethod(useWatch({ control, name: "method" }))
+
+  const bookingId = useWatch({ control, name: "booking_id" })
+  const paymentType = useWatch({ control, name: "payment_type" })
+  const booking = bookings.data?.find((item) => item.booking_id === bookingId)
+  const suggestedAmount = booking
+    ? getSuggestedPaymentAmount(
+        booking,
+        paymentType,
+        depositPercentage.data ?? null
+      )
+    : null
+  const amountHint = getAmountHint(booking, paymentType, depositPercentage)
+
+  // Re-fill the amount whenever the booking, the type or the percentage
+  // changes it. Keyed on the number, so a bookings refetch doesn't
+  // overwrite an amount staff have edited.
+  useEffect(() => {
+    if (suggestedAmount === null || detailsLocked) return
+    setValue("amount", suggestedAmount, { shouldValidate: true })
+  }, [suggestedAmount, detailsLocked, setValue])
 
   return (
     <>
@@ -238,7 +293,9 @@ export function PaymentFormFields({
           )}
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-2">
+        {/* Top-aligned: the amount's hint makes its cell taller, and
+            stretching would push the payment type select down. */}
+        <div className="grid items-start gap-4 sm:grid-cols-2">
           {/* Amount */}
           <div className="grid gap-2">
             <Label htmlFor="payment-amount" className={labelClassName}>
@@ -254,14 +311,27 @@ export function PaymentFormFields({
               className={inputClassName}
               aria-invalid={Boolean(errors.amount)}
               aria-describedby={
-                errors.amount ? "payment-amount-error" : undefined
+                errors.amount
+                  ? "payment-amount-error"
+                  : amountHint
+                    ? "payment-amount-hint"
+                    : undefined
               }
               {...register("amount", { valueAsNumber: true })}
             />
-            <FieldError
-              id="payment-amount-error"
-              message={errors.amount?.message}
-            />
+            {errors.amount ? (
+              <FieldError
+                id="payment-amount-error"
+                message={errors.amount.message}
+              />
+            ) : amountHint ? (
+              <p
+                id="payment-amount-hint"
+                className="text-sm text-muted-foreground"
+              >
+                {amountHint}
+              </p>
+            ) : null}
           </div>
 
           {/* Payment type */}

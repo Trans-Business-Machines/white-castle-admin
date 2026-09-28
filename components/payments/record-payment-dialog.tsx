@@ -30,6 +30,12 @@ import {
   uploadPaymentEvidence,
 } from "@/lib/api/payments"
 import {
+  DEPOSIT_PERCENTAGE_KEY,
+  fetchSetting,
+  settingQueryKey,
+} from "@/lib/api/settings"
+import { parseDepositPercentage } from "@/lib/payments"
+import {
   emptyPaymentValues,
   isUnpaidBooking,
   paymentSchema,
@@ -63,6 +69,10 @@ interface RecordPaymentDialogProps {
  * dialog keeps the created payment, locks the details and resubmitting only
  * retries the upload.
  *
+ * The amount is pre-filled once a booking and a payment type are chosen:
+ * the booking's total for a full payment, `deposit_percentage` (a motel
+ * setting) of it for a deposit. Staff can still change it.
+ *
  * The form is only mounted while open so every open starts empty and no
  * stale values or object URLs linger between records.
  */
@@ -84,6 +94,13 @@ function RecordPaymentForm({ onOpenChange }: RecordPaymentDialogProps) {
     queryKey: bookingsListQueryKey(EMPTY_BOOKING_FILTERS),
     queryFn: () => fetchBookings(EMPTY_BOOKING_FILTERS),
     select: unpaidBookingsSelect,
+  })
+
+  // Deposits are pre-filled as this share of the booking's total.
+  const depositSetting = useQuery({
+    queryKey: settingQueryKey(DEPOSIT_PERCENTAGE_KEY),
+    queryFn: () => fetchSetting(DEPOSIT_PERCENTAGE_KEY),
+    select: (setting) => parseDepositPercentage(setting.value),
   })
 
   const form = useForm<PaymentValues>({
@@ -183,6 +200,7 @@ function RecordPaymentForm({ onOpenChange }: RecordPaymentDialogProps) {
             <PaymentFormFields
               form={form}
               bookings={bookings}
+              depositPercentage={depositSetting}
               detailsLocked={detailsLocked}
               pending={mutation.isPending}
             />

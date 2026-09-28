@@ -48,6 +48,7 @@ import {
 } from "@/lib/api/bookings"
 import { getApiErrorStatus } from "@/lib/api/errors"
 import { fetchUnits, unitsQueryKey } from "@/lib/api/units"
+import { sortBookings } from "@/lib/bookings"
 import { formatCurrency, formatDate } from "@/lib/format"
 
 const COLUMNS = 9
@@ -91,8 +92,8 @@ function normalizeReference(value: string) {
  * that one booking (filters are greyed out meanwhile); otherwise the
  * filtered list is shown. Filtering keeps the previous rows on screen
  * (dimmed) until the new page arrives so the table doesn't collapse to a
- * skeleton on every change. Rows are paged client-side (the endpoint
- * doesn't paginate yet).
+ * skeleton on every change. Rows are ordered by `sortBookings` and paged
+ * client-side (the endpoint doesn't paginate yet).
  */
 export function BookingsTable({
   variant = "bookings",
@@ -151,7 +152,9 @@ export function BookingsTable({
 
   const active = searching ? lookup : list
   const rows = useMemo(() => {
-    if (!searching) return list.data ?? []
+    // Unpaid → deposit paid → fully paid → checked in → checked out →
+    // cancelled → rejected, so what needs chasing sits at the top.
+    if (!searching) return sortBookings(list.data ?? [])
     // Lookup ignores status, so a reference outside this view's status
     // (e.g. an already-approved booking on /requests) counts as a miss.
     if (!lookup.data) return []

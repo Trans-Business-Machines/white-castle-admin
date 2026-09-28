@@ -11,6 +11,7 @@ import {
   Eye,
   LogIn,
   LogOut,
+  Trash2,
   UserPlus,
 } from "lucide-react"
 import { ApproveBookingDialog } from "@/components/bookings/approve-booking-dialog"
@@ -19,6 +20,7 @@ import {
   type BookingDialogAction,
 } from "@/components/bookings/booking-action-dialog"
 import { BookingReasonDialog } from "@/components/bookings/booking-reason-dialog"
+import { DeleteBookingDialog } from "@/components/bookings/delete-booking-dialog"
 import { ExtendBookingDialog } from "@/components/bookings/extend-booking-dialog"
 import { ExtraPersonsDialog } from "@/components/bookings/extra-persons-dialog"
 import { Button } from "@/components/ui/button"
@@ -34,8 +36,11 @@ import {
   canChangeStay,
   canCheckIn,
   canCheckOut,
+  canDeleteBooking,
 } from "@/lib/bookings"
+import { BOOKING_DELETE_ROLES, hasRole } from "@/lib/roles"
 import type { Booking } from "@/lib/types"
+import { useAuth } from "@/providers/auth-provider"
 
 /** Builds the details route for a booking. */
 export function getBookingHref(bookingId: string) {
@@ -43,7 +48,7 @@ export function getBookingHref(bookingId: string) {
 }
 
 /** Dialogs the menu renders itself rather than via `BookingActionDialog`. */
-type OwnDialog = "approve" | "reject" | "extend" | "extra_persons"
+type OwnDialog = "approve" | "reject" | "extend" | "extra_persons" | "delete"
 
 /** Which action opened a dialog, if any. */
 type BookingDialog = OwnDialog | BookingDialogAction
@@ -53,6 +58,7 @@ const OWN_DIALOGS: ReadonlySet<string> = new Set<OwnDialog>([
   "reject",
   "extend",
   "extra_persons",
+  "delete",
 ])
 
 function isOwnDialog(dialog: BookingDialog): dialog is OwnDialog {
@@ -68,17 +74,23 @@ interface BookingActionsMenuProps {
    * `/requests`); `"booking"` offers the lifecycle actions on `/bookings`.
    */
   variant?: "booking" | "request"
+  /** Runs after the booking is deleted, e.g. to leave its details page. */
+  onDeleted?: () => void
 }
 
 function BookingActionsMenu({
   booking,
   showView = true,
   variant = "booking",
+  onDeleted,
 }: BookingActionsMenuProps) {
   const router = useRouter()
+  const { user } = useAuth()
   const [dialog, setDialog] = useState<BookingDialog | null>(null)
 
   const isRequest = variant === "request"
+  // Super admins only; a guest who is in the room keeps their booking.
+  const showDelete = hasRole(user?.role, BOOKING_DELETE_ROLES)
 
   return (
     <>
@@ -161,6 +173,20 @@ function BookingActionsMenu({
               </DropdownMenuItem>
             </>
           )}
+
+          {showDelete ? (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                disabled={!canDeleteBooking(booking)}
+                onSelect={() => setDialog("delete")}
+              >
+                <Trash2 aria-hidden="true" />
+                Delete booking
+              </DropdownMenuItem>
+            </>
+          ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
 
@@ -197,6 +223,15 @@ function BookingActionsMenu({
           />
         </>
       )}
+
+      {showDelete ? (
+        <DeleteBookingDialog
+          booking={booking}
+          open={dialog === "delete"}
+          onOpenChange={(open) => setDialog(open ? "delete" : null)}
+          onDeleted={onDeleted}
+        />
+      ) : null}
     </>
   )
 }

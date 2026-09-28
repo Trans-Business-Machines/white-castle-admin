@@ -163,6 +163,11 @@ export async function checkInBooking(
   return response.data
 }
 
+/** DELETE /bookings/{id} → permanently removes the booking. */
+export async function deleteBooking(bookingId: string) {
+  await axiosInstance.delete(`/bookings/${encodeURIComponent(bookingId)}`)
+}
+
 /** PATCH /bookings/{id}/checkout → checks the guest out and frees the room. */
 export async function checkOutBooking(bookingId: string) {
   const response = await axiosInstance.patch<Booking>(

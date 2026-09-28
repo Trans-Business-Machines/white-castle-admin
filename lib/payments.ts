@@ -2,7 +2,7 @@ import { endOfMonth, format, startOfMonth } from "date-fns"
 import type { DateRange } from "@/lib/api/payments"
 import { formatCurrency, humanizeSlug } from "@/lib/format"
 import { PAYMENT_METHODS, PAYMENT_TYPES } from "@/lib/schemas/payments"
-import type { PaymentStats } from "@/lib/types"
+import type { Booking, Payment, PaymentStats } from "@/lib/types"
 
 /** The 1st through the last day of the current month. */
 export function getCurrentMonthRange(today = new Date()): DateRange {
@@ -50,6 +50,34 @@ const PAYMENT_STATUS_BADGES: Record<string, string> = {
 }
 
 const NEUTRAL_BADGE = "bg-muted text-muted-foreground"
+
+/**
+ * Where a payment sits in the payments list: pending (still needs a
+ * decision) → verified → rejected. Aliases share their group's rank and
+ * unknown slugs go last.
+ */
+const PAYMENT_STATUS_RANK: Record<string, number> = {
+  pending: 0,
+  verified: 1,
+  confirmed: 1,
+  completed: 1,
+  rejected: 2,
+  failed: 2,
+}
+
+function getPaymentRank(payment: Pick<Payment, "status">) {
+  return PAYMENT_STATUS_RANK[payment.status.toLowerCase()] ?? 3
+}
+
+/**
+ * A copy of `payments` in list order (`getPaymentRank`). The sort is stable,
+ * so payments with the same status keep the API's order.
+ */
+export function sortPayments<T extends Pick<Payment, "status">>(
+  payments: readonly T[]
+) {
+  return [...payments].sort((a, b) => getPaymentRank(a) - getPaymentRank(b))
+}
 
 /** Pill tone for a payment record's status; unknown slugs go neutral. */
 export function getPaymentRecordStatusClasses(status: string) {
@@ -114,3 +142,49 @@ export const PAYMENT_STAT_CARDS: ReadonlyArray<{
     label: (stats) => `${stats.rejected.count} turned down this month`,
   },
 ]
+
+/**
+ * The `deposit_percentage` setting as a number, or `null` when it's unset or
+ * not a percentage (the record form then leaves the amount for staff).
+ */
+export function parseDepositPercentage(value: string | undefined) {
+  if (!value?.trim()) return null
+  const percentage = Number(value)
+  return Number.isFinite(percentage) && percentage > 0 && percentage <= 100
+    ? percentage
+    : null
+}
+
+/** A shilling amount rounded to the cent, so 33% of 1,001 isn't 330.33000… */
+function toCents(amount: number) {
+  return Math.round(amount * 100) / 100
+}
+
+/**
+ * What the record form pre-fills for a booking: its whole total for a full
+ * payment, `depositPercentage`% of it for a deposit. `null` when the type
+ * isn't chosen yet or the percentage isn't known.
+ */
+export function getSuggestedPaymentAmount(
+  booking: Pick<Booking, "total_amount">,
+  paymentType: string,
+  depositPercentage: number | null
+) {
+  if (paymentType === "full_payment") return booking.total_amount
+  if (paymentType === "deposit" && depositPercentage !== null) {
+    return toCents((booking.total_amount * depositPercentage) / 100)
+  }
+  return null
+}
+
+/**
+ * What's left to pay on a booking once its deposit is in: the booking's
+ * current total (which grows with extensions and extra guests) less the
+ * deposit, never below 0.
+ */
+export function getRemainingBalance(
+  booking: Pick<Booking, "total_amount">,
+  deposit: Pick<Payment, "amount">
+) {
+  return Math.max(0, toCents(booking.total_amount - deposit.amount))
+}

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useMemo, useState } from "react"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { cn } from "cn"
 import { PaymentActionsMenu } from "@/components/payments/payment-actions-menu"
@@ -35,7 +35,11 @@ import {
   type PaymentListFilters,
 } from "@/lib/api/payments"
 import { formatCurrency, formatTimestamp } from "@/lib/format"
-import { getPaymentMethodLabel, getPaymentTypeLabel } from "@/lib/payments"
+import {
+  getPaymentMethodLabel,
+  getPaymentTypeLabel,
+  sortPayments,
+} from "@/lib/payments"
 
 const COLUMNS = 9
 
@@ -43,7 +47,8 @@ const COLUMNS = 9
  * Payments list with server-side reference search and status / date
  * filters, paged client-side (the endpoint doesn't paginate yet). Filtering
  * keeps the previous rows on screen (dimmed) until the new list arrives so
- * the table doesn't collapse to a skeleton on every change.
+ * the table doesn't collapse to a skeleton on every change. Rows are
+ * ordered pending → verified → rejected (`sortPayments`).
  */
 export function PaymentsTable() {
   const [filters, setFilters] = useState<PaymentFilterValues>(
@@ -59,7 +64,9 @@ export function PaymentsTable() {
     placeholderData: keepPreviousData,
   })
 
-  const pagination = usePagination(payments.data ?? [])
+  // Pending first (they still need a decision), then verified, then rejected.
+  const rows = useMemo(() => sortPayments(payments.data ?? []), [payments.data])
+  const pagination = usePagination(rows)
   const { setPage } = pagination
 
   function handleSearchChange(value: string) {

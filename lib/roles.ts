@@ -66,6 +66,9 @@ export const SETTINGS_ROLES: readonly RoleName[] = ["super_admin"]
 /** Roles allowed to delete a guest record. */
 export const GUEST_DELETE_ROLES: readonly RoleName[] = ["super_admin", "admin"]
 
+/** Roles allowed to delete a booking. */
+export const BOOKING_DELETE_ROLES: readonly RoleName[] = ["super_admin"]
+
 interface RoleToneClasses {
   /** Tinted pill: background + text. */
   badge: string

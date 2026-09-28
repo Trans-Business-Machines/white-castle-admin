@@ -1,7 +1,8 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useEffect } from "react"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { HandCoins, Loader } from "lucide-react"
 import { Controller, useForm, useWatch } from "react-hook-form"
 import toast from "react-hot-toast"
@@ -24,10 +25,15 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { bookingsQueryKey } from "@/lib/api/bookings"
+import {
+  bookingQueryKey,
+  bookingsQueryKey,
+  fetchBookingDetails,
+} from "@/lib/api/bookings"
 import { getApiErrorMessage } from "@/lib/api/errors"
 import { completePayment, paymentsQueryKey } from "@/lib/api/payments"
 import { formatCurrency } from "@/lib/format"
+import { getRemainingBalance } from "@/lib/payments"
 import {
   completePaymentSchema,
   emptyCompletePaymentValues,
@@ -48,7 +54,9 @@ interface CompletePaymentDialogProps {
 /**
  * Records the balance on a deposit's booking (`POST
  * /payments/complete/{booking_ref}`, sent as query params) with the
- * signed-in staff member's `user_id` as `recorded_by`.
+ * signed-in staff member's `user_id` as `recorded_by`. The amount is the
+ * booking's remaining balance (its current total less this deposit), read
+ * from `GET /bookings/{id}` and not editable.
  */
 function CompletePaymentDialog(props: CompletePaymentDialogProps) {
   // Mounted only while open so the form starts empty each time.
@@ -76,6 +84,32 @@ function CompletePaymentForm({
     defaultValues: emptyCompletePaymentValues,
   })
   const isCash = isCashMethod(useWatch({ control, name: "method" }))
+
+  // The booking's current total, which extensions and extra guests grow.
+  const booking = useQuery({
+    queryKey: bookingQueryKey(payment.booking_id),
+    queryFn: () => fetchBookingDetails(payment.booking_id),
+  })
+  const balance = booking.data
+    ? getRemainingBalance(booking.data, payment)
+    : null
+  const alreadyPaid =
+    booking.data?.payment_status.toLowerCase() === "fully_paid" || balance === 0
+  const canSubmit = balance !== null && !alreadyPaid
+
+  // The amount is read-only, so it's only ever the balance.
+  useEffect(() => {
+    if (balance !== null) setValue("amount", balance)
+  }, [balance, setValue])
+
+  let amountNote: string | null = null
+  if (booking.isPending) amountNote = "Working out the balance…"
+  else if (alreadyPaid) amountNote = "This booking is already fully paid."
+  else if (booking.data) {
+    amountNote = `The ${formatCurrency(
+      booking.data.total_amount
+    )} booking total less the ${formatCurrency(payment.amount)} deposit.`
+  }
 
   const mutation = useMutation({
     mutationFn: (values: CompletePaymentValues) => {
@@ -143,21 +177,46 @@ function CompletePaymentForm({
                 id="complete-amount"
                 type="number"
                 inputMode="decimal"
-                min={1}
-                step="any"
-                autoFocus
-                placeholder="13500"
-                className={inputClassName}
+                readOnly
+                placeholder={booking.isPending ? "Loading…" : undefined}
+                className={`${inputClassName} cursor-default read-only:bg-muted read-only:focus-visible:border-border read-only:focus-visible:ring-0`}
                 aria-invalid={Boolean(errors.amount)}
                 aria-describedby={
-                  errors.amount ? "complete-amount-error" : undefined
+                  errors.amount
+                    ? "complete-amount-error"
+                    : amountNote
+                      ? "complete-amount-note"
+                      : undefined
                 }
                 {...register("amount", { valueAsNumber: true })}
               />
-              <FieldError
-                id="complete-amount-error"
-                message={errors.amount?.message}
-              />
+              {booking.isError ? (
+                <p className="flex items-center gap-2 text-sm text-destructive">
+                  {getApiErrorMessage(
+                    booking.error,
+                    "We couldn't load the booking's balance."
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => booking.refetch()}
+                    className="font-semibold underline underline-offset-4"
+                  >
+                    Retry
+                  </button>
+                </p>
+              ) : errors.amount ? (
+                <FieldError
+                  id="complete-amount-error"
+                  message={errors.amount.message}
+                />
+              ) : amountNote ? (
+                <p
+                  id="complete-amount-note"
+                  className="text-sm text-muted-foreground"
+                >
+                  {amountNote}
+                </p>
+              ) : null}
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
@@ -212,6 +271,7 @@ function CompletePaymentForm({
               </DialogClose>
               <Button
                 type="submit"
+                disabled={!canSubmit}
                 className="h-11 rounded-full bg-brand-azure px-5 text-white hover:bg-brand-azure/90 focus-visible:ring-brand-azure/30"
               >
                 {mutation.isPending ? (

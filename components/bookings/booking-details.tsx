@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
 import { cn } from "cn"
 import {
@@ -35,7 +36,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { getUnitHref } from "@/components/units/unit-actions-menu"
 import { bookingQueryKey, fetchBookingDetails } from "@/lib/api/bookings"
-import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/errors"
+import { getApiErrorStatus } from "@/lib/api/errors"
 import { fetchUnits, unitsQueryKey } from "@/lib/api/units"
 import { formatCurrency, formatDate, formatTimestamp } from "@/lib/format"
 import type { Booking } from "@/lib/types"
@@ -148,6 +149,7 @@ function BookingDetailsSkeleton() {
 
 /** A booking's full record: stay, guest, payment, QR code and audit trail. */
 function BookingDetails({ bookingId }: { bookingId: string }) {
+  const router = useRouter()
   const query = useQuery({
     queryKey: bookingQueryKey(bookingId),
     queryFn: () => fetchBookingDetails(bookingId),
@@ -169,11 +171,7 @@ function BookingDetails({ bookingId }: { bookingId: string }) {
             <CardTitle className="text-lg font-bold">
               {notFound ? "Booking not found" : "We couldn't load this booking"}
             </CardTitle>
-            <CardDescription>
-              {notFound
-                ? "This booking may have been removed or the link is out of date."
-                : getApiErrorMessage(query.error, "Something went wrong.")}
-            </CardDescription>
+            <CardDescription>We could not find this booking</CardDescription>
           </CardHeader>
           {notFound ? null : (
             <CardContent>
@@ -232,6 +230,7 @@ function BookingDetails({ bookingId }: { bookingId: string }) {
             booking={booking}
             showView={false}
             variant={status === "pending" ? "request" : "booking"}
+            onDeleted={() => router.replace("/bookings")}
           />
         </CardContent>
       </Card>

@@ -74,9 +74,6 @@ export function getPaymentStatusClasses(status: string) {
   return PAYMENT_STATUS_BADGES[status.toLowerCase()] ?? NEUTRAL_BADGE
 }
 
-/** Booking payment statuses that clear a guest for check-in. */
-const CHECK_IN_PAYMENT_STATUSES = new Set(["deposit_paid", "fully_paid"])
-
 /** Booking statuses a guest can no longer be checked in from. */
 const NO_CHECK_IN_STATUSES = new Set([
   "checked_in",
@@ -86,17 +83,56 @@ const NO_CHECK_IN_STATUSES = new Set([
 ])
 
 /**
- * A guest may check in once the deposit, or the full amount, is paid, and
- * only if they haven't already checked in or out and the booking is still
- * live.
+ * A guest may only check in once the booking is fully paid (a deposit isn't
+ * enough), and only if they haven't already checked in or out and the
+ * booking is still live. The check-in dialog also requires the guest's ID
+ * on record (`getMissingIdDetails` in `lib/guests.ts`).
  */
 export function canCheckIn(
   booking: Pick<Booking, "payment_status" | "status">
 ) {
   return (
-    CHECK_IN_PAYMENT_STATUSES.has(booking.payment_status.toLowerCase()) &&
+    booking.payment_status.toLowerCase() === "fully_paid" &&
     !NO_CHECK_IN_STATUSES.has(booking.status.toLowerCase())
   )
+}
+
+/**
+ * Where a booking sits in the bookings list. Stays that have started or
+ * ended rank by their status (checked in → checked out → cancelled →
+ * rejected); everything still ahead ranks by payment so the desk sees what
+ * is owed first (unpaid → deposit paid → fully paid).
+ */
+const BOOKING_STATUS_RANK: Record<string, number> = {
+  checked_in: 3,
+  checked_out: 4,
+  cancelled: 5,
+  rejected: 6,
+}
+
+const BOOKING_PAYMENT_RANK: Record<string, number> = {
+  unpaid: 0,
+  deposit_paid: 1,
+  fully_paid: 2,
+}
+
+function getBookingRank(booking: Pick<Booking, "payment_status" | "status">) {
+  return (
+    BOOKING_STATUS_RANK[booking.status.toLowerCase()] ??
+    // Unknown payment slugs sit with the fully paid ones.
+    BOOKING_PAYMENT_RANK[booking.payment_status.toLowerCase()] ??
+    BOOKING_PAYMENT_RANK.fully_paid
+  )
+}
+
+/**
+ * A copy of `bookings` in list order (`getBookingRank`). The sort is stable,
+ * so bookings in the same group keep the API's order.
+ */
+export function sortBookings<
+  T extends Pick<Booking, "payment_status" | "status">,
+>(bookings: readonly T[]) {
+  return [...bookings].sort((a, b) => getBookingRank(a) - getBookingRank(b))
 }
 
 /** Booking statuses that can no longer be cancelled. */
@@ -119,6 +155,11 @@ export function isCheckedIn(booking: Pick<Booking, "status">) {
 
 /** Only a guest who is currently checked in can be checked out. */
 export const canCheckOut = isCheckedIn
+
+/** A booking can't be deleted while its guest is in the room. */
+export function canDeleteBooking(booking: Pick<Booking, "status">) {
+  return !isCheckedIn(booking)
+}
 
 /**
  * Extending the stay and adding extra people only apply while the guest is
