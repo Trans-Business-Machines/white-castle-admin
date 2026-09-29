@@ -12,10 +12,18 @@ import { humanizeSlug } from "@/lib/format"
 import type { Unit } from "@/lib/types"
 import { getRoomTypeLabel } from "@/lib/units"
 
-const BOOKABLE_STATUS = "available"
+/**
+ * Statuses a new booking can take. A room in `housekeeping` is only being
+ * cleaned, which doesn't block a booking (per the backend), so it counts.
+ */
+const BOOKABLE_STATUSES = ["available", "housekeeping"]
+
+function isAvailable(room: Unit) {
+  return room.status.toLowerCase() === "available"
+}
 
 export function isRoomBookable(room: Unit) {
-  return room.status.toLowerCase() === BOOKABLE_STATUS
+  return BOOKABLE_STATUSES.includes(room.status.toLowerCase())
 }
 
 interface RoomSelectProps {
@@ -35,8 +43,10 @@ interface RoomSelectProps {
 
 /**
  * Room picker for a booking. Every room is listed so staff can see the full
- * inventory, but only `available` rooms can be chosen; the rest are disabled
- * with their status in brackets, e.g. "Room 104 (Occupied)".
+ * inventory, but only `available` and `housekeeping` rooms can be chosen;
+ * the rest are disabled. Any room that isn't `available` shows its status
+ * in brackets, e.g. "Room 104 (Occupied)" or a selectable
+ * "Room 102 (Housekeeping)".
  */
 export function RoomSelect({
   id,
@@ -79,7 +89,7 @@ export function RoomSelect({
               disabled={!bookable}
             >
               Room {room.room_number} · {getRoomTypeLabel(room.room_type)}
-              {bookable ? "" : ` (${humanizeSlug(room.status)})`}
+              {isAvailable(room) ? "" : ` (${humanizeSlug(room.status)})`}
             </SelectItem>
           )
         })}

@@ -24,6 +24,7 @@ import { fetchGuests, guestsQueryKey } from "@/lib/api/guests"
 import { fetchUnits, unitsQueryKey } from "@/lib/api/units"
 import {
   bookingSchema,
+  DEFAULT_MEAL_PLAN,
   toBookingPayload,
   type BookingValues,
 } from "@/lib/schemas/bookings"
@@ -40,6 +41,7 @@ const emptyValues: BookingValues = {
   adults: 1,
   children: 0,
   special_requests: "",
+  meal_plan: DEFAULT_MEAL_PLAN,
 }
 
 export function NewBookingDialog({ children }: PropsWithChildren) {
@@ -74,6 +76,7 @@ export function NewBookingDialog({ children }: PropsWithChildren) {
     queryFn: fetchUnits,
     enabled: open,
   })
+
   const guests = useQuery({
     queryKey: guestsQueryKey,
     queryFn: fetchGuests,

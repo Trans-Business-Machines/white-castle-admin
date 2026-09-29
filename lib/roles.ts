@@ -63,6 +63,21 @@ export const USER_MANAGEMENT_ROLES: readonly RoleName[] = [
 /** Roles allowed into the motel settings page (`/settings`). */
 export const SETTINGS_ROLES: readonly RoleName[] = ["super_admin"]
 
+/** Roles allowed into the payments page (`/payments`). */
+export const PAYMENTS_ROLES: readonly RoleName[] = [
+  "super_admin",
+  "admin",
+  "receptionist",
+  "finance",
+]
+
+/** Roles allowed to verify or reject a payment. */
+export const PAYMENT_REVIEW_ROLES: readonly RoleName[] = [
+  "super_admin",
+  "admin",
+  "finance",
+]
+
 /** Roles allowed to delete a guest record. */
 export const GUEST_DELETE_ROLES: readonly RoleName[] = ["super_admin", "admin"]
 

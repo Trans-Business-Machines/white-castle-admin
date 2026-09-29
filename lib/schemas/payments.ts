@@ -4,6 +4,7 @@ import type {
   CompletePaymentParams,
   CreatePaymentPayload,
   RejectPaymentPayload,
+  StayChangePaymentType,
 } from "@/lib/types"
 
 /** Image types accepted as proof of payment (an M-Pesa or bank screenshot). */
@@ -115,14 +116,11 @@ export const emptyPaymentValues: PaymentValues = {
 }
 
 /**
- * Shapes form values into the body `POST /payments/create` expects.
- * `recordedBy` is the signed-in staff member's `user_id`; the proof image
- * is left out because it goes to `/payments/{id}/evidence` afterwards.
+ * Shapes form values into the body `POST /payments/create` expects. The
+ * proof image is left out because it goes to `/payments/{id}/evidence`
+ * afterwards.
  */
-export function toPaymentPayload(
-  values: PaymentValues,
-  recordedBy: string
-): CreatePaymentPayload {
+export function toPaymentPayload(values: PaymentValues): CreatePaymentPayload {
   return {
     booking_id: values.booking_id,
     booking_ref: values.booking_ref,
@@ -130,7 +128,43 @@ export function toPaymentPayload(
     method: values.method,
     reference: isCashMethod(values.method) ? "" : values.reference.trim(),
     payment_type: values.payment_type,
-    recorded_by: recordedBy,
+  }
+}
+
+/**
+ * Paying for a stay change (extra nights or extra people): only how it was
+ * paid and (for M-Pesa) the transaction reference. The booking, the amount
+ * and the type come from the change the backend just priced.
+ */
+export const stayChangePaymentSchema = paymentFields
+  .pick({ method: true, reference: true })
+  .refine(hasReferenceUnlessCash, referenceRequiredIssue)
+
+export type StayChangePaymentValues = z.infer<typeof stayChangePaymentSchema>
+
+export const emptyStayChangePaymentValues: StayChangePaymentValues = {
+  method: "" as StayChangePaymentValues["method"],
+  reference: "",
+}
+
+/**
+ * The `POST /payments/create` body for a stay change: the booking, its
+ * `total_extra_charge` as the amount and `extension` / `extra_persons` as
+ * the type.
+ */
+export function toStayChangePaymentPayload(
+  values: StayChangePaymentValues,
+  charge: Pick<
+    CreatePaymentPayload,
+    "booking_id" | "booking_ref" | "amount"
+  > & {
+    payment_type: StayChangePaymentType
+  }
+): CreatePaymentPayload {
+  return {
+    ...charge,
+    method: values.method,
+    reference: isCashMethod(values.method) ? "" : values.reference.trim(),
   }
 }
 
@@ -152,12 +186,10 @@ export const emptyCompletePaymentValues: CompletePaymentValues = {
 
 /**
  * Shapes the form into the query params `POST /payments/complete/{ref}`
- * expects. Cash sends no `reference`; `recordedBy` is the signed-in staff
- * member's `user_id`.
+ * expects. Cash sends no `reference`.
  */
 export function toCompletePaymentParams(
-  values: CompletePaymentValues,
-  recordedBy: string
+  values: CompletePaymentValues
 ): CompletePaymentParams {
   return {
     amount: values.amount,
@@ -165,7 +197,6 @@ export function toCompletePaymentParams(
     ...(isCashMethod(values.method)
       ? {}
       : { reference: values.reference.trim() }),
-    recorded_by: recordedBy,
   }
 }
 
@@ -182,16 +213,12 @@ export type RejectPaymentValues = z.infer<typeof rejectPaymentSchema>
 
 /**
  * Shapes the reason form into the body `PATCH /payments/{id}/reject`
- * expects. `rejectedBy` is the signed-in staff member's `user_id`.
+ * expects.
  */
 export function toRejectPaymentPayload(
-  values: RejectPaymentValues,
-  rejectedBy: string
+  values: RejectPaymentValues
 ): RejectPaymentPayload {
-  return {
-    rejection_reason: values.reason.trim(),
-    rejected_by: rejectedBy,
-  }
+  return { rejection_reason: values.reason.trim() }
 }
 
 /** A booking can be paid for while nothing has been settled against it yet. */

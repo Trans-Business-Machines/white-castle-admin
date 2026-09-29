@@ -7,11 +7,6 @@ import { EMPTY_BOOKING_FILTERS } from "@/components/bookings/bookings-filters"
 import { RecordPaymentDialog } from "@/components/payments/record-payment-dialog"
 import { Button } from "@/components/ui/button"
 import { bookingsListQueryKey, fetchBookings } from "@/lib/api/bookings"
-import {
-  DEPOSIT_PERCENTAGE_KEY,
-  fetchSetting,
-  settingQueryKey,
-} from "@/lib/api/settings"
 
 /** How long a prefetched bookings list is reused before refetching. */
 const PREFETCH_STALE_MS = 30_000
@@ -21,9 +16,8 @@ export function RecordPaymentButton() {
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
 
-  // Warm the bookings list (and the deposit percentage the amount is
-  // pre-filled from) as soon as the page renders so the picker has its
-  // options the moment the dialog opens. `query` is a no-op while the
+  // Warm the bookings list as soon as the page renders so the picker has
+  // its options the moment the dialog opens. `query` is a no-op while the
   // cached data is still fresh; failures are swallowed because the dialog's
   // own `useQuery` surfaces them once it's open.
   useEffect(() => {
@@ -31,13 +25,6 @@ export function RecordPaymentButton() {
       .query({
         queryKey: bookingsListQueryKey(EMPTY_BOOKING_FILTERS),
         queryFn: () => fetchBookings(EMPTY_BOOKING_FILTERS),
-        staleTime: PREFETCH_STALE_MS,
-      })
-      .catch(() => undefined)
-    queryClient
-      .query({
-        queryKey: settingQueryKey(DEPOSIT_PERCENTAGE_KEY),
-        queryFn: () => fetchSetting(DEPOSIT_PERCENTAGE_KEY),
         staleTime: PREFETCH_STALE_MS,
       })
       .catch(() => undefined)

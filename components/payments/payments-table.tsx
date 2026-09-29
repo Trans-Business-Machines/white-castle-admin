@@ -4,6 +4,7 @@ import { useMemo, useState } from "react"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import { cn } from "cn"
 import { PaymentActionsMenu } from "@/components/payments/payment-actions-menu"
+import { PaymentEvidenceDialog } from "@/components/payments/payment-evidence-dialog"
 import { PaymentRecordStatusBadge } from "@/components/payments/payment-status-badge"
 import {
   EMPTY_PAYMENT_FILTERS,
@@ -36,6 +37,7 @@ import {
 } from "@/lib/api/payments"
 import { formatCurrency, formatTimestamp } from "@/lib/format"
 import {
+  getEvidenceFileId,
   getPaymentMethodLabel,
   getPaymentTypeLabel,
   sortPayments,
@@ -160,16 +162,11 @@ export function PaymentsTable() {
                   </div>
                 </TableCell>
                 <TableCell className="px-4">
-                  {payment.evidence_url ? (
-                    <a
-                      href={payment.evidence_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      title={payment.evidence_filename ?? undefined}
-                      className="font-semibold text-brand-azure underline underline-offset-4"
-                    >
-                      View
-                    </a>
+                  {getEvidenceFileId(payment) ? (
+                    <PaymentEvidenceDialog
+                      payment={payment}
+                      fileId={getEvidenceFileId(payment)!}
+                    />
                   ) : (
                     <span className="text-muted-foreground">—</span>
                   )}

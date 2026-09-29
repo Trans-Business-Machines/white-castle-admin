@@ -10,6 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react"
 import {
+  PAYMENTS_ROLES,
   SETTINGS_ROLES,
   USER_MANAGEMENT_ROLES,
   hasRole,
@@ -60,6 +61,7 @@ export const dashboardNav: NavItem[] = [
     description: "Booking payments and confirmations",
     href: "/payments",
     icon: Banknote,
+    roles: PAYMENTS_ROLES,
   },
   {
     title: "User Management",

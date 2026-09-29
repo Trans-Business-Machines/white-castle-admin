@@ -22,3 +22,14 @@ export function saveBlob(blob: Blob, filename: string) {
   // Revoke on the next tick so the click has started the download first.
   setTimeout(() => URL.revokeObjectURL(url), 0)
 }
+
+/**
+ * The last path segment of a file URL, which the backend uses as the
+ * `file_id` of its file endpoints. `null` when there isn't one.
+ */
+export function getUrlFileId(url: string | null | undefined) {
+  if (!url) return null
+  const path = url.split(/[?#]/)[0].replace(/\/+$/, "")
+  const segment = path.slice(path.lastIndexOf("/") + 1)
+  return segment ? decodeURIComponent(segment) : null
+}

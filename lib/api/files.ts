@@ -36,15 +36,22 @@ export async function downloadCsv(
         `${fallbackName}-${format(new Date(), "yyyy-MM-dd")}.csv`,
     }
   } catch (error) {
-    // A blob request gets its error body as a Blob too; turn the JSON
-    // `detail` back into an object so `getApiErrorMessage` can read it.
-    if (isAxiosError(error) && error.response?.data instanceof Blob) {
-      try {
-        error.response.data = JSON.parse(await error.response.data.text())
-      } catch {
-        // Not JSON; the caller falls back to its generic message.
-      }
-    }
-    throw error
+    throw await parseBlobError(error)
   }
+}
+
+/**
+ * A `responseType: "blob"` request gets its error body as a Blob too; this
+ * turns the JSON `detail` back into an object so `getApiErrorMessage` can
+ * read it. Returns the (possibly patched) error for the caller to rethrow.
+ */
+export async function parseBlobError(error: unknown) {
+  if (isAxiosError(error) && error.response?.data instanceof Blob) {
+    try {
+      error.response.data = JSON.parse(await error.response.data.text())
+    } catch {
+      // Not JSON; the caller falls back to its generic message.
+    }
+  }
+  return error
 }

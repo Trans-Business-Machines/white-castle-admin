@@ -7,12 +7,23 @@ import { RoomSelect } from "@/components/bookings/room-select"
 import { StayDatePicker } from "@/components/bookings/stay-date-picker"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { MAX_OCCUPANTS, type BookingValues } from "@/lib/schemas/bookings"
+import {
+  MAX_OCCUPANTS,
+  MEAL_PLANS,
+  type BookingValues,
+} from "@/lib/schemas/bookings"
 import type { Guest, Unit } from "@/lib/types"
 
 export const labelClassName =
-  "font-heading text-xs font-semibold tracking-wide text-iron uppercase"
+  "font-heading text-xs font-bold tracking-wide text-iron uppercase"
 export const inputClassName =
   "h-11 rounded-lg border-border bg-canvas px-3.5 text-base focus-visible:border-brand-azure focus-visible:ring-brand-azure/20 md:text-base dark:bg-input/30"
 
@@ -78,6 +89,10 @@ export function BookingFormFields({
     formState: { errors },
   } = form
   const checkIn = useWatch({ control, name: "check_in_date" })
+  const mealPlan = useWatch({ control, name: "meal_plan" })
+  const mealPlanDescription = MEAL_PLANS.find(
+    (plan) => plan.value === mealPlan
+  )?.description
 
   return (
     <>
@@ -275,6 +290,58 @@ export function BookingFormFields({
             message={errors.children?.message}
           />
         </div>
+      </div>
+
+      {/* Meal plan: bed and breakfast puts the guest on the B&B list */}
+      <div className="grid gap-2">
+        <Label htmlFor="booking-meal-plan" className={labelClassName}>
+          Meal plan
+        </Label>
+        <Controller
+          control={control}
+          name="meal_plan"
+          render={({ field }) => (
+            <Select
+              value={field.value}
+              onValueChange={field.onChange}
+              disabled={pending}
+            >
+              <SelectTrigger
+                id="booking-meal-plan"
+                ref={field.ref}
+                onBlur={field.onBlur}
+                aria-invalid={Boolean(errors.meal_plan)}
+                aria-describedby={
+                  errors.meal_plan
+                    ? "booking-meal-plan-error"
+                    : "booking-meal-plan-hint"
+                }
+                className={`${inputClassName} w-full data-[size=default]:h-11`}
+              >
+                <SelectValue placeholder="Choose a meal plan" />
+              </SelectTrigger>
+              <SelectContent>
+                {MEAL_PLANS.map((plan) => (
+                  <SelectItem key={plan.value} value={plan.value}>
+                    {plan.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
+        {mealPlanDescription && !errors.meal_plan && (
+          <p
+            id="booking-meal-plan-hint"
+            className="text-sm text-muted-foreground"
+          >
+            {mealPlanDescription}
+          </p>
+        )}
+        <FieldError
+          id="booking-meal-plan-error"
+          message={errors.meal_plan?.message}
+        />
       </div>
 
       {/* Special requests */}

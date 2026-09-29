@@ -8,7 +8,9 @@ import type {
   CheckInBookingPayload,
   CreateBookingPayload,
   ExtendBookingPayload,
+  ExtendBookingResponse,
   ExtraPersonsPayload,
+  ExtraPersonsResponse,
   RejectBookingPayload,
 } from "@/lib/types"
 
@@ -84,6 +86,8 @@ export async function fetchBookingsOccupancy(range: OccupancyRange) {
 
 /** POST /bookings/create → creates a booking and returns it. */
 export async function createBooking(payload: CreateBookingPayload) {
+  console.log("New bookings paylod: ", payload)
+
   const response = await axiosInstance.post<Booking>(
     "/bookings/create",
     payload
@@ -115,24 +119,28 @@ export async function rejectBooking(
   return response.data
 }
 
-/** PATCH /bookings/{id}/extend → moves a checked-in stay's check-out later. */
+/** PATCH /bookings/{id}/extend → moves a checked-in stay's check-out later and
+ * returns the extension's charges. */
 export async function extendBooking(
   bookingId: string,
   payload: ExtendBookingPayload
 ) {
-  const response = await axiosInstance.patch<Booking>(
+  const response = await axiosInstance.patch<ExtendBookingResponse>(
     `/bookings/${encodeURIComponent(bookingId)}/extend`,
     payload
   )
   return response.data
 }
 
-/** PATCH /bookings/{id}/extra-persons → adds adults / children to a checked-in stay. */
+/**
+ * PATCH /bookings/{id}/extra-persons → adds adults / children to a
+ * checked-in stay and returns the added people's charges.
+ */
 export async function addExtraPersons(
   bookingId: string,
   payload: ExtraPersonsPayload
 ) {
-  const response = await axiosInstance.patch<Booking>(
+  const response = await axiosInstance.patch<ExtraPersonsResponse>(
     `/bookings/${encodeURIComponent(bookingId)}/extra-persons`,
     payload
   )

@@ -6,11 +6,37 @@ import type {
   ExtendBookingPayload,
   ExtraPersonsPayload,
   Guest,
+  MealPlan,
   RejectBookingPayload,
 } from "@/lib/types"
 
 /** Upper bound for the adults / children counters. */
 export const MAX_OCCUPANTS = 20
+
+/** New bookings are room only unless the receptionist picks B&B. */
+export const DEFAULT_MEAL_PLAN: MealPlan = "room_only"
+export const MEAL_PLANS = [
+  {
+    value: "room_only",
+    label: "Room only",
+    description:
+      "The guest just gets the room and won't be on the bed and breakfast list.",
+  },
+  {
+    value: "bed_and_breakfast",
+    label: "Bed and breakfast",
+    description: "The guest will be on the bed and breakfast list.",
+  },
+] as const satisfies readonly {
+  value: MealPlan
+  label: string
+  description: string
+}[]
+
+const mealPlanValues = MEAL_PLANS.map((plan) => plan.value) as [
+  MealPlan,
+  ...MealPlan[],
+]
 
 const dateField = (emptyMessage: string) =>
   z
@@ -41,6 +67,7 @@ export const bookingSchema = z
       .string()
       .trim()
       .max(1000, "Keep special requests under 1000 characters."),
+    meal_plan: z.enum(mealPlanValues),
   })
   .refine(
     (values) =>
@@ -80,6 +107,7 @@ export function toBookingPayload(
     guest_name: guest.full_name,
     guest_email: guest.email ?? "",
     guest_phone: guest.phone ?? "",
+    meal_plan: values.meal_plan,
   }
 }
 

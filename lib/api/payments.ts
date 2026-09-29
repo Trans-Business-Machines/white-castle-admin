@@ -6,7 +6,7 @@ import type {
   Payment,
   PaymentStats,
   RejectPaymentPayload,
-  VerifyPaymentPayload,
+  SignedFile,
 } from "@/lib/types"
 
 export const paymentsQueryKey = ["payments"] as const
@@ -14,6 +14,8 @@ export const paymentsListQueryKey = (filters: PaymentListFilters) =>
   ["payments", "list", filters] as const
 // Under the payments prefix (not `["reports"]`) so recording a payment,
 // which invalidates `paymentsQueryKey`, refreshes the cards too.
+export const paymentEvidenceQueryKey = (fileId: string) =>
+  ["payments", "evidence", fileId] as const
 export const paymentStatsQueryKey = (range: DateRange) =>
   ["payments", "stats", range.date_from, range.date_to] as const
 
@@ -86,14 +88,15 @@ export async function completePayment(
   return response.data
 }
 
-/** PATCH /payments/{id}/verify → marks a pending payment as verified. */
-export async function verifyPayment(
-  paymentId: string,
-  payload: VerifyPaymentPayload
-) {
+/**
+ * PATCH /payments/{id}/verify → marks a pending payment as verified. The
+ * body is an empty JSON object (`{}`): the backend records who verified it
+ * from the access token.
+ */
+export async function verifyPayment(paymentId: string) {
   const response = await axiosInstance.patch<Payment>(
     `/payments/${encodeURIComponent(paymentId)}/verify`,
-    payload
+    {}
   )
   return response.data
 }
@@ -122,4 +125,16 @@ export async function uploadPaymentEvidence(paymentId: string, file: File) {
     `/payments/${encodeURIComponent(paymentId)}/evidence`,
     body
   )
+}
+
+/**
+ * GET /payments/evidence/{file_id} → a signed, short-lived URL for the
+ * proof-of-payment image, plus its file name. `file_id` is the last path
+ * segment of the payment's `evidence_url`.
+ */
+export async function fetchPaymentEvidence(fileId: string) {
+  const response = await axiosInstance.get<SignedFile>(
+    `/payments/evidence/${encodeURIComponent(fileId)}`
+  )
+  return response.data
 }

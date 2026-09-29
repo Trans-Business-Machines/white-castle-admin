@@ -39,6 +39,17 @@ export interface Unit {
   updated_at: string
 }
 
+/**
+ * A short-lived signed link to an uploaded file, as returned by `GET
+ * /guests/documents/{file_id}` and `GET /payments/evidence/{file_id}`.
+ */
+export interface SignedFile {
+  /** Presigned storage URL, valid for `expires_in` seconds. */
+  url: string
+  expires_in: number
+  filename: string
+}
+
 export interface Guest {
   guest_id: string
   full_name: string
@@ -65,6 +76,12 @@ export interface GuestsStats {
 }
 
 /** Body `POST /bookings/create` expects. Dates are "yyyy-MM-dd". */
+/**
+ * `bed_and_breakfast` puts the guest on the bed and breakfast list;
+ * `room_only` leaves them off it.
+ */
+export type MealPlan = "room_only" | "bed_and_breakfast"
+
 export interface CreateBookingPayload {
   room_id: string
   check_in_date: string
@@ -75,6 +92,7 @@ export interface CreateBookingPayload {
   guest_name: string
   guest_email: string
   guest_phone: string
+  meal_plan: MealPlan
 }
 
 /** Body for `PATCH /bookings/{id}/checkin`. */
@@ -103,6 +121,73 @@ export interface ExtendBookingPayload {
   new_check_out_date: string
   /** `user_id` of the staff member extending the stay. */
   extended_by: string
+}
+
+/** What `PATCH /bookings/{id}/extend` charged for the added nights. */
+export interface BookingExtension {
+  extra_nights: number
+  room_rate_charge: number
+  /** Bed-and-breakfast cost of the added nights, 0 when `includes_bb` is false. */
+  bb_charge: number
+  total_extra_charge: number
+  includes_bb: boolean
+  /** Whether the guest owes money for the extension. */
+  payment_required: boolean
+  /** The booking's total after the extension. */
+  new_total: number
+  booking_ref: string
+}
+
+/** Booking fields returned by the stay-changing endpoints (extend, extra people). */
+export interface BookingChangeResponse {
+  booking_id: string
+  reference: string
+  room_number: string
+  room_type: string
+  check_in_date: string
+  check_out_date: string
+  nights: number
+  adults: number
+  children: number
+  meal_plan: string
+  status: string
+  payment_status: string
+  total_amount: number
+}
+
+/** Response of `PATCH /bookings/{id}/extend`: the updated stay plus the extension's charges. */
+export interface ExtendBookingResponse extends BookingChangeResponse {
+  extension: BookingExtension
+}
+
+/** What `PATCH /bookings/{id}/extra-persons` charged for the added adults. */
+export interface BookingExtraPersons {
+  previous_adults: number
+  new_adults: number
+  children: number
+  extra_adults: number
+  /** Nightly room rate the surcharge is a percentage of. */
+  base_rate: number
+  extra_person_percentage: number
+  /** Nightly surcharge per added adult: `base_rate` × `extra_person_percentage`%. */
+  rate_per_extra_adult: number
+  /** Nights the surcharge applies to. */
+  nights: number
+  room_charge: number
+  /** Bed-and-breakfast cost for the added people, 0 when `includes_bb` is false. */
+  bb_charge: number
+  total_extra_charge: number
+  includes_bb: boolean
+  /** Whether the guest owes money for the added people. */
+  payment_required: boolean
+  /** The booking's total after the change. */
+  new_total: number
+  booking_ref: string
+}
+
+/** Response of `PATCH /bookings/{id}/extra-persons`: the updated stay plus the added people's charges. */
+export interface ExtraPersonsResponse extends BookingChangeResponse {
+  extra_persons: BookingExtraPersons
 }
 
 /** Body for `PATCH /bookings/{id}/extra-persons`. */
@@ -231,9 +316,24 @@ export interface UnitsOccupancyStats {
 
 export type PaymentMethod = "mpesa" | "cash"
 
-export type PaymentType = "full_payment" | "deposit"
+/**
+ * `extension` and `extra_persons` are only recorded from the extend-booking
+ * and extra-person dialogs, for what the stay change added; the record
+ * form offers the other two.
+ */
+export type PaymentType =
+  "full_payment" | "deposit" | "extension" | "extra_persons"
 
-/** Body `POST /payments/create` expects. */
+/** The payment types a stay change (extend / extra people) records. */
+export type StayChangePaymentType = Extract<
+  PaymentType,
+  "extension" | "extra_persons"
+>
+
+/**
+ * Body `POST /payments/create` expects. `recorded_by` isn't sent: the
+ * backend takes it from the access token.
+ */
 export interface CreatePaymentPayload {
   booking_id: string
   /** The booking's human-readable reference, copied from the chosen booking. */
@@ -243,14 +343,13 @@ export interface CreatePaymentPayload {
   /** Transaction reference from the payment channel, e.g. an M-Pesa code; empty for cash. */
   reference: string
   payment_type: PaymentType
-  /** `user_id` of the staff member recording the payment. */
-  recorded_by: string
 }
 
 /**
  * A payment as returned by `POST /payments/create` and `GET /payments/list`.
- * Everything up to `recorded_by` mirrors `CreatePaymentPayload`; the rest is
- * set by the backend as the payment is checked.
+ * Everything up to `payment_type` mirrors `CreatePaymentPayload`; the rest
+ * is set by the backend (`recorded_by` from the access token, the others as
+ * the payment is checked).
  */
 export interface Payment {
   payment_id: string
@@ -279,28 +378,22 @@ export interface Payment {
 
 /**
  * Query params for `POST /payments/complete/{booking_ref}`, which records
- * the balance on a booking whose deposit is already in.
+ * the balance on a booking whose deposit is already in. `recorded_by` isn't
+ * sent: the backend takes it from the access token.
  */
 export interface CompletePaymentParams {
   amount: number
   method: PaymentMethod
   /** Transaction reference; left out for cash. */
   reference?: string
-  /** `user_id` of the staff member recording the payment. */
-  recorded_by: string
 }
 
-/** Body for `PATCH /payments/{id}/verify`. */
-export interface VerifyPaymentPayload {
-  /** `user_id` of the staff member verifying the payment. */
-  verified_by: string
-}
-
-/** Body for `PATCH /payments/{id}/reject`. */
+/**
+ * Body for `PATCH /payments/{id}/reject`. The backend records who rejected
+ * it from the access token.
+ */
 export interface RejectPaymentPayload {
   rejection_reason: string
-  /** `user_id` of the staff member rejecting the payment. */
-  rejected_by: string
 }
 
 /** A count of payments and what they add up to, in the report's currency. */

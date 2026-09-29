@@ -1,5 +1,6 @@
 import { endOfMonth, format, startOfMonth } from "date-fns"
 import type { DateRange } from "@/lib/api/payments"
+import { getUrlFileId } from "@/lib/download"
 import { formatCurrency, humanizeSlug } from "@/lib/format"
 import { PAYMENT_METHODS, PAYMENT_TYPES } from "@/lib/schemas/payments"
 import type { Booking, Payment, PaymentStats } from "@/lib/types"
@@ -143,38 +144,9 @@ export const PAYMENT_STAT_CARDS: ReadonlyArray<{
   },
 ]
 
-/**
- * The `deposit_percentage` setting as a number, or `null` when it's unset or
- * not a percentage (the record form then leaves the amount for staff).
- */
-export function parseDepositPercentage(value: string | undefined) {
-  if (!value?.trim()) return null
-  const percentage = Number(value)
-  return Number.isFinite(percentage) && percentage > 0 && percentage <= 100
-    ? percentage
-    : null
-}
-
 /** A shilling amount rounded to the cent, so 33% of 1,001 isn't 330.33000… */
 function toCents(amount: number) {
   return Math.round(amount * 100) / 100
-}
-
-/**
- * What the record form pre-fills for a booking: its whole total for a full
- * payment, `depositPercentage`% of it for a deposit. `null` when the type
- * isn't chosen yet or the percentage isn't known.
- */
-export function getSuggestedPaymentAmount(
-  booking: Pick<Booking, "total_amount">,
-  paymentType: string,
-  depositPercentage: number | null
-) {
-  if (paymentType === "full_payment") return booking.total_amount
-  if (paymentType === "deposit" && depositPercentage !== null) {
-    return toCents((booking.total_amount * depositPercentage) / 100)
-  }
-  return null
 }
 
 /**
@@ -187,4 +159,13 @@ export function getRemainingBalance(
   deposit: Pick<Payment, "amount">
 ) {
   return Math.max(0, toCents(booking.total_amount - deposit.amount))
+}
+
+/**
+ * The `file_id` for `GET /payments/evidence/{file_id}`: the last path
+ * segment of the payment's `evidence_url`, or `null` when no proof is
+ * attached.
+ */
+export function getEvidenceFileId(payment: Pick<Payment, "evidence_url">) {
+  return getUrlFileId(payment.evidence_url)
 }

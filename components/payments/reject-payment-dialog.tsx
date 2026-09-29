@@ -27,7 +27,6 @@ import {
   type RejectPaymentValues,
 } from "@/lib/schemas/payments"
 import type { Payment } from "@/lib/types"
-import { useAuth } from "@/providers/auth-provider"
 
 interface RejectPaymentDialogProps {
   payment: Payment
@@ -37,8 +36,9 @@ interface RejectPaymentDialogProps {
 
 /**
  * Asks for a reason, then rejects the payment (`PATCH
- * /payments/{id}/reject`) with the signed-in staff member's `user_id` as
- * `rejected_by`; the reason is stored as the payment's `rejection_reason`.
+ * /payments/{id}/reject`); the reason is stored as the payment's
+ * `rejection_reason` and the backend records who rejected it from the
+ * access token.
  */
 function RejectPaymentDialog(props: RejectPaymentDialogProps) {
   // Mounted only while open so the reason field starts empty each time.
@@ -51,7 +51,6 @@ function RejectForm({
   onOpenChange,
 }: Omit<RejectPaymentDialogProps, "open">) {
   const queryClient = useQueryClient()
-  const { user } = useAuth()
 
   const {
     register,
@@ -65,11 +64,7 @@ function RejectForm({
 
   const mutation = useMutation({
     mutationFn: (values: RejectPaymentValues) => {
-      if (!user) throw new Error("Sign in again to reject this payment.")
-      return rejectPayment(
-        payment.payment_id,
-        toRejectPaymentPayload(values, user.user_id)
-      )
+      return rejectPayment(payment.payment_id, toRejectPaymentPayload(values))
     },
     onSuccess: async () => {
       // The list, the stats cards and the booking's payment status all move.

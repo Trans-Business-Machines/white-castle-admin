@@ -9,6 +9,7 @@ import {
   ArrowLeft,
   Ban,
   Cake,
+  FileImage,
   IdCard,
   Globe,
   Mail,
@@ -16,6 +17,7 @@ import {
   ShieldCheck,
   SquarePen,
 } from "lucide-react"
+import { FilePreviewDialog } from "@/components/file-preview-dialog"
 import { BlacklistGuestDialog } from "@/components/guests/blacklist-guest-dialog"
 import { EditGuestDialog } from "@/components/guests/edit-guest-dialog"
 import { GuestBlacklistBadge } from "@/components/guests/guest-blacklist-badge"
@@ -31,14 +33,24 @@ import {
 } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/errors"
-import { fetchGuestDetails, guestQueryKey } from "@/lib/api/guests"
+import {
+  fetchGuestDetails,
+  fetchGuestDocument,
+  guestDocumentQueryKey,
+  guestQueryKey,
+} from "@/lib/api/guests"
+import { getUrlFileId } from "@/lib/download"
 import {
   formatCurrency,
   formatDate,
   formatTimestamp,
   getInitials,
 } from "@/lib/format"
-import { getIdNumberLabel, getIdTypeLabel } from "@/lib/schemas/guests"
+import {
+  getIdDocumentLabel,
+  getIdNumberLabel,
+  getIdTypeLabel,
+} from "@/lib/schemas/guests"
 import type { Guest } from "@/lib/types"
 
 function formatBirthDate(value: string | null) {
@@ -81,6 +93,51 @@ function DetailItem({
         </dd>
       </div>
     </div>
+  )
+}
+
+/**
+ * "View" links for the guest's uploaded ID scans, numbered when there's
+ * more than one. Each `id_documents` entry is a URL ending in the file id;
+ * `GET /guests/documents/{file_id}` trades it for a signed storage URL,
+ * which is what the dialog shows.
+ */
+function IdDocumentLinks({ guest }: { guest: Guest }) {
+  const label = getIdDocumentLabel(guest.id_type)
+  const fileIds = (guest.id_documents ?? [])
+    .map(getUrlFileId)
+    .filter((id): id is string => id !== null)
+
+  if (fileIds.length === 0) return "Not uploaded"
+
+  return (
+    <span className="flex flex-wrap gap-x-4 gap-y-1">
+      {fileIds.map((fileId, index) => {
+        const suffix = fileIds.length > 1 ? ` ${index + 1}` : ""
+        return (
+          <FilePreviewDialog
+            key={fileId}
+            triggerLabel={`View${suffix}`}
+            triggerAriaLabel={`View ${guest.full_name}'s ${label.toLowerCase()}${suffix}`}
+            title={`${label}${suffix}`}
+            description={
+              <>
+                <span className="font-semibold text-foreground">
+                  {guest.full_name}
+                </span>
+                {guest.national_id
+                  ? ` · ${getIdTypeLabel(guest.id_type)} ${guest.national_id}`
+                  : ""}
+              </>
+            }
+            queryKey={guestDocumentQueryKey(fileId)}
+            queryFn={() => fetchGuestDocument(fileId)}
+            alt={`${guest.full_name}'s ${label.toLowerCase()}`}
+            errorMessage="We couldn't load this ID document. Try again."
+          />
+        )
+      })}
+    </span>
   )
 }
 
@@ -362,6 +419,11 @@ function GuestDetails({ guestId }: { guestId: string }) {
                     "—"
                   )
                 }
+              />
+              <DetailItem
+                icon={FileImage}
+                label={getIdDocumentLabel(guest.id_type)}
+                value={<IdDocumentLinks guest={guest} />}
               />
               <DetailItem
                 icon={Globe}

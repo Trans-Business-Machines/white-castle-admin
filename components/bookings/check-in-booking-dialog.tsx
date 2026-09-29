@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
-import { IdCard, Loader, LogIn } from "lucide-react"
+import { Loader, LogIn, Plus } from "lucide-react"
 import toast from "react-hot-toast"
 import { GuestCombobox } from "@/components/bookings/guest-combobox"
 import { EditGuestDialog } from "@/components/guests/edit-guest-dialog"
@@ -195,10 +195,9 @@ function CheckInForm({
           {guest.data && missingId.length > 0 ? (
             <div
               role="alert"
-              className="grid gap-3 rounded-md border border-amber-300 bg-amber-50 px-3.5 py-3 text-sm text-amber-900 dark:border-amber-500/40 dark:bg-amber-500/10 dark:text-amber-200"
+              className="bg-tertiary-50 grid gap-3 rounded-md border border-tertiary px-3.5 py-3 text-sm text-tertiary"
             >
               <p className="flex items-start gap-3">
-                <IdCard aria-hidden="true" className="mt-0.5 size-5 shrink-0" />
                 <span>
                   {guest.data.full_name}&apos;s {missingId.join(" and ")}{" "}
                   {missingId.length > 1 ? "aren't" : "isn't"} on record. Add{" "}
@@ -211,9 +210,9 @@ function CheckInForm({
                 size="sm"
                 disabled={mutation.isPending}
                 onClick={() => setEditingGuest(true)}
-                className="justify-self-start rounded-full border-amber-300 bg-white text-amber-900 hover:bg-amber-100 dark:border-amber-500/40 dark:bg-transparent dark:text-amber-200 dark:hover:bg-amber-500/15"
+                className="flex-1 justify-self-start rounded-full border-tertiary bg-white text-tertiary hover:bg-tertiary hover:text-white"
               >
-                <IdCard aria-hidden="true" />
+                <Plus aria-hidden="true" />
                 Add ID details
               </Button>
             </div>

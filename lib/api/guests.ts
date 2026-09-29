@@ -1,9 +1,12 @@
 import { axiosInstance } from "@/lib/axios"
 import type { BlacklistPayload, GuestPayload } from "@/lib/schemas/guests"
-import type { Booking, Guest, GuestsStats } from "@/lib/types"
+import type { Booking, Guest, GuestsStats, SignedFile } from "@/lib/types"
 export const guestsQueryKey = ["guests"] as const
 export const guestStatsQueryKey = ["guests", "stats"] as const
 export const guestQueryKey = (guestId: string) => ["guests", guestId] as const
+// Not `["guests", guestId, …]`: a document is looked up by its file id.
+export const guestDocumentQueryKey = (fileId: string) =>
+  ["guests", "documents", fileId] as const
 export const guestBookingsQueryKey = (guestId: string) =>
   ["guests", guestId, "bookings"] as const
 
@@ -62,6 +65,18 @@ export async function uploadGuestIdDocument(guestId: string, file: File) {
     `/guests/${encodeURIComponent(guestId)}/id-document`,
     body
   )
+}
+
+/**
+ * GET /guests/documents/{file_id} → a signed, short-lived URL for one of the
+ * guest's ID scans (image or PDF), plus its file name. `file_id` is the last
+ * path segment of an `id_documents` URL.
+ */
+export async function fetchGuestDocument(fileId: string) {
+  const response = await axiosInstance.get<SignedFile>(
+    `/guests/documents/${encodeURIComponent(fileId)}`
+  )
+  return response.data
 }
 
 /** DELETE /guests/{id} → permanently removes the guest record. */

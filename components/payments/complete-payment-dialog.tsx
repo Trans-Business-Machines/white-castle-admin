@@ -42,7 +42,6 @@ import {
   type CompletePaymentValues,
 } from "@/lib/schemas/payments"
 import type { Payment } from "@/lib/types"
-import { useAuth } from "@/providers/auth-provider"
 
 interface CompletePaymentDialogProps {
   /** The deposit whose booking is being settled. */
@@ -53,8 +52,8 @@ interface CompletePaymentDialogProps {
 
 /**
  * Records the balance on a deposit's booking (`POST
- * /payments/complete/{booking_ref}`, sent as query params) with the
- * signed-in staff member's `user_id` as `recorded_by`. The amount is the
+ * /payments/complete/{booking_ref}`, sent as query params; the backend
+ * records who did it from the access token). The amount is the
  * booking's remaining balance (its current total less this deposit), read
  * from `GET /bookings/{id}` and not editable.
  */
@@ -69,7 +68,6 @@ function CompletePaymentForm({
   onOpenChange,
 }: Omit<CompletePaymentDialogProps, "open">) {
   const queryClient = useQueryClient()
-  const { user } = useAuth()
 
   const {
     control,
@@ -113,10 +111,9 @@ function CompletePaymentForm({
 
   const mutation = useMutation({
     mutationFn: (values: CompletePaymentValues) => {
-      if (!user) throw new Error("Sign in again to complete this payment.")
       return completePayment(
         payment.booking_ref,
-        toCompletePaymentParams(values, user.user_id)
+        toCompletePaymentParams(values)
       )
     },
     onSuccess: async () => {

@@ -101,7 +101,9 @@ export function canCheckIn(
  * Where a booking sits in the bookings list. Stays that have started or
  * ended rank by their status (checked in → checked out → cancelled →
  * rejected); everything still ahead ranks by payment so the desk sees what
- * is owed first (unpaid → deposit paid → fully paid).
+ * is owed first (unpaid → deposit paid → fully paid). Within the unpaid
+ * group, requests still waiting on approval come before approved ones
+ * (`getUnpaidRank`).
  */
 const BOOKING_STATUS_RANK: Record<string, number> = {
   checked_in: 3,
@@ -125,14 +127,31 @@ function getBookingRank(booking: Pick<Booking, "payment_status" | "status">) {
   )
 }
 
+/** Order inside the unpaid group: pending → approved → any other status. */
+const UNPAID_STATUS_RANK: Record<string, number> = {
+  pending: 0,
+  approved: 1,
+}
+
+function getUnpaidRank(booking: Pick<Booking, "status">) {
+  return UNPAID_STATUS_RANK[booking.status.toLowerCase()] ?? 2
+}
+
 /**
- * A copy of `bookings` in list order (`getBookingRank`). The sort is stable,
- * so bookings in the same group keep the API's order.
+ * A copy of `bookings` in list order (`getBookingRank`, then
+ * `getUnpaidRank` among unpaid bookings). The sort is stable, so bookings
+ * in the same group keep the API's order.
  */
 export function sortBookings<
   T extends Pick<Booking, "payment_status" | "status">,
 >(bookings: readonly T[]) {
-  return [...bookings].sort((a, b) => getBookingRank(a) - getBookingRank(b))
+  return [...bookings].sort((a, b) => {
+    const rank = getBookingRank(a) - getBookingRank(b)
+    if (rank !== 0 || getBookingRank(a) !== BOOKING_PAYMENT_RANK.unpaid) {
+      return rank
+    }
+    return getUnpaidRank(a) - getUnpaidRank(b)
+  })
 }
 
 /** Booking statuses that can no longer be cancelled. */
@@ -153,8 +172,30 @@ export function isCheckedIn(booking: Pick<Booking, "status">) {
   return booking.status.toLowerCase() === "checked_in"
 }
 
-/** Only a guest who is currently checked in can be checked out. */
-export const canCheckOut = isCheckedIn
+/**
+ * Whether a checked-in guest still owes money. Check-in needs `fully_paid`,
+ * so anything else here means the stay grew (an extension or extra people),
+ * the backend dropped the booking back to `deposit_paid`, and the new
+ * payment isn't verified yet.
+ */
+export function hasOutstandingStayPayment(
+  booking: Pick<Booking, "status" | "payment_status">
+) {
+  return (
+    isCheckedIn(booking) &&
+    booking.payment_status.toLowerCase() !== "fully_paid"
+  )
+}
+
+/**
+ * Only a guest who is currently checked in can be checked out, and not
+ * while a payment for their extended stay is still waiting on verification.
+ */
+export function canCheckOut(
+  booking: Pick<Booking, "status" | "payment_status">
+) {
+  return isCheckedIn(booking) && !hasOutstandingStayPayment(booking)
+}
 
 /** A booking can't be deleted while its guest is in the room. */
 export function canDeleteBooking(booking: Pick<Booking, "status">) {

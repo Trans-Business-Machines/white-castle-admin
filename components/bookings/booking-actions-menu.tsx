@@ -28,6 +28,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -37,6 +38,7 @@ import {
   canCheckIn,
   canCheckOut,
   canDeleteBooking,
+  hasOutstandingStayPayment,
 } from "@/lib/bookings"
 import { BOOKING_DELETE_ROLES, hasRole } from "@/lib/roles"
 import type { Booking } from "@/lib/types"
@@ -149,6 +151,12 @@ function BookingActionsMenu({
                 <LogOut aria-hidden="true" />
                 Check out
               </DropdownMenuItem>
+              {hasOutstandingStayPayment(booking) ? (
+                <DropdownMenuLabel className="max-w-56 text-xs font-normal text-muted-foreground">
+                  Check-out opens once the payment for the added nights or
+                  guests is verified.
+                </DropdownMenuLabel>
+              ) : null}
               {/* Only a stay that's underway can grow. */}
               {canChangeStay(booking) ? (
                 <>
