@@ -192,17 +192,9 @@ export const extraPersonsSchema = z
 
 export type ExtraPersonsValues = z.infer<typeof extraPersonsSchema>
 
-/**
- * Shapes the form into the body `PATCH /bookings/{id}/extra-persons`
- * expects. `updatedBy` is the signed-in staff member's `user_id`.
- */
+/** Shapes the form into the body `PATCH /bookings/{id}/extra-persons` expects. */
 export function toExtraPersonsPayload(
-  values: ExtraPersonsValues,
-  updatedBy: string
+  values: ExtraPersonsValues
 ): ExtraPersonsPayload {
-  return {
-    adults: values.adults,
-    children: values.children,
-    updated_by: updatedBy,
-  }
+  return { add_adults: values.adults, add_children: values.children }
 }

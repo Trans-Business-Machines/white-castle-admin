@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-query"
 import { HandCoins, Loader, UserPlus } from "lucide-react"
 import { useForm } from "react-hook-form"
+import toast from "react-hot-toast"
 import {
   FieldError,
   inputClassName,
@@ -44,8 +45,11 @@ import {
   toExtraPersonsPayload,
   type ExtraPersonsValues,
 } from "@/lib/schemas/bookings"
-import type { Booking, ExtraPersonsResponse } from "@/lib/types"
-import { useAuth } from "@/providers/auth-provider"
+import type {
+  Booking,
+  ExtraPersonsPayload,
+  ExtraPersonsResponse,
+} from "@/lib/types"
 
 interface ExtraPersonsDialogProps {
   booking: Booking
@@ -53,15 +57,6 @@ interface ExtraPersonsDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-/**
- * Adds adults / children to a checked-in stay (`PATCH
- * /bookings/{id}/extra-persons`) with the signed-in staff member's
- * `user_id` as `updated_by`. On success the form gives way to the added
- * people's charges. When the guest owes money, Add payment opens a form
- * under them that records it (`payment_type: "extra_persons"`); the backend
- * has dropped the booking back to `deposit_paid`, so check-out waits until
- * that payment is verified.
- */
 function ExtraPersonsDialog(props: ExtraPersonsDialogProps) {
   // Mounted only while open so the counts start at zero each time.
   if (!props.open) return null
@@ -72,9 +67,10 @@ function ExtraPersonsForm({
   booking,
   onOpenChange,
 }: Omit<ExtraPersonsDialogProps, "open">) {
-  const queryClient = useQueryClient()
-  const { user } = useAuth()
-  const [result, setResult] = useState<ExtraPersonsResponse | null>(null)
+  const [review, setReview] = useState<{
+    payload: ExtraPersonsPayload
+    response: ExtraPersonsResponse
+  } | null>(null)
   const paymentSaving =
     useIsMutating({
       mutationKey: stayChangePaymentMutationKey(booking.booking_id),
@@ -90,36 +86,36 @@ function ExtraPersonsForm({
     defaultValues: { adults: 0, children: 0 },
   })
 
+  // `preview=true`: works out the charges without changing the booking.
   const mutation = useMutation({
-    mutationFn: (values: ExtraPersonsValues) => {
-      if (!user) throw new Error("Sign in again to add people to this stay.")
-      return addExtraPersons(
-        booking.booking_id,
-        toExtraPersonsPayload(values, user.user_id)
-      )
+    mutationFn: async (values: ExtraPersonsValues) => {
+      const payload = toExtraPersonsPayload(values)
+      const response = await addExtraPersons(booking.booking_id, payload, {
+        preview: true,
+      })
+      return { payload, response }
     },
-    onSuccess: async (data) => {
-      // TODO: remove once the extra-persons charges are confirmed.
-      console.log("PATCH /bookings/{id}/extra-persons response:", data)
-      setResult(data)
-      await queryClient.invalidateQueries({ queryKey: bookingsQueryKey })
-    },
+    onSuccess: setReview,
     onError: (err) => {
       setError("root", {
         message: getApiErrorMessage(
           err,
-          "We couldn't add people to this stay. Try again."
+          "We couldn't work out the charges for these people. Try again."
         ),
       })
     },
   })
+  const committing =
+    useIsMutating({
+      mutationKey: extraPersonsCommitMutationKey(booking.booking_id),
+    }) > 0
 
   return (
     <Dialog
       open
       onOpenChange={(next) => {
         // Ignore Escape / backdrop clicks while a request is in flight.
-        if (mutation.isPending || paymentSaving) return
+        if (mutation.isPending || committing || paymentSaving) return
         if (!next) onOpenChange(false)
       }}
     >
@@ -130,11 +126,12 @@ function ExtraPersonsForm({
         showCloseButton={false}
         className="max-h-[90dvh] max-w-2xl! overflow-y-auto"
       >
-        {result ? (
+        {review ? (
           <ExtraPersonsSummary
             bookingId={booking.booking_id}
             guestName={booking.guest_name}
-            result={result}
+            payload={review.payload}
+            preview={review.response}
             onDone={() => onOpenChange(false)}
           />
         ) : (
@@ -238,12 +235,12 @@ function ExtraPersonsForm({
                     {mutation.isPending ? (
                       <span className="inline-flex items-center gap-2">
                         <Loader aria-hidden="true" className="animate-spin" />
-                        Saving
+                        Checking
                       </span>
                     ) : (
                       <>
                         <UserPlus aria-hidden="true" />
-                        Add to stay
+                        Review charges
                       </>
                     )}
                   </Button>
@@ -261,28 +258,55 @@ function pluralize(count: number, one: string, many: string) {
   return `${count} ${count === 1 ? one : many}`
 }
 
+/** Lets the dialog tell the change is saving, so it can't be closed mid-request. */
+const extraPersonsCommitMutationKey = (bookingId: string) =>
+  ["bookings", "extra-persons", bookingId] as const
+
 /**
- * The updated head count and what the added adults cost. When there's
- * something to collect, the footer is Add payment instead of Close.
+ * The previewed head count and what the added adults will cost. Nothing
+ * has changed yet: Add payment (or Add to stay, when no payment is
+ * required) re-sends the same counts with `preview=false` to apply them,
+ * and only then does the payment form open, for the applied
+ * `total_extra_charge`.
  */
 function ExtraPersonsSummary({
   bookingId,
   guestName,
-  result,
+  payload,
+  preview,
   onDone,
 }: {
   bookingId: string
   guestName: string
-  result: ExtraPersonsResponse
+  payload: ExtraPersonsPayload
+  preview: ExtraPersonsResponse
   onDone: () => void
 }) {
-  const extra = result.extra_persons
+  const queryClient = useQueryClient()
+  const [committed, setCommitted] = useState<ExtraPersonsResponse | null>(null)
   const [paying, setPaying] = useState(false)
-  const owesPayment = extra.payment_required && extra.total_extra_charge > 0
+  const result = committed ?? preview
+  const extra = result.extra_persons
+
+  const commit = useMutation({
+    mutationKey: extraPersonsCommitMutationKey(bookingId),
+    mutationFn: () => addExtraPersons(bookingId, payload, { preview: false }),
+    onSuccess: async (data) => {
+      setCommitted(data)
+      await queryClient.invalidateQueries({ queryKey: bookingsQueryKey })
+      if (data.extra_persons.payment_required) {
+        setPaying(true)
+      } else {
+        toast.success(`People added to ${data.reference}.`)
+        onDone()
+      }
+    },
+  })
 
   return (
     <BookingChangeSummary
-      title="People added"
+      title={committed ? "People added" : "Review extra people"}
+      icon={committed ? undefined : null}
       guestName={guestName}
       description={
         <>
@@ -290,8 +314,9 @@ function ExtraPersonsSummary({
           <span className="font-semibold text-foreground">
             {result.reference}
           </span>{" "}
-          is now for {pluralize(result.adults, "adult", "adults")} and{" "}
-          {pluralize(result.children, "child", "children")}.
+          {committed ? "is now" : "will be"} for{" "}
+          {pluralize(extra.new_adults, "adult", "adults")} and{" "}
+          {pluralize(extra.children, "child", "children")}.
         </>
       }
       rows={[
@@ -299,6 +324,7 @@ function ExtraPersonsSummary({
           label: "Adults",
           value: `${extra.previous_adults} → ${extra.new_adults}`,
         },
+        { label: "Children", value: String(extra.children) },
         {
           label: "Rate per extra adult",
           value: (
@@ -311,8 +337,21 @@ function ExtraPersonsSummary({
             </>
           ),
         },
-        { label: "Nights charged", value: pluralizeNights(extra.nights) },
-        { label: "Room charge", value: formatCurrency(extra.room_charge) },
+        {
+          label: "Extra adult charge",
+          value: (
+            <>
+              {formatCurrency(extra.room_charge)}
+              <span className="block text-xs text-muted-foreground">
+                {extra.extra_adults > 1
+                  ? `${pluralize(extra.extra_adults, "adult", "adults")} × `
+                  : ""}
+                {pluralizeNights(extra.nights)} ×{" "}
+                {formatCurrency(extra.rate_per_extra_adult)}
+              </span>
+            </>
+          ),
+        },
         ...(extra.includes_bb
           ? [
               {
@@ -322,11 +361,23 @@ function ExtraPersonsSummary({
             ]
           : []),
         {
-          label: "Extra charge total",
+          label: "Additional charge",
           value: formatCurrency(extra.total_extra_charge),
           emphasis: true,
         },
-        { label: "New booking total", value: formatCurrency(extra.new_total) },
+        {
+          label: "New booking total",
+          value: (
+            <>
+              <span className="font-semibold">
+                {formatCurrency(extra.new_total)}
+              </span>
+              <span className="block text-xs text-muted-foreground">
+                Previous total plus the additional charge
+              </span>
+            </>
+          ),
+        },
       ]}
       payment={{
         required: extra.payment_required,
@@ -335,8 +386,19 @@ function ExtraPersonsSummary({
         reason: "for the extra guests",
       }}
       footer={
-        !owesPayment ? undefined : paying ? null : (
+        paying ? null : committed ? (
+          // Applied, but the payment form was cancelled: reopen it without
+          // sending the change again.
           <DialogFooter>
+            <DialogClose asChild>
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 rounded-full px-5"
+              >
+                Close
+              </Button>
+            </DialogClose>
             <Button
               type="button"
               onClick={() => setPaying(true)}
@@ -346,10 +408,59 @@ function ExtraPersonsSummary({
               Add payment
             </Button>
           </DialogFooter>
+        ) : (
+          <>
+            {commit.isError ? (
+              <p
+                role="alert"
+                className="rounded-md bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive"
+              >
+                {getApiErrorMessage(
+                  commit.error,
+                  "We couldn't add people to this stay. Try again."
+                )}
+              </p>
+            ) : null}
+            <DialogFooter>
+              <DialogClose asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={commit.isPending}
+                  className="h-11 rounded-full px-5"
+                >
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button
+                type="button"
+                onClick={() => commit.mutate()}
+                disabled={commit.isPending}
+                className={primaryButtonClassName}
+              >
+                {commit.isPending ? (
+                  <span className="inline-flex items-center gap-2">
+                    <Loader aria-hidden="true" className="animate-spin" />
+                    Saving
+                  </span>
+                ) : extra.payment_required ? (
+                  <>
+                    <HandCoins aria-hidden="true" />
+                    Add payment
+                  </>
+                ) : (
+                  <>
+                    <UserPlus aria-hidden="true" />
+                    Add to stay
+                  </>
+                )}
+              </Button>
+            </DialogFooter>
+          </>
         )
       }
     >
-      {owesPayment && paying ? (
+      {committed && paying ? (
         <StayChangePaymentForm
           bookingId={bookingId}
           bookingRef={extra.booking_ref || result.reference}

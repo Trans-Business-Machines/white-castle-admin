@@ -231,11 +231,9 @@ export interface ExtraPersonsResponse extends BookingChangeResponse {
 /** Body for `PATCH /bookings/{id}/extra-persons`. */
 export interface ExtraPersonsPayload {
   /** Adults joining the stay, on top of those already booked. */
-  adults: number
+  add_adults: number
   /** Children joining the stay, on top of those already booked. */
-  children: number
-  /** `user_id` of the staff member adding them. */
-  updated_by: string
+  add_children: number
 }
 
 /** Body for `PATCH /bookings/{id}/reject`. */

@@ -145,16 +145,21 @@ export async function extendBooking(
 }
 
 /**
- * PATCH /bookings/{id}/extra-persons → adds adults / children to a
- * checked-in stay and returns the added people's charges.
+ * PATCH /bookings/{id}/extra-persons?preview= → adds adults / children to a
+ * checked-in stay and returns the added people's charges. With
+ * `preview: true` it only works out the charges and changes nothing; the
+ * dialog previews first, then re-sends the same body with `preview: false`
+ * to apply it.
  */
 export async function addExtraPersons(
   bookingId: string,
-  payload: ExtraPersonsPayload
+  payload: ExtraPersonsPayload,
+  { preview = false }: { preview?: boolean } = {}
 ) {
   const response = await axiosInstance.patch<ExtraPersonsResponse>(
     `/bookings/${encodeURIComponent(bookingId)}/extra-persons`,
-    payload
+    payload,
+    { params: { preview } }
   )
   return response.data
 }

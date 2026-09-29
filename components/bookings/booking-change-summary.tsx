@@ -30,6 +30,8 @@ export interface ChangePayment {
 
 interface BookingChangeSummaryProps {
   title: string
+  /** Shown before the title; defaults to a green check, `null` hides it. */
+  icon?: ReactNode
   description: ReactNode
   guestName: string
   rows: ChargeRow[]
@@ -48,6 +50,12 @@ interface BookingChangeSummaryProps {
  */
 function BookingChangeSummary({
   title,
+  icon = (
+    <CircleCheck
+      aria-hidden="true"
+      className="size-5 text-emerald-600 dark:text-emerald-400"
+    />
+  ),
   description,
   guestName,
   rows,
@@ -59,10 +67,7 @@ function BookingChangeSummary({
     <>
       <DialogHeader>
         <DialogTitle className="flex items-center gap-2 text-xl font-bold">
-          <CircleCheck
-            aria-hidden="true"
-            className="size-5 text-emerald-600 dark:text-emerald-400"
-          />
+          {icon}
           {title}
         </DialogTitle>
         <DialogDescription className="text-base text-muted-foreground">

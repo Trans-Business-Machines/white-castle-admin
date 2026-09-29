@@ -53,15 +53,6 @@ interface ExtendBookingDialogProps {
   onOpenChange: (open: boolean) => void
 }
 
-/**
- * Moves a checked-in stay's check-out later (`PATCH
- * /bookings/{id}/extend`) with the signed-in staff member's `user_id` as
- * `extended_by`. On success the form gives way to the extension's charges.
- * When the guest owes money, Add payment opens a form under them that
- * records it (`payment_type: "extension"`); the backend has dropped the
- * booking back to `deposit_paid`, so check-out waits until that payment is
- * verified.
- */
 function ExtendBookingDialog(props: ExtendBookingDialogProps) {
   // Mounted only while open so the date starts empty each time.
   if (!props.open) return null
