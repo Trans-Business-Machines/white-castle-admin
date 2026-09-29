@@ -10,6 +10,7 @@ import {
   CalendarCheck,
   CalendarX,
   Clock,
+  Coffee,
   Mail,
   NotebookPen,
   Phone,
@@ -38,6 +39,7 @@ import { getUnitHref } from "@/components/units/unit-actions-menu"
 import { bookingQueryKey, fetchBookingDetails } from "@/lib/api/bookings"
 import { getApiErrorStatus } from "@/lib/api/errors"
 import { fetchUnits, unitsQueryKey } from "@/lib/api/units"
+import { getMealPlanLabel, isBedAndBreakfast } from "@/lib/bookings"
 import { formatCurrency, formatDate, formatTimestamp } from "@/lib/format"
 import type { Booking } from "@/lib/types"
 import { getRoomTypeLabel } from "@/lib/units"
@@ -330,6 +332,31 @@ function BookingDetails({ bookingId }: { bookingId: string }) {
                 label="Occupants"
                 value={formatOccupants(booking.adults, booking.children)}
               />
+              <DetailItem
+                icon={Coffee}
+                label="Meal plan"
+                value={
+                  booking.meal_plan ? (
+                    getMealPlanLabel(booking.meal_plan)
+                  ) : (
+                    <span className="text-muted-foreground">—</span>
+                  )
+                }
+              />
+              {isBedAndBreakfast(booking) ? (
+                <DetailItem
+                  icon={Wallet}
+                  label="Bed and breakfast total"
+                  mono
+                  value={
+                    booking.bb_total != null ? (
+                      formatCurrency(booking.bb_total)
+                    ) : (
+                      <span className="text-muted-foreground">—</span>
+                    )
+                  }
+                />
+              ) : null}
               <DetailItem
                 icon={NotebookPen}
                 label="Special requests"

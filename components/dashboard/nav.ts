@@ -7,9 +7,11 @@ import {
   UserCog,
   Users,
   Banknote,
+  Coffee,
   type LucideIcon,
 } from "lucide-react"
 import {
+  CATERING_ROLES,
   PAYMENTS_ROLES,
   SETTINGS_ROLES,
   USER_MANAGEMENT_ROLES,
@@ -62,6 +64,13 @@ export const dashboardNav: NavItem[] = [
     href: "/payments",
     icon: Banknote,
     roles: PAYMENTS_ROLES,
+  },
+  {
+    title: "Catering",
+    description: "Guests on the bed and breakfast list",
+    href: "/catering",
+    icon: Coffee,
+    roles: CATERING_ROLES,
   },
   {
     title: "User Management",

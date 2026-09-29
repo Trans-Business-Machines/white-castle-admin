@@ -7,7 +7,8 @@ import {
   startOfMonth,
 } from "date-fns"
 import type { OccupancyRange } from "@/lib/api/bookings"
-import { formatCurrency } from "@/lib/format"
+import { formatCurrency, humanizeSlug } from "@/lib/format"
+import { MEAL_PLANS } from "@/lib/schemas/bookings"
 import type {
   Booking,
   BookingsOccupancyStats,
@@ -220,6 +221,20 @@ const percent = new Intl.NumberFormat("en-KE", {
   style: "percent",
   maximumFractionDigits: 1,
 })
+
+const MEAL_PLAN_LABELS = new Map<string, string>(
+  MEAL_PLANS.map((plan) => [plan.value, plan.label])
+)
+
+/** "bed_and_breakfast" → "Bed and breakfast"; unknown slugs are humanised. */
+export function getMealPlanLabel(mealPlan: string) {
+  return MEAL_PLAN_LABELS.get(mealPlan) ?? humanizeSlug(mealPlan)
+}
+
+/** Whether the booking is on the bed and breakfast list. */
+export function isBedAndBreakfast(booking: Pick<Booking, "meal_plan">) {
+  return booking.meal_plan === "bed_and_breakfast"
+}
 
 /** 1.7 → "1.7%"; the API already reports a percentage, not a ratio. */
 export function formatPercent(value: number) {

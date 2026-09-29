@@ -2,6 +2,7 @@ import { axiosInstance } from "@/lib/axios"
 import { downloadCsv, type ExportFilters } from "@/lib/api/files"
 import type {
   ApproveBookingPayload,
+  BbList,
   Booking,
   BookingsOccupancyStats,
   CancelBookingPayload,
@@ -30,6 +31,19 @@ export const bookingLookupQueryKey = (reference: string) =>
   ["bookings", "lookup", reference] as const
 export const bookingQueryKey = (bookingId: string) =>
   ["bookings", bookingId] as const
+
+// Under the bookings prefix so any booking change (create, cancel, check
+// out, delete) refreshes the kitchen's list too.
+export const bbListQueryKey = (date: string) =>
+  ["bookings", "bb-list", date] as const
+
+/** GET /bookings/bb-list?date= → the bed and breakfast list for a "yyyy-MM-dd" day. */
+export async function fetchBbList(date: string) {
+  const response = await axiosInstance.get<BbList>("/bookings/bb-list", {
+    params: { date },
+  })
+  return response.data
+}
 
 /** GET /bookings/{id} → a single booking. */
 export async function fetchBookingDetails(bookingId: string) {

@@ -71,6 +71,13 @@ export const PAYMENTS_ROLES: readonly RoleName[] = [
   "finance",
 ]
 
+/** Roles allowed into the catering page (`/catering`, the bed and breakfast list). */
+export const CATERING_ROLES: readonly RoleName[] = [
+  "super_admin",
+  "admin",
+  "catering",
+]
+
 /** Roles allowed to verify or reject a payment. */
 export const PAYMENT_REVIEW_ROLES: readonly RoleName[] = [
   "super_admin",

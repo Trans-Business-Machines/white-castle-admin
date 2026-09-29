@@ -85,6 +85,40 @@ export interface GuestsStats {
  */
 export type MealPlan = "room_only" | "bed_and_breakfast"
 
+/** One booking on the bed and breakfast list (`GET /bookings/bb-list`). */
+export interface BbListBooking {
+  booking_id: string
+  reference: string
+  guest_name: string
+  guest_phone: string
+  /** `""` when the guest gave none. */
+  guest_email: string
+  adults: number
+  children: number
+  check_in_date: string
+  check_out_date: string
+  nights: number
+  room_id: string
+  room_number: string
+  room_type: string
+  meal_plan: MealPlan
+  /** Per-person nightly breakfast rate. */
+  bb_rate: number
+  /** Breakfast charge for the whole stay. */
+  bb_total: number
+  /** `""` when there are none. */
+  special_requests: string
+}
+
+/** `GET /bookings/bb-list?date=` → who's taking breakfast on `date`. */
+export interface BbList {
+  date: string
+  total_guests: number
+  total_adults: number
+  total_children: number
+  bookings: BbListBooking[]
+}
+
 /** Body `POST /bookings/create` expects. Dates are "yyyy-MM-dd". */
 export interface CreateBookingPayload {
   room_id: string
@@ -245,6 +279,10 @@ export interface Booking {
   guest_name: string
   guest_email: string | null
   guest_phone: string | null
+  /** `bed_and_breakfast` puts the booking on the kitchen's list. */
+  meal_plan?: MealPlan | string
+  /** Breakfast charge for the whole stay; only meaningful on a B&B booking. */
+  bb_total?: number | null
   approved_by: string | null
   approved_at: string | null
   rejection_reason: string | null
