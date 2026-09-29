@@ -25,6 +25,7 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar"
 import { useBookingRequests } from "@/hooks/use-booking-requests"
+import { usePendingPaymentsCount } from "@/hooks/use-pending-payments"
 import { useAuth } from "@/providers/auth-provider"
 
 /** Above this the badge would outgrow the rail, so it counts up to "99+". */
@@ -49,6 +50,13 @@ function AppSidebar() {
   // Shares its query with the /requests table, so approving or rejecting a
   // request drops the count here without a second fetch.
   const { count: pendingRequests } = useBookingRequests()
+  // Under the payments key prefix, so recording, verifying or rejecting a
+  // payment refreshes it.
+  const pendingPayments = usePendingPaymentsCount()
+  const badgeCounts: Record<string, number> = {
+    "/requests": pendingRequests,
+    "/payments": pendingPayments,
+  }
   const visibleNav = dashboardNav.filter((item) =>
     canSeeNavItem(item, user?.role)
   )
@@ -94,10 +102,9 @@ function AppSidebar() {
                   const isActive =
                     pathname === item.href ||
                     pathname.startsWith(`${item.href}/`)
+                  const count = badgeCounts[item.href] ?? 0
                   const badge =
-                    item.href === "/requests" && pendingRequests > 0
-                      ? Math.min(pendingRequests, MAX_BADGE_COUNT + 1)
-                      : null
+                    count > 0 ? Math.min(count, MAX_BADGE_COUNT + 1) : null
 
                   return (
                     <SidebarMenuItem key={item.href}>
@@ -117,7 +124,7 @@ function AppSidebar() {
                       </SidebarMenuButton>
                       {badge !== null ? (
                         <SidebarMenuBadge
-                          aria-label={`${pendingRequests} pending`}
+                          aria-label={`${count} pending`}
                           className={cn(
                             // `top-1/2!` beats the peer-driven `top-1.5` the
                             // base badge sets, so it centres on the nav link.

@@ -40,15 +40,26 @@ import {
   unitsQueryKey,
 } from "@/lib/api/units"
 import { formatCurrency, humanizeSlug } from "@/lib/format"
-import { getRoomTypeLabel, UNIT_STATUSES } from "@/lib/units"
+import type { Unit } from "@/lib/types"
+import { getBbRateLabel, getRoomTypeLabel, UNIT_STATUSES } from "@/lib/units"
 
-const COLUMNS = 6
+const COLUMNS = 7
 
 /** Select can't hold "" as an item value, so "every status" uses a sentinel. */
 const ALL_STATUSES = "all"
 
 /** How long a hover-prefetched room stays fresh before another hover refetches it. */
 const PREFETCH_STALE_MS = 30_000
+
+/** The room's B&B rate, or a muted "Not offered". */
+function BbRate({ unit }: { unit: Unit }) {
+  const rate = getBbRateLabel(unit)
+  return rate ? (
+    <span className="font-mono">{rate}</span>
+  ) : (
+    <span className="text-muted-foreground">Not offered</span>
+  )
+}
 
 export function UnitsTable() {
   const [search, setSearch] = useState("")
@@ -147,6 +158,9 @@ export function UnitsTable() {
             <TableHead className={tableHeadClassName}>Type</TableHead>
             <TableHead className={tableHeadClassName}>Max occupancy</TableHead>
             <TableHead className={tableHeadClassName}>Rate / night</TableHead>
+            <TableHead className={tableHeadClassName}>
+              Bed & breakfast
+            </TableHead>
             <TableHead className={tableHeadClassName}>Status</TableHead>
             <TableHead className={cn(tableHeadClassName, "w-24 text-center")}>
               Actions
@@ -185,6 +199,9 @@ export function UnitsTable() {
                 </TableCell>
                 <TableCell className="px-4 font-mono">
                   {formatCurrency(unit.base_rate)}
+                </TableCell>
+                <TableCell className="px-4">
+                  <BbRate unit={unit} />
                 </TableCell>
                 <TableCell className="px-4">
                   <UnitStatusBadge status={unit.status} />

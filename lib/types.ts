@@ -35,6 +35,10 @@ export interface Unit {
   status: string
   amenities: string[]
   photos: string[]
+  /** Whether the room can be booked on the bed and breakfast meal plan. */
+  bb_available: boolean
+  /** The bed and breakfast charge; `null` when the room doesn't offer it. */
+  bb_rate: number | null
   created_at: string
   updated_at: string
 }
@@ -75,13 +79,13 @@ export interface GuestsStats {
   blacklisted: number
 }
 
-/** Body `POST /bookings/create` expects. Dates are "yyyy-MM-dd". */
 /**
- * `bed_and_breakfast` puts the guest on the bed and breakfast list;
- * `room_only` leaves them off it.
+ * `bed_and_breakfast` puts the guest on the bed and breakfast list (and
+ * costs extra); `room_only` leaves them off it.
  */
 export type MealPlan = "room_only" | "bed_and_breakfast"
 
+/** Body `POST /bookings/create` expects. Dates are "yyyy-MM-dd". */
 export interface CreateBookingPayload {
   room_id: string
   check_in_date: string

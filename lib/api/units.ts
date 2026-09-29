@@ -1,5 +1,5 @@
 import { axiosInstance } from "@/lib/axios"
-import type { UnitPayload } from "@/lib/schemas/units"
+import type { UnitPayload, UnitStatusPayload } from "@/lib/schemas/units"
 import type { Unit, UnitsOccupancyStats } from "@/lib/types"
 import { normalizeUnit } from "@/lib/units"
 
@@ -42,6 +42,20 @@ export async function updateUnit(roomId: string, payload: UnitPayload) {
     payload
   )
   return normalizeUnit(response.data)
+}
+
+/**
+ * PATCH /bookings/rooms/{id} with `{ status, changed_by, notes }` → moves
+ * the room between available, housekeeping and maintenance.
+ */
+export async function updateUnitStatus(
+  roomId: string,
+  payload: UnitStatusPayload
+) {
+  await axiosInstance.patch(
+    `/bookings/rooms/${encodeURIComponent(roomId)}/status`,
+    payload
+  )
 }
 
 /** DELETE /bookings/rooms/{id} → permanently removes the room. */

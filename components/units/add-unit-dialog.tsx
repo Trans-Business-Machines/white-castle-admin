@@ -30,6 +30,8 @@ const emptyValues: UnitType = {
   max_occupancy: Number.NaN,
   base_rate: Number.NaN,
   amenities: [],
+  bb_available: false,
+  bb_rate: Number.NaN,
   photos: [],
 }
 

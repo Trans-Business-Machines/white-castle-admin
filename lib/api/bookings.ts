@@ -86,8 +86,6 @@ export async function fetchBookingsOccupancy(range: OccupancyRange) {
 
 /** POST /bookings/create → creates a booking and returns it. */
 export async function createBooking(payload: CreateBookingPayload) {
-  console.log("New bookings paylod: ", payload)
-
   const response = await axiosInstance.post<Booking>(
     "/bookings/create",
     payload

@@ -45,7 +45,7 @@ const roomTypeValues = ROOM_TYPES.map((type) => type.value) as [
   ...RoomType[],
 ]
 
-export const unitsSchema = z.object({
+const unitFields = z.object({
   room_number: z
     .string()
     .trim()
@@ -61,6 +61,9 @@ export const unitsSchema = z.object({
     .number({ error: "Enter the nightly rate." })
     .positive("The rate must be greater than 0."),
   amenities: z.array(amenitySchema),
+  bb_available: z.boolean(),
+  // NaN while the input is empty; only required when B&B is offered.
+  bb_rate: z.number().or(z.nan()),
   photos: z
     .array(z.custom<File>((value) => value instanceof File))
     .max(MAX_ROOM_PHOTOS, `Attach at most ${MAX_ROOM_PHOTOS} photos.`)
@@ -74,6 +77,20 @@ export const unitsSchema = z.object({
     }),
 })
 
+export const unitsSchema = unitFields.refine(
+  (values) => !values.bb_available || values.bb_rate > 0,
+  {
+    message: "Enter a bed and breakfast rate greater than 0.",
+    path: ["bb_rate"],
+    // Still runs while other fields are invalid, so the error shows up
+    // alongside theirs instead of only once everything else passes.
+    when: (payload) =>
+      unitFields
+        .pick({ bb_available: true, bb_rate: true })
+        .safeParse(payload.value).success,
+  }
+)
+
 export type UnitType = z.infer<typeof unitsSchema>
 
 export function toUnitPayload(values: UnitType) {
@@ -84,7 +101,47 @@ export function toUnitPayload(values: UnitType) {
     max_occupancy: values.max_occupancy,
     base_rate: values.base_rate,
     amenities: values.amenities.map((amenity) => amenity.trim()),
+    bb_available: values.bb_available,
+    // The backend expects 0 when the room doesn't offer B&B.
+    bb_rate: values.bb_available ? values.bb_rate : 0,
   }
 }
 
 export type UnitPayload = ReturnType<typeof toUnitPayload>
+
+/**
+ * The statuses staff can set by hand. `occupied` follows check-in / out,
+ * so it isn't offered.
+ */
+export const SETTABLE_UNIT_STATUSES = [
+  "available",
+  "housekeeping",
+  "maintenance",
+] as const
+
+export type SettableUnitStatus = (typeof SETTABLE_UNIT_STATUSES)[number]
+
+export function isSettableUnitStatus(
+  status: string
+): status is SettableUnitStatus {
+  return (SETTABLE_UNIT_STATUSES as readonly string[]).includes(
+    status.toLowerCase()
+  )
+}
+
+export const unitStatusSchema = z.object({
+  status: z.enum(SETTABLE_UNIT_STATUSES, { error: "Choose a status." }),
+})
+
+export type UnitStatusValues = z.infer<typeof unitStatusSchema>
+
+/** Body for `PATCH /bookings/rooms/{id}` when only the status changes. */
+export function toUnitStatusPayload(values: UnitStatusValues, userId: string) {
+  return {
+    status: values.status,
+    changed_by: userId,
+    notes: "",
+  }
+}
+
+export type UnitStatusPayload = ReturnType<typeof toUnitStatusPayload>

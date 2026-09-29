@@ -25,6 +25,7 @@ import {
   PAYMENT_TYPES,
   type PaymentValues,
 } from "@/lib/schemas/payments"
+import { getPaymentAmount } from "@/lib/payments"
 import type { Booking } from "@/lib/types"
 
 export const labelClassName =
@@ -186,6 +187,19 @@ export function PaymentFormFields({
     formState: { errors },
   } = form
   const isCash = isCashMethod(useWatch({ control, name: "method" }))
+  const paymentType = useWatch({ control, name: "payment_type" })
+
+  /**
+   * The amount isn't typed: it follows the picked booking and type (the
+   * booking's total for a full payment, its deposit for a deposit).
+   */
+  function syncAmount(booking: Booking | undefined, type: string) {
+    const amount = getPaymentAmount(booking, type)
+    setValue("amount", amount ?? Number.NaN, {
+      shouldValidate: amount !== null,
+    })
+    if (amount === null) clearErrors("amount")
+  }
 
   return (
     <>
@@ -210,6 +224,7 @@ export function PaymentFormFields({
                   setValue("booking_ref", booking?.reference ?? "", {
                     shouldValidate: Boolean(booking),
                   })
+                  syncAmount(booking ?? undefined, getValues("payment_type"))
                 }}
                 bookings={bookings.data}
                 fallbackRef={getValues("booking_ref")}
@@ -239,31 +254,6 @@ export function PaymentFormFields({
         </div>
 
         <div className="grid items-start gap-4 sm:grid-cols-2">
-          {/* Amount */}
-          <div className="grid gap-2">
-            <Label htmlFor="payment-amount" className={labelClassName}>
-              Amount (KES)
-            </Label>
-            <Input
-              id="payment-amount"
-              type="number"
-              inputMode="decimal"
-              min={1}
-              step="any"
-              placeholder="13500"
-              className={inputClassName}
-              aria-invalid={Boolean(errors.amount)}
-              aria-describedby={
-                errors.amount ? "payment-amount-error" : undefined
-              }
-              {...register("amount", { valueAsNumber: true })}
-            />
-            <FieldError
-              id="payment-amount-error"
-              message={errors.amount?.message}
-            />
-          </div>
-
           {/* Payment type */}
           <div className="grid gap-2">
             <Label htmlFor="payment-type" className={labelClassName}>
@@ -275,7 +265,16 @@ export function PaymentFormFields({
               render={({ field }) => (
                 <Select
                   value={field.value}
-                  onValueChange={field.onChange}
+                  onValueChange={(type) => {
+                    field.onChange(type)
+                    syncAmount(
+                      bookings.data?.find(
+                        (booking) =>
+                          booking.booking_id === getValues("booking_id")
+                      ),
+                      type
+                    )
+                  }}
                   disabled={detailsLocked || pending}
                 >
                   <SelectTrigger
@@ -304,6 +303,38 @@ export function PaymentFormFields({
               id="payment-type-error"
               message={errors.payment_type?.message}
             />
+          </div>
+
+          {/* Amount */}
+          <div className="grid gap-2">
+            <Label htmlFor="payment-amount" className={labelClassName}>
+              Amount (KES)
+            </Label>
+            <Input
+              id="payment-amount"
+              type="number"
+              inputMode="decimal"
+              readOnly
+              placeholder="Pick a booking and type"
+              className={`${inputClassName} cursor-default read-only:bg-muted read-only:focus-visible:border-border read-only:focus-visible:ring-0`}
+              aria-invalid={Boolean(errors.amount)}
+              aria-describedby={
+                errors.amount ? "payment-amount-error" : undefined
+              }
+              {...register("amount", { valueAsNumber: true })}
+            />
+            {errors.amount ? (
+              <FieldError
+                id="payment-amount-error"
+                message={errors.amount.message}
+              />
+            ) : paymentType ? (
+              <p className="text-xs text-muted-foreground">
+                {paymentType === "deposit"
+                  ? "The booking's deposit amount."
+                  : "The booking's total amount."}
+              </p>
+            ) : null}
           </div>
         </div>
 

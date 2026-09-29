@@ -13,6 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import {
   PhotoDropzone,
@@ -79,6 +80,7 @@ export function UnitFormFields({
   const [amenityError, setAmenityError] = useState<string | null>(null)
 
   const amenities = useWatch({ control, name: "amenities" })
+  const bbAvailable = useWatch({ control, name: "bb_available" })
   const photos = useWatch({ control, name: "photos" })
 
   // The ten-photo cap is a property of the room, not of this picker, so
@@ -235,6 +237,60 @@ export function UnitFormFields({
             <FieldError
               id="unit-base-rate-error"
               message={errors.base_rate?.message}
+            />
+          </div>
+        </div>
+
+        {/* Bed and breakfast toggle and rate */}
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-2">
+            <Label htmlFor="unit-bb-available" className={labelClassName}>
+              Bed and breakfast
+            </Label>
+            <Controller
+              control={control}
+              name="bb_available"
+              render={({ field }) => (
+                <label className="flex h-11 cursor-pointer items-center gap-3 rounded-lg border border-border bg-canvas px-3.5 text-base has-disabled:cursor-not-allowed dark:bg-input/30">
+                  <Switch
+                    id="unit-bb-available"
+                    ref={field.ref}
+                    checked={field.value}
+                    onCheckedChange={(checked) => {
+                      field.onChange(checked)
+                      if (!checked) clearErrors("bb_rate")
+                    }}
+                    onBlur={field.onBlur}
+                    className="data-checked:bg-brand-azure"
+                  />
+                  {field.value ? "Offered" : "Not offered"}
+                </label>
+              )}
+            />
+          </div>
+
+          <div className="grid gap-2">
+            <Label htmlFor="unit-bb-rate" className={labelClassName}>
+              B&B rate (KES)
+            </Label>
+            <Input
+              id="unit-bb-rate"
+              type="number"
+              inputMode="decimal"
+              min={0}
+              step="0.01"
+              placeholder={bbAvailable ? "800" : "—"}
+              disabled={!bbAvailable}
+              className={inputClassName}
+              aria-invalid={Boolean(errors.bb_rate)}
+              aria-describedby={
+                errors.bb_rate ? "unit-bb-rate-error" : undefined
+              }
+              {...register("bb_rate", { valueAsNumber: true })}
+            />
+            <FieldError
+              id="unit-bb-rate-error"
+              message={errors.bb_rate?.message}
             />
           </div>
         </div>

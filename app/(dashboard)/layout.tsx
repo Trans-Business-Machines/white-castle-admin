@@ -1,17 +1,16 @@
 import { type PropsWithChildren } from "react"
-import { cookies } from "next/headers"
 import { RequireAuth } from "@/components/auth/require-auth"
 import { AppSidebar } from "@/components/dashboard/app-sidebar"
 import { DashboardHeader } from "@/components/dashboard/dashboard-header"
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar"
 
-export default async function DashboardLayout({ children }: PropsWithChildren) {
-  const cookieStore = await cookies()
-  const defaultOpen = cookieStore.get("sidebar_state")?.value !== "false"
-
+export default function DashboardLayout({ children }: PropsWithChildren) {
   return (
     <RequireAuth>
-      <SidebarProvider defaultOpen={defaultOpen}>
+      {/* Always starts expanded, so the nav badges (pending requests and
+          payments) are in view after every launch and sign-in. Collapsing
+          only lasts until the next reload; nothing is persisted. */}
+      <SidebarProvider defaultOpen>
         <AppSidebar />
         <SidebarInset className="min-w-0 bg-porcelain">
           <DashboardHeader />

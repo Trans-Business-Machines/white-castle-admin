@@ -1,14 +1,9 @@
 import { ROOM_TYPES } from "@/lib/schemas/units"
-import { humanizeSlug } from "@/lib/format"
+import { formatCurrency, humanizeSlug } from "@/lib/format"
 import type { Unit, UnitsOccupancyStats } from "@/lib/types"
 
 /** Room statuses offered by the units table's status filter. */
-export const UNIT_STATUSES = [
-  "available",
-  "occupied",
-  "housekeeping",
-  "maintenance",
-] as const
+export const UNIT_STATUSES = ["available", "occupied", "housekeeping"] as const
 
 const STATUS_BADGES: Record<string, string> = {
   available:
@@ -115,7 +110,22 @@ export function parseAmenities(value: unknown): string[] {
     .filter(Boolean)
 }
 
-/** Applies `parseAmenities` to a room straight from the API. */
+/**
+ * Cleans up a room straight from the API: applies `parseAmenities`, and
+ * defaults the bed and breakfast fields for responses that omit them.
+ */
 export function normalizeUnit(unit: Unit): Unit {
-  return { ...unit, amenities: parseAmenities(unit.amenities) }
+  return {
+    ...unit,
+    amenities: parseAmenities(unit.amenities),
+    bb_available: unit.bb_available ?? false,
+    bb_rate: unit.bb_rate ?? null,
+  }
+}
+
+/** "KES 800", or null when the room has no bed and breakfast to offer. */
+export function getBbRateLabel(unit: Pick<Unit, "bb_available" | "bb_rate">) {
+  return unit.bb_available && unit.bb_rate != null
+    ? formatCurrency(unit.bb_rate)
+    : null
 }

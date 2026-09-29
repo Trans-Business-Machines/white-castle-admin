@@ -18,6 +18,9 @@ export const paymentEvidenceQueryKey = (fileId: string) =>
   ["payments", "evidence", fileId] as const
 export const paymentStatsQueryKey = (range: DateRange) =>
   ["payments", "stats", range.date_from, range.date_to] as const
+// Under the payments prefix so recording, verifying or rejecting a payment
+// refreshes the sidebar badge that counts these.
+export const pendingPaymentsQueryKey = ["payments", "pending"] as const
 
 /** Inclusive "yyyy-MM-dd" bounds. */
 export interface DateRange {
@@ -43,6 +46,12 @@ export async function fetchPayments(filters: PaymentListFilters) {
   const response = await axiosInstance.get<Payment[]>("/payments/list", {
     params,
   })
+  return response.data
+}
+
+/** GET /payments/pending → every payment still waiting to be verified. */
+export async function fetchPendingPayments() {
+  const response = await axiosInstance.get<Payment[]>("/payments/pending")
   return response.data
 }
 

@@ -2,7 +2,13 @@
 
 import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { EllipsisVertical, Eye, SquarePen, Trash2 } from "lucide-react"
+import {
+  ArrowLeftRight,
+  EllipsisVertical,
+  Eye,
+  SquarePen,
+  Trash2,
+} from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -13,18 +19,24 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { DeleteUnitDialog } from "@/components/units/delete-unit-dialog"
 import { EditUnitDialog } from "@/components/units/edit-unit-dialog"
+import { UpdateUnitStatusDialog } from "@/components/units/update-unit-status-dialog"
+import { hasRole, UNIT_STATUS_ROLES } from "@/lib/roles"
+import { isSettableUnitStatus } from "@/lib/schemas/units"
 import type { Unit } from "@/lib/types"
+import { useAuth } from "@/providers/auth-provider"
 
 /** Builds the details route for a room. */
 export function getUnitHref(roomId: string) {
   return `/units/${encodeURIComponent(roomId)}`
 }
 
-type UnitAction = "edit" | "delete"
+type UnitAction = "edit" | "status" | "delete"
 
 function UnitActionsMenu({ unit }: { unit: Unit }) {
   const router = useRouter()
+  const { user } = useAuth()
   const [action, setAction] = useState<UnitAction | null>(null)
+  const canSetStatus = hasRole(user?.role, UNIT_STATUS_ROLES)
 
   return (
     <>
@@ -50,6 +62,16 @@ function UnitActionsMenu({ unit }: { unit: Unit }) {
             <SquarePen aria-hidden="true" />
             Update
           </DropdownMenuItem>
+          {canSetStatus ? (
+            // An occupied room's status follows check-in / out.
+            <DropdownMenuItem
+              disabled={!isSettableUnitStatus(unit.status)}
+              onSelect={() => setAction("status")}
+            >
+              <ArrowLeftRight aria-hidden="true" />
+              Update status
+            </DropdownMenuItem>
+          ) : null}
           <DropdownMenuSeparator />
           <DropdownMenuItem
             variant="destructive"
@@ -65,6 +87,11 @@ function UnitActionsMenu({ unit }: { unit: Unit }) {
         unit={unit}
         open={action === "edit"}
         onOpenChange={(open) => setAction(open ? "edit" : null)}
+      />
+      <UpdateUnitStatusDialog
+        unit={unit}
+        open={action === "status"}
+        onOpenChange={(open) => setAction(open ? "status" : null)}
       />
       <DeleteUnitDialog
         unit={unit}

@@ -13,61 +13,54 @@ import type {
 /** Upper bound for the adults / children counters. */
 export const MAX_OCCUPANTS = 20
 
-/** New bookings are room only unless the receptionist picks B&B. */
-export const DEFAULT_MEAL_PLAN: MealPlan = "room_only"
-export const MEAL_PLANS = [
-  {
-    value: "room_only",
-    label: "Room only",
-    description:
-      "The guest just gets the room and won't be on the bed and breakfast list.",
-  },
-  {
-    value: "bed_and_breakfast",
-    label: "Bed and breakfast",
-    description: "The guest will be on the bed and breakfast list.",
-  },
-] as const satisfies readonly {
-  value: MealPlan
-  label: string
-  description: string
-}[]
-
-const mealPlanValues = MEAL_PLANS.map((plan) => plan.value) as [
-  MealPlan,
-  ...MealPlan[],
-]
-
 const dateField = (emptyMessage: string) =>
   z
     .date()
     .nullable()
     .refine((value) => Boolean(value), emptyMessage)
 
-export const bookingSchema = z
+function toIsoDate(date: Date | null) {
+  // The schema rejects null before submit; this only guards the types.
+  if (!date) throw new Error("A date is required.")
+  return format(date, "yyyy-MM-dd")
+}
+
+/** New bookings are room only unless staff pick bed and breakfast. */
+export const DEFAULT_MEAL_PLAN: MealPlan = "room_only"
+
+export const MEAL_PLANS = [
+  { value: "room_only", label: "Room only" },
+  { value: "bed_and_breakfast", label: "Bed and breakfast" },
+] as const satisfies readonly { value: MealPlan; label: string }[]
+
+const mealPlanValues = MEAL_PLANS.map((plan) => plan.value) as [
+  MealPlan,
+  ...MealPlan[],
+]
+
+const occupantCount = (label: string, min: number, minMessage: string) =>
+  z
+    .number({ error: `Enter the number of ${label}.` })
+    .int("Use a whole number.")
+    .min(min, minMessage)
+    .max(MAX_OCCUPANTS, `Keep ${label} at ${MAX_OCCUPANTS} or fewer.`)
+
+export const createBookingSchema = z
   .object({
-    room_id: z.string().min(1, "Choose a room."),
     guest_id: z.string().min(1, "Choose a guest."),
+    room_id: z.string().min(1, "Choose a room."),
     check_in_date: dateField("Pick a check-in date.").refine(
       (value) => value === null || !isBefore(value, startOfToday()),
       "Check-in can't be in the past."
     ),
     check_out_date: dateField("Pick a check-out date."),
-    adults: z
-      .number({ error: "Enter the number of adults." })
-      .int("Use a whole number.")
-      .min(1, "At least one adult must stay.")
-      .max(MAX_OCCUPANTS, `Keep adults at ${MAX_OCCUPANTS} or fewer.`),
-    children: z
-      .number({ error: "Enter the number of children." })
-      .int("Use a whole number.")
-      .min(0, "Children can't be negative.")
-      .max(MAX_OCCUPANTS, `Keep children at ${MAX_OCCUPANTS} or fewer.`),
+    adults: occupantCount("adults", 1, "At least one adult must stay."),
+    children: occupantCount("children", 0, "Children can't be negative."),
+    meal_plan: z.enum(mealPlanValues, { error: "Choose a meal plan." }),
     special_requests: z
       .string()
       .trim()
       .max(1000, "Keep special requests under 1000 characters."),
-    meal_plan: z.enum(mealPlanValues),
   })
   .refine(
     (values) =>
@@ -80,21 +73,15 @@ export const bookingSchema = z
     }
   )
 
-export type BookingValues = z.infer<typeof bookingSchema>
-
-function toIsoDate(date: Date | null) {
-  // The schema rejects null before submit; this only guards the types.
-  if (!date) throw new Error("Booking dates are required.")
-  return format(date, "yyyy-MM-dd")
-}
+export type CreateBookingValues = z.infer<typeof createBookingSchema>
 
 /**
- * Shapes form values into the body `POST /bookings/create` expects. The
- * form stores the chosen guest's id; their contact details are copied from
- * the guest record here.
+ * Shapes the form into the body `POST /bookings/create` expects. The form
+ * stores the chosen guest's id; the body takes their contact details, so
+ * they're copied from the guest record here.
  */
-export function toBookingPayload(
-  values: BookingValues,
+export function toCreateBookingPayload(
+  values: CreateBookingValues,
   guest: Guest
 ): CreateBookingPayload {
   return {

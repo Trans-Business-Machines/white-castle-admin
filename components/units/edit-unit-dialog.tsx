@@ -50,6 +50,9 @@ function toFormValues(unit: Unit): UnitType {
     max_occupancy: unit.max_occupancy,
     base_rate: unit.base_rate,
     amenities: unit.amenities ?? [],
+    bb_available: unit.bb_available,
+    // A room without B&B comes back with a 0 rate; show that as empty.
+    bb_rate: unit.bb_available && unit.bb_rate ? unit.bb_rate : Number.NaN,
     photos: [],
   }
 }

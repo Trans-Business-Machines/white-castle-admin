@@ -59,7 +59,7 @@ const paymentFields = z.object({
   booking_id: z.string().min(1, "Choose a booking."),
   booking_ref: z.string().min(1, "Choose a booking."),
   amount: z
-    .number({ error: "Enter the amount paid." })
+    .number({ error: "Choose a booking and payment type first." })
     .positive("The amount must be greater than 0."),
   method: z.enum(methodValues, { error: "Choose how the guest paid." }),
   payment_type: z.enum(typeValues, { error: "Choose the payment type." }),

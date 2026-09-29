@@ -162,6 +162,21 @@ export function getRemainingBalance(
 }
 
 /**
+ * What a new payment of `type` should be for `booking`: the whole
+ * `total_amount` for a full payment, `deposit_amount` for a deposit.
+ * `null` until both are picked.
+ */
+export function getPaymentAmount(
+  booking: Pick<Booking, "total_amount" | "deposit_amount"> | undefined,
+  type: string
+) {
+  if (!booking) return null
+  if (type === "full_payment") return booking.total_amount
+  if (type === "deposit") return booking.deposit_amount
+  return null
+}
+
+/**
  * The `file_id` for `GET /payments/evidence/{file_id}`: the last path
  * segment of the payment's `evidence_url`, or `null` when no proof is
  * attached.

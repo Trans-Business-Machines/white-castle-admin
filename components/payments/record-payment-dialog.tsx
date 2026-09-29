@@ -62,7 +62,8 @@ interface RecordPaymentDialogProps {
  * dialog keeps the created payment, locks the details and resubmitting only
  * retries the upload.
  *
- * Staff type the amount themselves; nothing is pre-filled.
+ * The amount is read-only and follows the picked booking and payment
+ * type: `total_amount` for a full payment, `deposit_amount` for a deposit.
  *
  * The form is only mounted while open so every open starts empty and no
  * stale values or object URLs linger between records.

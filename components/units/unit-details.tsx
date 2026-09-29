@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useQuery } from "@tanstack/react-query"
-import { ArrowLeft, SquarePen, Trash2 } from "lucide-react"
+import { ArrowLeft, ArrowLeftRight, SquarePen, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -19,10 +19,14 @@ import { DeleteUnitDialog } from "@/components/units/delete-unit-dialog"
 import { EditUnitDialog } from "@/components/units/edit-unit-dialog"
 import { UnitPhotoGallery } from "@/components/units/unit-photo-gallery"
 import { UnitStatusBadge } from "@/components/units/unit-status-badge"
+import { UpdateUnitStatusDialog } from "@/components/units/update-unit-status-dialog"
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/errors"
 import { fetchUnitDetails, unitQueryKey } from "@/lib/api/units"
 import { formatCurrency, formatDate, humanizeSlug } from "@/lib/format"
-import { getRoomTypeLabel } from "@/lib/units"
+import { hasRole, UNIT_STATUS_ROLES } from "@/lib/roles"
+import { isSettableUnitStatus } from "@/lib/schemas/units"
+import { getBbRateLabel, getRoomTypeLabel } from "@/lib/units"
+import { useAuth } from "@/providers/auth-provider"
 
 function formatTimestamp(value: string | null | undefined) {
   if (!value) return "—"
@@ -93,7 +97,7 @@ function UnitDetailsSkeleton() {
         <CardContent className="gap-6">
           <Skeleton className="aspect-video w-full rounded-lg" />
           <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-            {Array.from({ length: 6 }, (_, index) => (
+            {Array.from({ length: 8 }, (_, index) => (
               <div key={index} className="space-y-2">
                 <Skeleton className="h-3 w-20 rounded" />
                 <Skeleton className="h-5 w-32 rounded" />
@@ -109,7 +113,11 @@ function UnitDetailsSkeleton() {
 /** Full details for one room, with the update / delete CTAs at the top right. */
 function UnitDetails({ roomId }: { roomId: string }) {
   const router = useRouter()
-  const [action, setAction] = useState<"edit" | "delete" | null>(null)
+  const { user } = useAuth()
+  const [action, setAction] = useState<"edit" | "status" | "delete" | null>(
+    null
+  )
+  const canSetStatus = hasRole(user?.role, UNIT_STATUS_ROLES)
 
   const unit = useQuery({
     queryKey: unitQueryKey(roomId),
@@ -153,6 +161,7 @@ function UnitDetails({ roomId }: { roomId: string }) {
   }
 
   const room = unit.data
+  const bbRate = getBbRateLabel(room)
 
   return (
     <div className="grid gap-6">
@@ -170,7 +179,7 @@ function UnitDetails({ roomId }: { roomId: string }) {
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           <Button
             type="button"
             variant="default"
@@ -180,6 +189,18 @@ function UnitDetails({ roomId }: { roomId: string }) {
             <SquarePen aria-hidden="true" />
             Update unit
           </Button>
+          {canSetStatus ? (
+            <Button
+              type="button"
+              variant="default"
+              className="h-11 rounded-md bg-brand-azure px-5"
+              disabled={!isSettableUnitStatus(room.status)}
+              onClick={() => setAction("status")}
+            >
+              <ArrowLeftRight aria-hidden="true" />
+              Update status
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="destructive"
@@ -216,6 +237,27 @@ function UnitDetails({ roomId }: { roomId: string }) {
             <DetailItem
               label="Rate / night"
               value={formatCurrency(room.base_rate)}
+              mono
+            />
+            <DetailItem
+              label="Bed & breakfast"
+              value={
+                room.bb_available ? (
+                  <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-sm font-medium text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
+                    Available
+                  </span>
+                ) : (
+                  <span className="text-muted-foreground">Not offered</span>
+                )
+              }
+            />
+            <DetailItem
+              label="B&B rate"
+              value={
+                bbRate ?? (
+                  <span className="font-sans text-muted-foreground">—</span>
+                )
+              }
               mono
             />
 
@@ -270,6 +312,11 @@ function UnitDetails({ roomId }: { roomId: string }) {
         unit={room}
         open={action === "edit"}
         onOpenChange={(open) => setAction(open ? "edit" : null)}
+      />
+      <UpdateUnitStatusDialog
+        unit={room}
+        open={action === "status"}
+        onOpenChange={(open) => setAction(open ? "status" : null)}
       />
       <DeleteUnitDialog
         unit={room}
