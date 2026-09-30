@@ -1,10 +1,17 @@
 import { isAxiosError } from "axios"
 
 /**
+ * An error raised in the browser (not by the API) whose message is already
+ * written for the user; `getApiErrorMessage` shows it as-is.
+ */
+export class UserFacingError extends Error {}
+
+/**
  * Pulls a human-readable message out of a FastAPI-style error body, where
  * `detail` is either a string or a list of validation errors.
  */
 export function getApiErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof UserFacingError) return error.message
   if (!isAxiosError(error)) return fallback
 
   if (!error.response) {

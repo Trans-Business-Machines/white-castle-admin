@@ -63,7 +63,7 @@ function FilePreviewDialog({
           {triggerLabel}
         </button>
       </DialogTrigger>
-      <DialogContent showCloseButton={false} className="sm:max-w-2xl">
+      <DialogContent showCloseButton={false}>
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">{title}</DialogTitle>
           <DialogDescription className="text-base text-muted-foreground">

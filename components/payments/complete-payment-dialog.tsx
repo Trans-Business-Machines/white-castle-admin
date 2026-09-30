@@ -144,7 +144,7 @@ function CompletePaymentForm({
         if (!next) onOpenChange(false)
       }}
     >
-      <DialogContent showCloseButton={false} className="sm:max-w-lg">
+      <DialogContent showCloseButton={false}>
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">
             Complete payment

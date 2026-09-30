@@ -109,7 +109,7 @@ function EditGuestForm({ guest, onOpenChange }: EditGuestDialogProps) {
 
   return (
     <Dialog open onOpenChange={handleOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto md:max-w-2xl">
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-heading text-xl font-bold">
             Update {guest.full_name}

@@ -1,5 +1,10 @@
 import { axiosInstance } from "@/lib/axios"
-import type { BlacklistPayload, GuestPayload } from "@/lib/schemas/guests"
+import { prepareUpload } from "@/lib/image-compression"
+import {
+  ID_DOCUMENT_MAX_BYTES,
+  type BlacklistPayload,
+  type GuestPayload,
+} from "@/lib/schemas/guests"
 import type { Booking, Guest, GuestsStats, SignedFile } from "@/lib/types"
 export const guestsQueryKey = ["guests"] as const
 export const guestStatsQueryKey = ["guests", "stats"] as const
@@ -56,11 +61,13 @@ export async function updateGuest(guestId: string, payload: GuestPayload) {
 /**
  * POST /guests/{id}/id-document → attaches the guest's ID scan (PNG, JPG or
  * PDF) as multipart `file`. The guest has to exist first, so the dialogs
- * save the details before they upload.
+ * save the details before they upload. An image over 1 MB is compressed
+ * first (`prepareUpload`); PDFs go up as picked. Either must fit
+ * `ID_DOCUMENT_MAX_BYTES`.
  */
 export async function uploadGuestIdDocument(guestId: string, file: File) {
   const body = new FormData()
-  body.append("file", file)
+  body.append("file", await prepareUpload(file, ID_DOCUMENT_MAX_BYTES))
   await axiosInstance.post(
     `/guests/${encodeURIComponent(guestId)}/id-document`,
     body

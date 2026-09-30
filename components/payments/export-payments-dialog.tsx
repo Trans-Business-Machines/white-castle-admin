@@ -1,6 +1,9 @@
 "use client"
 
-import { ExportCsvDialog } from "@/components/export-csv-dialog"
+import {
+  ExportCsvDialog,
+  ExportStatusDateFields,
+} from "@/components/export-csv-dialog"
 import { exportPayments } from "@/lib/api/payments"
 import { getCurrentMonthRange, PAYMENT_EXPORT_STATUSES } from "@/lib/payments"
 
@@ -13,8 +16,15 @@ export function ExportPaymentsDialog() {
     <ExportCsvDialog
       noun="payments"
       description="Defaults to this month's payments. Change the dates or pick a status to narrow it down, or clear the dates to export everything."
-      statuses={PAYMENT_EXPORT_STATUSES}
       initialFilters={() => ({ status: "", ...getCurrentMonthRange() })}
+      renderFields={(filters, update, disabled) => (
+        <ExportStatusDateFields
+          statuses={PAYMENT_EXPORT_STATUSES}
+          value={filters}
+          onChange={update}
+          disabled={disabled}
+        />
+      )}
       exportFile={exportPayments}
     />
   )

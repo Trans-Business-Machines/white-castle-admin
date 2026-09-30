@@ -120,7 +120,7 @@ export function PhotoDropzone({
   describedBy,
   accept: acceptedTypes = ROOM_PHOTO_TYPES,
   validate = getRoomPhotoError,
-  hint = `JPG, PNG or WebP, up to 2 MB each — ${remaining} more ${
+  hint = `JPG, PNG or WebP, up to 10 MB each — ${remaining} more ${
     remaining === 1 ? "photo" : "photos"
   } can be added`,
   fullMessage = `This room already has ${MAX_ROOM_PHOTOS} photos. Remove one to add another.`,

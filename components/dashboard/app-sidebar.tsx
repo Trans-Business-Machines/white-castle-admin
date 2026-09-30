@@ -94,8 +94,14 @@ function AppSidebar() {
           </div>
         </SidebarHeader>
 
-        <SidebarContent className="px-4">
-          <SidebarGroup className="p-0">
+        {/*
+          The nav can outgrow the viewport, so it scrolls in both states. The
+          base component clips it (`overflow-hidden`) on the collapsed rail;
+          `!` wins over that since `cn` doesn't merge conflicting classes.
+        */}
+        <SidebarContent className="overflow-x-hidden overflow-y-auto px-4 group-data-[collapsible=icon]:overflow-y-auto!">
+          {/* Bottom padding keeps the last link (Audit Log) off the footer. */}
+          <SidebarGroup className="p-0 pb-4">
             <SidebarGroupContent>
               <SidebarMenu className="gap-1.5">
                 {visibleNav.map((item) => {

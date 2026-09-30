@@ -123,7 +123,7 @@ function EditSettingForm({
         if (!next) onOpenChange(false)
       }}
     >
-      <DialogContent showCloseButton={false} className="sm:max-w-md">
+      <DialogContent showCloseButton={false}>
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">Edit {label}</DialogTitle>
           <DialogDescription className="text-base text-muted-foreground">

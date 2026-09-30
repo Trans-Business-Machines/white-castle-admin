@@ -621,3 +621,50 @@ export interface BbSummaryReport {
   today_breakfast_list: BbList
   bb_bookings: BookingsReportBooking[]
 }
+
+/**
+ * One row of an audit log. `user_id` / `username` / `role` describe who
+ * acted and may be null (e.g. a failed sign-in for an unknown username);
+ * `entity_*` is what the action touched. `details` is free-form.
+ */
+export interface AuditLogEntry {
+  id: number
+  timestamp: string
+  user_id: string | null
+  username: string | null
+  role: string | null
+  ip_address: string | null
+  action: string
+  entity_type: string | null
+  entity_id: string | null
+  details: unknown
+  service: string
+}
+
+/** A page of an audit log, paginated by the backend with `limit` / `offset`. */
+export interface AuditLogPage {
+  total: number
+  limit: number
+  offset: number
+  entries: AuditLogEntry[]
+}
+
+/**
+ * `GET /motel/reports/audit`: one page of a service's audit log. `details`
+ * on these entries is a JSON-encoded string (see `parseAuditDetails`).
+ */
+export interface ServicesAuditLog {
+  period: { from: string | null; to: string | null }
+  filters: {
+    username: string | null
+    action: string | null
+    entity_type: string | null
+    entity_id: string | null
+    service: string | null
+  }
+  summary: { total_entries: number }
+  top_users: { username: string; action_count: number }[]
+  top_actions: { action: string; count: number }[]
+  pagination: { limit: number; offset: number; total: number }
+  entries: AuditLogEntry[]
+}

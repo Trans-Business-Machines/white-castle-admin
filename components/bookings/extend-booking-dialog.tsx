@@ -125,7 +125,7 @@ function ExtendForm({
           `cn` doesn't merge away the base max-width classes. */}
       <DialogContent
         showCloseButton={false}
-        className="max-h-[90dvh] max-w-2xl! overflow-y-auto"
+        className="max-h-[90dvh] overflow-y-auto"
       >
         {result ? (
           <ExtensionSummary

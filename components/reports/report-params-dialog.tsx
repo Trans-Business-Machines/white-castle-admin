@@ -67,7 +67,7 @@ function ReportParamsForm<T extends object>({
   }
 
   return (
-    <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-lg">
+    <DialogContent className="max-h-[90dvh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle className="text-xl font-bold">{title}</DialogTitle>
         <DialogDescription className="text-base text-muted-foreground">

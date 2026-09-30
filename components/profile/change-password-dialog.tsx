@@ -89,7 +89,7 @@ function ChangePasswordDialog() {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">
             Change your password

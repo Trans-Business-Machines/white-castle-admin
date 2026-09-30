@@ -274,7 +274,7 @@ export function GuestFormFields({
               }
               accept={ID_DOCUMENT_TYPES}
               validate={getIdDocumentError}
-              hint="PNG, JPG or PDF, up to 5 MB"
+              hint="PNG or JPG up to 10 MB, or a PDF up to 5 MB"
               fullMessage="One file is attached. Remove it to pick another."
               overflowMessage={(count) =>
                 `Only one file can be attached, so ${count} ${

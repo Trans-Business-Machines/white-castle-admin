@@ -121,7 +121,7 @@ function CheckInForm({
           if (!next) onClose()
         }}
       >
-        <DialogContent showCloseButton={false} className="sm:max-w-md">
+        <DialogContent showCloseButton={false}>
           <DialogHeader>
             <DialogTitle className="text-xl font-bold">
               Check {booking.guest_name} in?

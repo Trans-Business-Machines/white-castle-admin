@@ -12,13 +12,14 @@ export interface ExportFilters {
 }
 
 /**
- * GETs a file export, dropping empty params. The file name comes from
+ * GETs a file export, dropping empty params (any object of string params,
+ * e.g. `ExportFilters`). The file name comes from
  * `Content-Disposition` when the server sends one, else
  * `<fallbackName>-<today>.csv`.
  */
 export async function downloadCsv(
   path: string,
-  filters: ExportFilters,
+  filters: object,
   fallbackName: string
 ) {
   const params = Object.fromEntries(

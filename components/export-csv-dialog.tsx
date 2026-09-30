@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import { useMutation } from "@tanstack/react-query"
 import { isAfter } from "date-fns"
 import { Download, Loader } from "lucide-react"
@@ -39,29 +39,37 @@ const labelClassName =
 const inputClassName =
   "h-11 rounded-lg border-border bg-canvas px-3.5 text-base focus-visible:border-brand-azure focus-visible:ring-brand-azure/20 md:text-base dark:bg-input/30"
 
-interface ExportCsvDialogProps {
+interface ExportCsvDialogProps<T extends object> {
   /** Plural noun for the copy, e.g. "bookings". */
   noun: string
   description: string
-  /** Status slugs offered in the select, after "All statuses". */
-  statuses: readonly string[]
   /**
    * Where each open starts. Called on open rather than passed as a value,
    * so a date default like "this month" is worked out fresh every time.
    */
-  initialFilters: () => ExportFilters
-  exportFile: (filters: ExportFilters) => Promise<{
+  initialFilters: () => T
+  /** The form's inputs, given the current values and a patch-style setter. */
+  renderFields: (
+    filters: T,
+    update: (patch: Partial<T>) => void,
+    disabled: boolean
+  ) => ReactNode
+  exportFile: (filters: T) => Promise<{
     blob: Blob
     filename: string
   }>
+  /** Footer button text; defaults to "Export CSV". */
+  submitLabel?: string
 }
 
 /**
- * "Export as CSV" button + dialog shared by the bookings and payments
- * pages. The dialog asks for an optional status and date range, then saves
- * whatever `exportFile` downloads with the filters that are set.
+ * "Export as CSV" button + dialog shared by every CSV export. The dialog
+ * collects the filters via `renderFields` (bookings and payments use
+ * `ExportStatusDateFields`), then saves whatever `exportFile` downloads.
  */
-export function ExportCsvDialog(props: ExportCsvDialogProps) {
+export function ExportCsvDialog<T extends object>(
+  props: ExportCsvDialogProps<T>
+) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -78,17 +86,20 @@ export function ExportCsvDialog(props: ExportCsvDialogProps) {
   )
 }
 
-function ExportForm({
+function ExportForm<T extends object>({
   noun,
   description,
-  statuses,
   initialFilters,
+  renderFields,
   exportFile,
+  submitLabel = "Export CSV",
   onDone,
-}: ExportCsvDialogProps & { onDone: () => void }) {
+}: ExportCsvDialogProps<T> & { onDone: () => void }) {
   const [filters, setFilters] = useState(initialFilters)
-  const dateFrom = toDate(filters.date_from)
-  const dateTo = toDate(filters.date_to)
+
+  function update(patch: Partial<T>) {
+    setFilters((current) => ({ ...current, ...patch }))
+  }
 
   const mutation = useMutation({
     mutationFn: () => exportFile(filters),
@@ -102,7 +113,6 @@ function ExportForm({
   return (
     <DialogContent
       showCloseButton={false}
-      className="sm:max-w-md"
       // Keep the dialog up while the file is still being prepared.
       onEscapeKeyDown={(event) => mutation.isPending && event.preventDefault()}
       onInteractOutside={(event) =>
@@ -126,90 +136,7 @@ function ExportForm({
         noValidate
       >
         <fieldset disabled={mutation.isPending} className="grid gap-4">
-          <div className="grid gap-2">
-            <Label htmlFor="export-status" className={labelClassName}>
-              Status{" "}
-              <span className="font-normal text-muted-foreground normal-case">
-                (optional)
-              </span>
-            </Label>
-            <Select
-              value={filters.status || ALL_STATUSES}
-              onValueChange={(status) =>
-                setFilters({
-                  ...filters,
-                  status: status === ALL_STATUSES ? "" : status,
-                })
-              }
-              disabled={mutation.isPending}
-            >
-              <SelectTrigger
-                id="export-status"
-                className={`${inputClassName} w-full data-[size=default]:h-11`}
-              >
-                <SelectValue placeholder="All statuses" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value={ALL_STATUSES}>All statuses</SelectItem>
-                {statuses.map((status) => (
-                  <SelectItem key={status} value={status}>
-                    {humanizeSlug(status)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="grid min-w-0 gap-2">
-              <Label htmlFor="export-date-from" className={labelClassName}>
-                From{" "}
-                <span className="font-normal text-muted-foreground normal-case">
-                  (optional)
-                </span>
-              </Label>
-              <StayDatePicker
-                id="export-date-from"
-                value={dateFrom}
-                onChange={(date) =>
-                  setFilters({
-                    ...filters,
-                    date_from: toIso(date),
-                    // Keep the range valid if "from" jumps past "to".
-                    date_to:
-                      date && dateTo && isAfter(date, dateTo)
-                        ? ""
-                        : filters.date_to,
-                  })
-                }
-                placeholder="Any date"
-                clearLabel="Clear start date"
-                disabled={mutation.isPending}
-                className={inputClassName}
-              />
-            </div>
-
-            <div className="grid min-w-0 gap-2">
-              <Label htmlFor="export-date-to" className={labelClassName}>
-                To{" "}
-                <span className="font-normal text-muted-foreground normal-case">
-                  (optional)
-                </span>
-              </Label>
-              <StayDatePicker
-                id="export-date-to"
-                value={dateTo}
-                onChange={(date) =>
-                  setFilters({ ...filters, date_to: toIso(date) })
-                }
-                minDate={dateFrom ?? undefined}
-                placeholder="Any date"
-                clearLabel="Clear end date"
-                disabled={mutation.isPending}
-                className={inputClassName}
-              />
-            </div>
-          </div>
+          {renderFields(filters, update, mutation.isPending)}
 
           {mutation.isError ? (
             <p
@@ -245,7 +172,7 @@ function ExportForm({
               ) : (
                 <>
                   <Download aria-hidden="true" />
-                  Export CSV
+                  {submitLabel}
                 </>
               )}
             </Button>
@@ -253,5 +180,106 @@ function ExportForm({
         </fieldset>
       </form>
     </DialogContent>
+  )
+}
+
+interface ExportStatusDateFieldsProps {
+  /** Status slugs offered in the select, after "All statuses". */
+  statuses: readonly string[]
+  value: ExportFilters
+  onChange: (patch: Partial<ExportFilters>) => void
+  disabled: boolean
+}
+
+/** Optional status and date range: the bookings and payments exports. */
+export function ExportStatusDateFields({
+  statuses,
+  value,
+  onChange,
+  disabled,
+}: ExportStatusDateFieldsProps) {
+  const dateFrom = toDate(value.date_from)
+  const dateTo = toDate(value.date_to)
+
+  return (
+    <>
+      <div className="grid gap-2">
+        <Label htmlFor="export-status" className={labelClassName}>
+          Status{" "}
+          <span className="font-normal text-muted-foreground normal-case">
+            (optional)
+          </span>
+        </Label>
+        <Select
+          value={value.status || ALL_STATUSES}
+          onValueChange={(status) =>
+            onChange({ status: status === ALL_STATUSES ? "" : status })
+          }
+          disabled={disabled}
+        >
+          <SelectTrigger
+            id="export-status"
+            className={`${inputClassName} w-full data-[size=default]:h-11`}
+          >
+            <SelectValue placeholder="All statuses" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value={ALL_STATUSES}>All statuses</SelectItem>
+            {statuses.map((status) => (
+              <SelectItem key={status} value={status}>
+                {humanizeSlug(status)}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid min-w-0 gap-2">
+          <Label htmlFor="export-date-from" className={labelClassName}>
+            From{" "}
+            <span className="font-normal text-muted-foreground normal-case">
+              (optional)
+            </span>
+          </Label>
+          <StayDatePicker
+            id="export-date-from"
+            value={dateFrom}
+            onChange={(date) =>
+              onChange({
+                date_from: toIso(date),
+                // Keep the range valid if "from" jumps past "to".
+                ...(date && dateTo && isAfter(date, dateTo)
+                  ? { date_to: "" }
+                  : {}),
+              })
+            }
+            placeholder="Any date"
+            clearLabel="Clear start date"
+            disabled={disabled}
+            className={inputClassName}
+          />
+        </div>
+
+        <div className="grid min-w-0 gap-2">
+          <Label htmlFor="export-date-to" className={labelClassName}>
+            To{" "}
+            <span className="font-normal text-muted-foreground normal-case">
+              (optional)
+            </span>
+          </Label>
+          <StayDatePicker
+            id="export-date-to"
+            value={dateTo}
+            onChange={(date) => onChange({ date_to: toIso(date) })}
+            minDate={dateFrom ?? undefined}
+            placeholder="Any date"
+            clearLabel="Clear end date"
+            disabled={disabled}
+            className={inputClassName}
+          />
+        </div>
+      </div>
+    </>
   )
 }

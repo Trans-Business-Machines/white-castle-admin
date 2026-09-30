@@ -9,9 +9,11 @@ import {
   Banknote,
   Coffee,
   FileChartColumn,
+  ScrollText,
   type LucideIcon,
 } from "lucide-react"
 import {
+  AUDIT_ROLES,
   CATERING_ROLES,
   PAYMENTS_ROLES,
   REPORTS_ROLES,
@@ -87,6 +89,13 @@ export const dashboardNav: NavItem[] = [
     href: "/users",
     icon: UserCog,
     roles: USER_MANAGEMENT_ROLES,
+  },
+  {
+    title: "Audit Log",
+    description: "Sign-ins, account changes and activity across services",
+    href: "/audits",
+    icon: ScrollText,
+    roles: AUDIT_ROLES,
   },
 ]
 

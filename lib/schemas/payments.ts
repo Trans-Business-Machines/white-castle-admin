@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { IMAGE_PICK_MAX_BYTES } from "@/lib/image-compression"
 import type {
   Booking,
   CompletePaymentParams,
@@ -15,6 +16,7 @@ export const EVIDENCE_TYPES = [
   "image/webp",
 ] as const
 
+/** Largest proof image sent to the backend, after compression. */
 export const EVIDENCE_MAX_BYTES = 2 * 1024 * 1024
 
 /** Returns a message when `file` can't be uploaded as proof of payment. */
@@ -22,8 +24,9 @@ export function getEvidenceError(file: File) {
   if (!(EVIDENCE_TYPES as readonly string[]).includes(file.type)) {
     return "Use a JPG, PNG or WebP image."
   }
-  if (file.size > EVIDENCE_MAX_BYTES) {
-    return "Keep the image under 2 MB."
+  // Checked against the pick limit: the image is compressed before upload.
+  if (file.size > IMAGE_PICK_MAX_BYTES) {
+    return "Keep the image under 10 MB."
   }
   return null
 }

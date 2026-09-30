@@ -1,5 +1,7 @@
 import { axiosInstance } from "@/lib/axios"
+import { prepareUpload } from "@/lib/image-compression"
 import { downloadCsv, type ExportFilters } from "@/lib/api/files"
+import { EVIDENCE_MAX_BYTES } from "@/lib/schemas/payments"
 import type {
   CompletePaymentParams,
   CreatePaymentPayload,
@@ -125,11 +127,12 @@ export async function rejectPayment(
 /**
  * POST /payments/{id}/evidence → attaches proof of payment as multipart
  * `file`. The payment has to exist first, so the dialog saves the details
- * before it uploads.
+ * before it uploads. An image over 1 MB is compressed first and
+ * must then fit `EVIDENCE_MAX_BYTES` (`prepareUpload`).
  */
 export async function uploadPaymentEvidence(paymentId: string, file: File) {
   const body = new FormData()
-  body.append("file", file)
+  body.append("file", await prepareUpload(file, EVIDENCE_MAX_BYTES))
   await axiosInstance.post(
     `/payments/${encodeURIComponent(paymentId)}/evidence`,
     body

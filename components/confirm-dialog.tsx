@@ -47,7 +47,7 @@ function ConfirmDialog({
         onOpenChange(next)
       }}
     >
-      <DialogContent showCloseButton={false} className="sm:max-w-md">
+      <DialogContent showCloseButton={false}>
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">{title}</DialogTitle>
           <DialogDescription className="text-base text-muted-foreground">

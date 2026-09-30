@@ -131,7 +131,7 @@ export function NewRoomDialog({ children }: PropsWithChildren) {
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
 
-      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto md:max-w-2xl">
+      <DialogContent className="max-h-[calc(100vh-2rem)] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-heading text-xl font-bold">
             Add unit

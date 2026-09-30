@@ -91,7 +91,7 @@ export function CreateBookingDialog() {
         </Button>
       </DialogTrigger>
 
-      <DialogContent className="max-h-[90dvh] overflow-y-auto md:max-w-2xl">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-heading text-xl font-bold">
             Create a booking
