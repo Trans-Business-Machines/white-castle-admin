@@ -1,0 +1,792 @@
+import {
+  CalendarRange,
+  CalendarX2,
+  Coffee,
+  TrendingUp,
+  Users,
+  Wallet,
+  type LucideIcon,
+} from "lucide-react"
+import { isAfter, isValid, parseISO } from "date-fns"
+import type {
+  BbSummaryReportFilters,
+  BookingsReportFilters,
+  PaymentsReportFilters,
+  ReportDateRange,
+} from "@/lib/api/reports"
+import { BOOKING_STATUSES, formatPercent } from "@/lib/bookings"
+import { formatCurrency, formatDate } from "@/lib/format"
+import { PAYMENT_STATUSES } from "@/lib/payments"
+import { MEAL_PLANS } from "@/lib/schemas/bookings"
+import { PAYMENT_METHODS } from "@/lib/schemas/payments"
+import { ROOM_TYPES } from "@/lib/schemas/units"
+import type {
+  BbSummaryReport,
+  BookingsReport,
+  BookingsReportBooking,
+  CancellationsReport,
+  Guest,
+  GuestsReport,
+  PaymentsReport,
+  PaymentsReportPayment,
+  RevenueReport,
+} from "@/lib/types"
+
+/** URL segment of each report: `/reports/<slug>`. */
+export type ReportSlug =
+  | "bookings"
+  | "bed-and-breakfast"
+  | "cancellations"
+  | "guests"
+  | "revenue"
+  | "payments"
+
+export interface ReportType {
+  slug: ReportSlug
+  title: string
+  description: string
+  icon: LucideIcon
+}
+
+/** The reports offered on `/reports`, in display order. */
+export const REPORT_TYPES: readonly ReportType[] = [
+  {
+    slug: "bookings",
+    title: "Bookings",
+    description:
+      "Full bookings report filterable by date, status, room type, meal plan. Includes summary counts and totals.",
+    icon: CalendarRange,
+  },
+  {
+    slug: "bed-and-breakfast",
+    title: "Bed and breakfast",
+    description:
+      "B&B summary report bed and breakfast bookings, guests and revenue. Pick a date to get the breakfast list for a specific day.",
+    icon: Coffee,
+  },
+  {
+    slug: "cancellations",
+    title: "Cancellations",
+    description:
+      "Cancellations report all cancelled bookings with fees and refunds. Breakdown: system auto-cancelled vs staff cancelled, paid vs unpaid at time of cancel.",
+    icon: CalendarX2,
+  },
+  {
+    slug: "guests",
+    title: "Guests",
+    description:
+      "Guests report total guests, new guests, blacklisted, top returning guests.",
+    icon: Users,
+  },
+  {
+    slug: "revenue",
+    title: "Revenue",
+    description:
+      "Revenue report expected vs actual collected, payment method breakdown, cancellation fees collected, B&B revenue, extra charges.",
+    icon: TrendingUp,
+  },
+  {
+    slug: "payments",
+    title: "Payments",
+    description:
+      "Payments report all payments filterable by date, status, method. Breakdown by M-Pesa vs cash, verified vs pending vs rejected.",
+    icon: Wallet,
+  },
+]
+
+/** Raw `searchParams` of a report page, as Next hands them over. */
+export type ReportSearchParams = Record<string, string | string[] | undefined>
+
+/** `/reports/<slug>?…`, leaving out the params that are empty. */
+export function getReportHref(slug: ReportSlug, params: object = {}) {
+  const search = new URLSearchParams(
+    Object.entries(params).filter(
+      (entry): entry is [string, string] =>
+        typeof entry[1] === "string" && entry[1] !== ""
+    )
+  ).toString()
+  return search ? `/reports/${slug}?${search}` : `/reports/${slug}`
+}
+
+/** The param's value when it's one of `allowed`, else "". */
+function pickParam(
+  params: ReportSearchParams,
+  key: string,
+  allowed: readonly string[]
+) {
+  const value = params[key]
+  return typeof value === "string" && allowed.includes(value) ? value : ""
+}
+
+/** The param when it's a real "yyyy-MM-dd" date, else "". */
+function pickDateParam(params: ReportSearchParams, key: string) {
+  const value = params[key]
+  return typeof value === "string" &&
+    /^\d{4}-\d{2}-\d{2}$/.test(value) &&
+    isValid(parseISO(value))
+    ? value
+    : ""
+}
+
+export const EMPTY_PAYMENTS_REPORT_FILTERS: PaymentsReportFilters = {
+  from_date: "",
+  to_date: "",
+  status: "",
+  method: "",
+}
+
+export const EMPTY_BOOKINGS_REPORT_FILTERS: BookingsReportFilters = {
+  from_date: "",
+  to_date: "",
+  status: "",
+  room_type: "",
+  meal_plan: "",
+}
+
+export const EMPTY_REPORT_DATE_RANGE: ReportDateRange = {
+  from_date: "",
+  to_date: "",
+}
+
+/**
+ * Reads `from_date` / `to_date` out of the URL. Malformed dates are dropped,
+ * and a "to" before "from" is ignored.
+ */
+export function parseReportDateRange(
+  params: ReportSearchParams
+): ReportDateRange {
+  const from_date = pickDateParam(params, "from_date")
+  const to_date = pickDateParam(params, "to_date")
+  return {
+    from_date,
+    to_date:
+      from_date && to_date && isAfter(parseISO(from_date), parseISO(to_date))
+        ? ""
+        : to_date,
+  }
+}
+
+/**
+ * Reads the bookings report filters out of the URL. Anything unknown or
+ * malformed is dropped rather than sent, so a hand-edited link still
+ * produces a valid request.
+ */
+export function parseBookingsReportFilters(
+  params: ReportSearchParams
+): BookingsReportFilters {
+  return {
+    ...parseReportDateRange(params),
+    status: pickParam(params, "status", BOOKING_STATUSES),
+    room_type: pickParam(
+      params,
+      "room_type",
+      ROOM_TYPES.map((type) => type.value)
+    ),
+    meal_plan: pickParam(
+      params,
+      "meal_plan",
+      MEAL_PLANS.map((plan) => plan.value)
+    ),
+  }
+}
+
+/** Reads the payments report filters (period, status, method) out of the URL. */
+export function parsePaymentsReportFilters(
+  params: ReportSearchParams
+): PaymentsReportFilters {
+  return {
+    ...parseReportDateRange(params),
+    status: pickParam(params, "status", PAYMENT_STATUSES),
+    method: pickParam(
+      params,
+      "method",
+      PAYMENT_METHODS.map((method) => method.value)
+    ),
+  }
+}
+
+export const EMPTY_BB_SUMMARY_REPORT_FILTERS: BbSummaryReportFilters = {
+  from_date: "",
+  to_date: "",
+  target_date: "",
+}
+
+/** Reads the B&B summary filters (period + breakfast list day) out of the URL. */
+export function parseBbSummaryReportFilters(
+  params: ReportSearchParams
+): BbSummaryReportFilters {
+  return {
+    ...parseReportDateRange(params),
+    target_date: pickDateParam(params, "target_date"),
+  }
+}
+
+/** "1 Oct 2026 – 31 Oct 2026", "From 1 Oct 2026", "Up to …" or "All dates". */
+export function formatReportPeriod(from: string, to: string) {
+  if (from && to) return `${formatDate(from)} – ${formatDate(to)}`
+  if (from) return `From ${formatDate(from)}`
+  if (to) return `Up to ${formatDate(to)}`
+  return "All dates"
+}
+
+type BookingsReportStatKey = Exclude<
+  keyof BookingsReport["summary"],
+  "by_status"
+>
+
+/** 1234 → "1,234". */
+export const formatCount = (value: number) => value.toLocaleString("en-KE")
+
+/** Summary cards of the bookings report, in display order. */
+export const BOOKINGS_REPORT_STAT_CARDS: ReadonlyArray<{
+  key: BookingsReportStatKey
+  title: string
+  label: string
+  titleClassName: string
+  format: (value: number) => string
+}> = [
+  {
+    key: "total",
+    title: "Bookings",
+    label: "in this report",
+    titleClassName: "text-brand-navy dark:text-sky-200",
+    format: formatCount,
+  },
+  {
+    key: "total_revenue",
+    title: "Revenue",
+    label: "total booking value",
+    titleClassName: "text-emerald-700 dark:text-emerald-300",
+    format: formatCurrency,
+  },
+  {
+    key: "total_guests",
+    title: "Guests",
+    label: "adults and children",
+    titleClassName: "text-violet-700 dark:text-violet-300",
+    format: formatCount,
+  },
+  {
+    key: "total_nights",
+    title: "Nights",
+    label: "nights booked",
+    titleClassName: "text-brand-azure dark:text-sky-300",
+    format: formatCount,
+  },
+  {
+    key: "bb_bookings",
+    title: "Bed and breakfast",
+    label: "bookings with breakfast",
+    titleClassName: "text-amber-700 dark:text-amber-300",
+    format: formatCount,
+  },
+]
+
+/**
+ * `by_status` as `[status, count]` pairs in lifecycle order
+ * (`BOOKING_STATUSES`), with any status the API adds later at the end.
+ */
+export function getStatusBreakdown(byStatus: Record<string, number>) {
+  const rank = (status: string) => {
+    const index = (BOOKING_STATUSES as readonly string[]).indexOf(status)
+    return index === -1 ? BOOKING_STATUSES.length : index
+  }
+  return Object.entries(byStatus).sort(([a], [b]) => rank(a) - rank(b))
+}
+
+/** Case-insensitive match on reference, guest name or email. */
+export function matchesBookingsReportSearch(
+  booking: BookingsReportBooking,
+  search: string
+) {
+  const term = search.trim().toLowerCase()
+  if (!term) return true
+  return [booking.reference, booking.guest_name, booking.guest_email].some(
+    (value) => value?.toLowerCase().includes(term)
+  )
+}
+
+/** A stat card's content, worked out from a report. */
+export interface ReportStatCard {
+  key: string
+  title: string
+  text: string
+  label: string
+  titleClassName: string
+}
+
+/**
+ * The revenue report's headline cards. The balance is expected less
+ * collected, so a negative one is shown as the amount collected above
+ * what was expected rather than as a negative outstanding figure.
+ */
+export function getRevenueStatCards(
+  revenue: RevenueReport["revenue"]
+): ReportStatCard[] {
+  const balance = revenue.balance_outstanding
+  return [
+    {
+      key: "expected",
+      title: "Expected",
+      text: formatCurrency(revenue.total_expected),
+      label: "booked in this period",
+      titleClassName: "text-brand-navy dark:text-sky-200",
+    },
+    {
+      key: "collected",
+      title: "Collected",
+      text: formatCurrency(revenue.total_collected),
+      label: "payments received",
+      titleClassName: "text-emerald-700 dark:text-emerald-300",
+    },
+    {
+      key: "balance",
+      title: "Balance",
+      text: formatCurrency(Math.abs(balance)),
+      label: balance > 0 ? "still to collect" : "collected above expected",
+      titleClassName:
+        balance > 0
+          ? "text-rose-700 dark:text-rose-300"
+          : "text-emerald-700 dark:text-emerald-300",
+    },
+    {
+      key: "bb",
+      title: "Bed and breakfast",
+      text: formatCurrency(revenue.bb_revenue),
+      label: "breakfast revenue",
+      titleClassName: "text-amber-700 dark:text-amber-300",
+    },
+    {
+      key: "extras",
+      title: "Extra charges",
+      text: formatCurrency(revenue.extra_charges_revenue),
+      label: "extensions and extra guests",
+      titleClassName: "text-violet-700 dark:text-violet-300",
+    },
+  ]
+}
+
+/** One part of a part-to-whole bar; `className` is the segment's fill. */
+export interface ShareSegment {
+  key: string
+  label: string
+  value: number
+  className: string
+  /** Secondary figure under the label, e.g. "26 payments". */
+  detail?: string
+}
+
+/** Fill for whatever a breakdown's named parts don't account for. */
+const OTHER_FILL = "bg-slate-500"
+
+/**
+ * Adds an "Other" segment when the named parts fall short of `total`, so
+ * the bar and its shares always describe the whole figure.
+ */
+function withRemainder(segments: ShareSegment[], total: number) {
+  const named = segments.reduce((sum, segment) => sum + segment.value, 0)
+  const rest = total - named
+  return rest > 0
+    ? [
+        ...segments,
+        { key: "other", label: "Other", value: rest, className: OTHER_FILL },
+      ]
+    : segments
+}
+
+/** Money collected per payment method (M-Pesa, cash, then any remainder). */
+export function getPaymentMethodSegments(
+  methods: RevenueReport["payment_methods"]
+) {
+  return withRemainder(
+    [
+      {
+        key: "mpesa",
+        label: "M-Pesa",
+        value: methods.mpesa,
+        className: "bg-brand-azure dark:bg-sky-600",
+      },
+      {
+        key: "cash",
+        label: "Cash",
+        value: methods.cash,
+        className: "bg-amber-600",
+      },
+    ],
+    methods.total
+  )
+}
+
+/** Bookings in the period by how much of them has been paid. */
+export function getBookingPaymentSegments(bookings: RevenueReport["bookings"]) {
+  return withRemainder(
+    [
+      {
+        key: "fully_paid",
+        label: "Fully paid",
+        value: bookings.fully_paid,
+        className: "bg-emerald-600",
+      },
+      {
+        key: "deposit_only",
+        label: "Deposit only",
+        value: bookings.deposit_only,
+        className: "bg-brand-azure dark:bg-sky-600",
+      },
+      {
+        key: "unpaid",
+        label: "Unpaid",
+        value: bookings.unpaid,
+        className: "bg-rose-600",
+      },
+    ],
+    bookings.total
+  )
+}
+
+/** "1 payment" / "26 payments". */
+export function formatPaymentCount(count: number) {
+  return `${formatCount(count)} ${count === 1 ? "payment" : "payments"}`
+}
+
+/** The payments report's headline cards: everything, then each status. */
+export function getPaymentsReportStatCards(
+  summary: PaymentsReport["summary"]
+): ReportStatCard[] {
+  return [
+    {
+      key: "total",
+      title: "All payments",
+      text: formatCurrency(summary.total_amount),
+      label: formatPaymentCount(summary.total_payments),
+      titleClassName: "text-brand-navy dark:text-sky-200",
+    },
+    {
+      key: "verified",
+      title: "Verified",
+      text: formatCurrency(summary.verified.amount),
+      label: formatPaymentCount(summary.verified.count),
+      titleClassName: "text-emerald-700 dark:text-emerald-300",
+    },
+    {
+      key: "pending",
+      title: "Pending",
+      text: formatCurrency(summary.pending.amount),
+      label: formatPaymentCount(summary.pending.count),
+      titleClassName: "text-amber-700 dark:text-amber-300",
+    },
+    {
+      key: "rejected",
+      title: "Rejected",
+      text: formatCurrency(summary.rejected.amount),
+      label: formatPaymentCount(summary.rejected.count),
+      titleClassName: "text-rose-700 dark:text-rose-300",
+    },
+  ]
+}
+
+/** Amount per method (M-Pesa, cash, then any other method as "Other"). */
+export function getPaymentsByMethodSegments(report: PaymentsReport) {
+  const { mpesa, cash } = report.by_method
+  return withRemainder(
+    [
+      {
+        key: "mpesa",
+        label: "M-Pesa",
+        value: mpesa.amount,
+        detail: formatPaymentCount(mpesa.count),
+        className: "bg-brand-azure dark:bg-sky-600",
+      },
+      {
+        key: "cash",
+        label: "Cash",
+        value: cash.amount,
+        detail: formatPaymentCount(cash.count),
+        className: "bg-amber-600",
+      },
+    ],
+    report.summary.total_amount
+  )
+}
+
+/** Amount per status: verified, pending, rejected. */
+export function getPaymentsByStatusSegments(
+  summary: PaymentsReport["summary"]
+) {
+  return withRemainder(
+    [
+      {
+        key: "verified",
+        label: "Verified",
+        value: summary.verified.amount,
+        detail: formatPaymentCount(summary.verified.count),
+        className: "bg-emerald-600",
+      },
+      {
+        key: "pending",
+        label: "Pending",
+        value: summary.pending.amount,
+        detail: formatPaymentCount(summary.pending.count),
+        className: "bg-amber-600",
+      },
+      {
+        key: "rejected",
+        label: "Rejected",
+        value: summary.rejected.amount,
+        detail: formatPaymentCount(summary.rejected.count),
+        className: "bg-rose-600",
+      },
+    ],
+    summary.total_amount
+  )
+}
+
+/** Case-insensitive match on booking reference or transaction reference. */
+export function matchesPaymentsReportSearch(
+  payment: PaymentsReportPayment,
+  search: string
+) {
+  const term = search.trim().toLowerCase()
+  if (!term) return true
+  return [payment.booking_ref, payment.reference].some((value) =>
+    value?.toLowerCase().includes(term)
+  )
+}
+
+/** The guests report's headline cards. */
+export function getGuestsReportStatCards(
+  summary: GuestsReport["summary"]
+): ReportStatCard[] {
+  return [
+    {
+      key: "total",
+      title: "Total guests",
+      text: formatCount(summary.total_guests),
+      label: "on record",
+      titleClassName: "text-brand-navy dark:text-sky-200",
+    },
+    {
+      key: "new",
+      title: "New guests",
+      text: formatCount(summary.new_guests_in_period),
+      label: "added in this period",
+      titleClassName: "text-brand-azure dark:text-sky-300",
+    },
+    {
+      key: "returning",
+      title: "Returning",
+      text: formatCount(summary.returning_guests),
+      label: "stayed more than once",
+      titleClassName: "text-violet-700 dark:text-violet-300",
+    },
+    {
+      key: "blacklisted",
+      title: "Blacklisted",
+      text: formatCount(summary.blacklisted),
+      label: "barred from booking",
+      titleClassName: "text-rose-700 dark:text-rose-300",
+    },
+    {
+      key: "revenue",
+      title: "Revenue",
+      text: formatCurrency(summary.total_revenue_from_guests),
+      label: "spent by these guests",
+      titleClassName: "text-emerald-700 dark:text-emerald-300",
+    },
+  ]
+}
+
+/** The guest lists in the report, one tab each, in display order. */
+export const GUESTS_REPORT_LISTS = [
+  {
+    key: "new_guests",
+    label: "New guests",
+    emptyMessage: "No new guests in this period.",
+  },
+  {
+    key: "top_returning_guests",
+    label: "Top returning",
+    emptyMessage: "No returning guests in this period.",
+  },
+  {
+    key: "blacklisted_guests",
+    label: "Blacklisted",
+    emptyMessage: "No guests are blacklisted.",
+  },
+] as const satisfies readonly {
+  key: keyof GuestsReport
+  label: string
+  emptyMessage: string
+}[]
+
+export type GuestsReportListKey = (typeof GUESTS_REPORT_LISTS)[number]["key"]
+
+/** Case-insensitive match on the guest's name, email or phone. */
+export function matchesGuestSearch(guest: Guest, search: string) {
+  const term = search.trim().toLowerCase()
+  if (!term) return true
+  return [guest.full_name, guest.email, guest.phone].some((value) =>
+    value?.toLowerCase().includes(term)
+  )
+}
+
+/** "1 booking" / "3 bookings". */
+export function formatBookingCount(count: number) {
+  return `${formatCount(count)} ${count === 1 ? "booking" : "bookings"}`
+}
+
+/** The cancellations report's headline cards. */
+export function getCancellationsReportStatCards(
+  summary: CancellationsReport["summary"]
+): ReportStatCard[] {
+  return [
+    {
+      key: "total",
+      title: "Cancellations",
+      text: formatCount(summary.total_cancellations),
+      label: "bookings cancelled",
+      titleClassName: "text-brand-navy dark:text-sky-200",
+    },
+    {
+      key: "fees",
+      title: "Fees collected",
+      text: formatCurrency(summary.cancellation_fees_collected),
+      label: "cancellation fees kept",
+      titleClassName: "text-emerald-700 dark:text-emerald-300",
+    },
+    {
+      key: "refunds",
+      title: "Refunds issued",
+      text: formatCurrency(summary.refunds_issued),
+      label: "paid back to guests",
+      titleClassName: "text-amber-700 dark:text-amber-300",
+    },
+    {
+      key: "lost",
+      title: "Revenue lost",
+      text: formatCurrency(summary.revenue_lost_unpaid),
+      label: "unpaid bookings cancelled",
+      titleClassName: "text-rose-700 dark:text-rose-300",
+    },
+  ]
+}
+
+/** Cancellations by who made them: staff, or the system's auto-cancel. */
+export function getCancelledBySegments(
+  summary: CancellationsReport["summary"]
+) {
+  return withRemainder(
+    [
+      {
+        key: "staff",
+        label: "Staff",
+        value: summary.staff_cancelled,
+        className: "bg-brand-azure dark:bg-sky-600",
+      },
+      {
+        key: "system",
+        label: "System (auto-cancelled)",
+        value: summary.system_auto_cancelled,
+        className: "bg-violet-600",
+      },
+    ],
+    summary.total_cancellations
+  )
+}
+
+/** Cancellations by whether the booking had been paid when cancelled. */
+export function getPaidAtCancellationSegments(
+  summary: CancellationsReport["summary"]
+) {
+  return withRemainder(
+    [
+      {
+        key: "paid",
+        label: "Paid",
+        value: summary.paid_at_cancellation,
+        className: "bg-emerald-600",
+      },
+      {
+        key: "unpaid",
+        label: "Unpaid",
+        value: summary.unpaid_at_cancellation,
+        className: "bg-red-600",
+      },
+    ],
+    summary.total_cancellations
+  )
+}
+
+/**
+ * "3/7" → `{ bb: 3, roomOnly: 7 }`; null when the API sends anything the
+ * page can't read as two whole numbers.
+ */
+export function parseBbRatio(ratio: string) {
+  const match = /^\s*(\d+)\s*[/:]\s*(\d+)\s*$/.exec(ratio)
+  return match ? { bb: Number(match[1]), roomOnly: Number(match[2]) } : null
+}
+
+/** The B&B summary report's headline cards. */
+export function getBbSummaryStatCards(
+  summary: BbSummaryReport["summary"]
+): ReportStatCard[] {
+  const ratio = parseBbRatio(summary.bb_vs_room_only_ratio)
+  const total = ratio ? ratio.bb + ratio.roomOnly : 0
+  return [
+    {
+      key: "bookings",
+      title: "B&B bookings",
+      text: formatCount(summary.total_bb_bookings),
+      label: "with breakfast",
+      titleClassName: "text-amber-700 dark:text-amber-300",
+    },
+    {
+      key: "revenue",
+      title: "B&B revenue",
+      text: formatCurrency(summary.total_bb_revenue),
+      label: "from breakfasts",
+      titleClassName: "text-emerald-700 dark:text-emerald-300",
+    },
+    {
+      key: "average",
+      title: "Average",
+      text: formatCurrency(summary.avg_bb_revenue_per_booking),
+      label: "B&B revenue per booking",
+      titleClassName: "text-brand-navy dark:text-sky-200",
+    },
+    {
+      key: "share",
+      title: "B&B share",
+      text:
+        ratio && total > 0
+          ? formatPercent((ratio.bb / total) * 100)
+          : summary.bb_vs_room_only_ratio || "—",
+      label: ratio
+        ? `${formatCount(ratio.bb)} of ${formatBookingCount(total)}`
+        : "B&B to room only",
+      titleClassName: "text-violet-700 dark:text-violet-300",
+    },
+  ]
+}
+
+/** B&B vs room-only bookings, or null when the ratio can't be read. */
+export function getMealPlanSegments(
+  summary: BbSummaryReport["summary"]
+): ShareSegment[] | null {
+  const ratio = parseBbRatio(summary.bb_vs_room_only_ratio)
+  if (!ratio) return null
+  return [
+    {
+      key: "bed_and_breakfast",
+      label: "Bed and breakfast",
+      value: ratio.bb,
+      className: "bg-amber-600",
+    },
+    {
+      key: "room_only",
+      label: "Room only",
+      value: ratio.roomOnly,
+      className: "bg-brand-azure dark:bg-sky-600",
+    },
+  ]
+}

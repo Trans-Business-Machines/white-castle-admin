@@ -466,3 +466,158 @@ export interface MotelSetting {
   description: string
   updated_at: string
 }
+
+/** A booking row of `GET /motel/reports/bookings`: the booking plus its charges. */
+export interface BookingsReportBooking extends Booking {
+  cancellation_fee: number | null
+  refund_amount: number | null
+  extra_charges: number
+  internal_notes: string | null
+}
+
+/**
+ * `GET /motel/reports/bookings`. `period` and `filters` echo the query
+ * (null when not sent); `by_status` only lists statuses that occur.
+ */
+export interface BookingsReport {
+  period: { from: string | null; to: string | null }
+  filters: {
+    status: string | null
+    room_type: string | null
+    meal_plan: string | null
+  }
+  summary: {
+    total: number
+    by_status: Record<string, number>
+    bb_bookings: number
+    total_guests: number
+    total_nights: number
+    total_revenue: number
+  }
+  bookings: BookingsReportBooking[]
+}
+
+/**
+ * `GET /motel/reports/revenue`. Amounts are in `currency`; `period` echoes
+ * the query (null when not sent). `balance_outstanding` is expected less
+ * collected, so it goes negative when more was collected than expected
+ * (e.g. extra charges on top of the booked totals).
+ */
+export interface RevenueReport {
+  period: { from: string | null; to: string | null }
+  currency: string
+  bookings: {
+    total: number
+    fully_paid: number
+    deposit_only: number
+    unpaid: number
+  }
+  revenue: {
+    total_expected: number
+    total_collected: number
+    balance_outstanding: number
+    bb_revenue: number
+    extra_charges_revenue: number
+  }
+  payment_methods: {
+    mpesa: number
+    cash: number
+    total: number
+  }
+  cancellations: {
+    total_cancelled: number
+    fees_collected: number
+    refunds_issued: number
+  }
+}
+
+/** A payment row of `GET /motel/reports/payments`; `reference` may be null here. */
+export interface PaymentsReportPayment extends Omit<Payment, "reference"> {
+  reference: string | null
+}
+
+/** A count of payments and what they add up to. */
+export interface PaymentTally {
+  count: number
+  amount: number
+}
+
+/**
+ * `GET /motel/reports/payments`. `by_method` covers every status and only
+ * names M-Pesa and cash, so other methods (e.g. a bank transfer) are the gap
+ * between it and `summary.total_amount`.
+ */
+export interface PaymentsReport {
+  period: { from: string | null; to: string | null }
+  currency: string
+  summary: {
+    total_payments: number
+    total_amount: number
+    verified: PaymentTally
+    pending: PaymentTally
+    rejected: PaymentTally
+  }
+  by_method: {
+    mpesa: PaymentTally
+    cash: PaymentTally
+  }
+  payments: PaymentsReportPayment[]
+}
+
+/**
+ * `GET /motel/reports/guests`. `total_guests`, `blacklisted` and the
+ * blacklisted list cover every guest; the new / returning figures and the
+ * lists beside them are for the period.
+ */
+export interface GuestsReport {
+  period: { from: string | null; to: string | null }
+  summary: {
+    total_guests: number
+    new_guests_in_period: number
+    blacklisted: number
+    returning_guests: number
+    total_revenue_from_guests: number
+  }
+  top_returning_guests: Guest[]
+  blacklisted_guests: Guest[]
+  new_guests: Guest[]
+}
+
+/**
+ * `GET /motel/reports/cancellations`. Rows are bookings in the bookings
+ * report shape; `cancelled_by` is null when the system auto-cancelled one.
+ */
+export interface CancellationsReport {
+  period: { from: string | null; to: string | null }
+  currency: string
+  summary: {
+    total_cancellations: number
+    system_auto_cancelled: number
+    staff_cancelled: number
+    paid_at_cancellation: number
+    unpaid_at_cancellation: number
+    cancellation_fees_collected: number
+    refunds_issued: number
+    /** Booked value of cancellations that had not been paid. */
+    revenue_lost_unpaid: number
+  }
+  cancellations: BookingsReportBooking[]
+}
+
+/**
+ * `GET /motel/reports/bb-summary`. `today_breakfast_list` is the kitchen
+ * list for `target_date` (today when not sent) in the `/bookings/bb-list`
+ * shape; `bb_vs_room_only_ratio` is "<b&b>/<room only>", e.g. "3/7".
+ */
+export interface BbSummaryReport {
+  period: { from: string | null; to: string | null }
+  currency: string
+  summary: {
+    total_bb_bookings: number
+    total_bb_revenue: number
+    avg_bb_revenue_per_booking: number
+    bb_vs_room_only_ratio: string
+  }
+  today_breakfast_list: BbList
+  bb_bookings: BookingsReportBooking[]
+}

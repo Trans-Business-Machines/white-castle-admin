@@ -63,6 +63,9 @@ export const USER_MANAGEMENT_ROLES: readonly RoleName[] = [
 /** Roles allowed into the motel settings page (`/settings`). */
 export const SETTINGS_ROLES: readonly RoleName[] = ["super_admin"]
 
+/** Roles allowed into the reports page (`/reports` and each report under it). */
+export const REPORTS_ROLES: readonly RoleName[] = ["super_admin", "admin"]
+
 /** Roles allowed into the payments page (`/payments`). */
 export const PAYMENTS_ROLES: readonly RoleName[] = [
   "super_admin",

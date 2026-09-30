@@ -8,11 +8,13 @@ import {
   Users,
   Banknote,
   Coffee,
+  FileChartColumn,
   type LucideIcon,
 } from "lucide-react"
 import {
   CATERING_ROLES,
   PAYMENTS_ROLES,
+  REPORTS_ROLES,
   SETTINGS_ROLES,
   USER_MANAGEMENT_ROLES,
   hasRole,
@@ -71,6 +73,13 @@ export const dashboardNav: NavItem[] = [
     href: "/catering",
     icon: Coffee,
     roles: CATERING_ROLES,
+  },
+  {
+    title: "Reports",
+    description: "Bookings, revenue and guest reports on demand",
+    href: "/reports",
+    icon: FileChartColumn,
+    roles: REPORTS_ROLES,
   },
   {
     title: "User Management",

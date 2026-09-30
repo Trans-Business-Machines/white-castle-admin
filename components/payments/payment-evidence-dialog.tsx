@@ -9,7 +9,7 @@ import { formatCurrency } from "@/lib/format"
 import type { Payment } from "@/lib/types"
 
 interface PaymentEvidenceDialogProps {
-  payment: Payment
+  payment: Pick<Payment, "booking_ref" | "amount" | "evidence_filename">
   /** From `getEvidenceFileId(payment)`. */
   fileId: string
 }

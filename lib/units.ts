@@ -2,30 +2,36 @@ import { ROOM_TYPES } from "@/lib/schemas/units"
 import { formatCurrency, humanizeSlug } from "@/lib/format"
 import type { Unit, UnitsOccupancyStats } from "@/lib/types"
 
-/** Room statuses offered by the units table's status filter. */
-export const UNIT_STATUSES = ["available", "occupied", "housekeeping"] as const
+/** Every status a room can be in; also the units table's status filter. */
+export const UNIT_STATUSES = [
+  "available",
+  "occupied",
+  "housekeeping",
+  "maintenance",
+] as const
 
-const STATUS_BADGES: Record<string, string> = {
+export type UnitStatus = (typeof UNIT_STATUSES)[number]
+
+const STATUS_BADGES: Record<UnitStatus, string> = {
   available:
-    "bg-emerald-100 text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300",
-  occupied:
-    "bg-brand-azure/15 text-brand-navy dark:bg-brand-azure/20 dark:text-sky-200",
-  reserved:
-    "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300",
+    "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+  occupied: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
   housekeeping:
-    "bg-violet-100 text-violet-800 dark:bg-violet-500/15 dark:text-violet-300",
-  cleaning:
-    "bg-violet-100 text-violet-800 dark:bg-violet-500/15 dark:text-violet-300",
+    "bg-violet-100 text-violet-700 dark:bg-violet-500/15 dark:text-violet-300",
   maintenance:
-    "bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300",
-  out_of_service:
-    "bg-rose-100 text-rose-800 dark:bg-rose-500/15 dark:text-rose-300",
+    "bg-orange-100 text-orange-700 dark:bg-orange-500/15 dark:text-orange-300",
+}
+
+function isUnitStatus(status: string): status is UnitStatus {
+  return (UNIT_STATUSES as readonly string[]).includes(status)
 }
 
 const NEUTRAL_BADGE = "bg-muted text-muted-foreground"
 
+/** Badge tone for a room status; anything outside `UNIT_STATUSES` is neutral. */
 export function getUnitStatusClasses(status: string) {
-  return STATUS_BADGES[status.toLowerCase()] ?? NEUTRAL_BADGE
+  const slug = status.toLowerCase()
+  return isUnitStatus(slug) ? STATUS_BADGES[slug] : NEUTRAL_BADGE
 }
 
 const ROOM_TYPE_LABELS = new Map<string, string>(
@@ -38,7 +44,7 @@ export function getRoomTypeLabel(slug: string) {
 }
 
 /**
- * The occupancy fields that get a card. `other` (reserved, cleaning, …) is
+ * The occupancy fields that get a card. `other` (rooms in housekeeping) is
  * left out on purpose: it's a catch-all with no action attached.
  */
 export type UnitStatKey = keyof Omit<UnitsOccupancyStats, "other">
@@ -47,8 +53,8 @@ export type UnitStatKey = keyof Omit<UnitsOccupancyStats, "other">
 const STAT_TITLE_CLASSES: Record<UnitStatKey, string> = {
   total: "text-brand-navy dark:text-sky-200",
   available: "text-emerald-700 dark:text-emerald-300",
-  occupied: "text-brand-azure dark:text-sky-300",
-  maintenance: "text-rose-700 dark:text-rose-300",
+  occupied: "text-rose-700 dark:text-rose-300",
+  maintenance: "text-orange-700 dark:text-orange-300",
 }
 
 /**
