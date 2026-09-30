@@ -65,4 +65,19 @@ function TableError({
 const tableHeadClassName =
   "h-12 bg-porcelain px-4 font-ibm-plex text-xs font-semibold tracking-wide text-muted-foreground uppercase first:rounded-tl-xl last:rounded-tr-xl dark:bg-muted/40"
 
-export { TableSkeletonRows, TableMessageRow, TableError, tableHeadClassName }
+/**
+ * Crimson tint for rows that still need a decision (pending payments,
+ * pending bookings). `!` beats the base row's muted hover / open-menu
+ * backgrounds, since `cn` doesn't merge them; the dark variant is more
+ * specific, so it wins over the light ones.
+ */
+const actionNeededRowClassName =
+  "bg-rose-100 hover:bg-rose-200! has-aria-expanded:bg-rose-100! dark:bg-rose-500/10 dark:hover:bg-rose-500/15! dark:has-aria-expanded:bg-rose-500/15!"
+
+export {
+  TableSkeletonRows,
+  TableMessageRow,
+  TableError,
+  actionNeededRowClassName,
+  tableHeadClassName,
+}

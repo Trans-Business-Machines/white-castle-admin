@@ -168,6 +168,11 @@ export function canCancel(booking: Pick<Booking, "status">) {
   return !NO_CANCEL_STATUSES.has(booking.status.toLowerCase())
 }
 
+/** A request raised from the website, still waiting for approve / reject. */
+export function isPendingBooking(booking: Pick<Booking, "status">) {
+  return booking.status.toLowerCase() === "pending"
+}
+
 /** Whether the guest is in the room right now. */
 export function isCheckedIn(booking: Pick<Booking, "status">) {
   return booking.status.toLowerCase() === "checked_in"
@@ -204,10 +209,21 @@ export function canDeleteBooking(booking: Pick<Booking, "status">) {
 }
 
 /**
- * Extending the stay and adding extra people only apply while the guest is
- * checked in.
+ * Extending the stay and adding extra people only apply (and are only shown)
+ * while the guest is checked in.
  */
 export const canChangeStay = isCheckedIn
+
+/**
+ * Whether Extend booking / Extra person can be used right now: not while a
+ * checked-in booking is back on `deposit_paid`, i.e. the last change's
+ * payment isn't verified yet, so charges can't pile up unpaid.
+ */
+export function canStartStayChange(
+  booking: Pick<Booking, "status" | "payment_status">
+) {
+  return canChangeStay(booking) && !hasOutstandingStayPayment(booking)
+}
 
 /** The 1st of the current month through today, for the occupancy stats. */
 export function getMonthToDateRange(today = new Date()): OccupancyRange {

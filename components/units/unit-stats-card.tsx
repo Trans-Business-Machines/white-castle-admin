@@ -6,13 +6,31 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { getApiErrorMessage } from "@/lib/api/errors"
 import { fetchUnitsStats, unitStatsQueryKey } from "@/lib/api/units"
+import { hasRole, UNIT_STATS_ROLES } from "@/lib/roles"
 import { UNIT_STAT_CARDS } from "@/lib/units"
+import { useAuth } from "@/providers/auth-provider"
 
 const gridClassName =
   "grid grid-cols-[repeat(auto-fit,minmax(min(180px,100%),1fr))] gap-4"
 
-/** Occupancy totals from `GET /bookings/rooms/stats`, one card per status. */
+/**
+ * The occupancy cards with the gap beneath them, or nothing for finance and
+ * housekeeping, who only see the rooms table (and so never fetch the stats).
+ */
 export function UnitStatsCards() {
+  const { user } = useAuth()
+
+  if (!hasRole(user?.role, UNIT_STATS_ROLES)) return null
+
+  return (
+    <div className="mb-6">
+      <UnitStats />
+    </div>
+  )
+}
+
+/** Occupancy totals from `GET /bookings/rooms/stats`, one card per status. */
+function UnitStats() {
   const stats = useQuery({
     queryKey: unitStatsQueryKey,
     queryFn: fetchUnitsStats,

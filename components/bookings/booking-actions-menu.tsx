@@ -38,9 +38,14 @@ import {
   canCheckIn,
   canCheckOut,
   canDeleteBooking,
+  canStartStayChange,
   hasOutstandingStayPayment,
 } from "@/lib/bookings"
-import { BOOKING_DELETE_ROLES, hasRole } from "@/lib/roles"
+import {
+  BOOKING_ACTION_ROLES,
+  BOOKING_DELETE_ROLES,
+  hasRole,
+} from "@/lib/roles"
 import type { Booking } from "@/lib/types"
 import { useAuth } from "@/providers/auth-provider"
 
@@ -91,8 +96,12 @@ function BookingActionsMenu({
   const [dialog, setDialog] = useState<BookingDialog | null>(null)
 
   const isRequest = variant === "request"
+  // Finance only get View booking; with that hidden too there's no menu.
+  const canAct = hasRole(user?.role, BOOKING_ACTION_ROLES)
   // Super admins only; a guest who is in the room keeps their booking.
   const showDelete = hasRole(user?.role, BOOKING_DELETE_ROLES)
+
+  if (!canAct && !showView) return null
 
   return (
     <>
@@ -116,11 +125,11 @@ function BookingActionsMenu({
                 <Eye aria-hidden="true" />
                 View booking
               </DropdownMenuItem>
-              <DropdownMenuSeparator />
+              {canAct ? <DropdownMenuSeparator /> : null}
             </>
           ) : null}
 
-          {isRequest ? (
+          {!canAct ? null : isRequest ? (
             <>
               <DropdownMenuItem onSelect={() => setDialog("approve")}>
                 <CircleCheck aria-hidden="true" />
@@ -151,24 +160,31 @@ function BookingActionsMenu({
                 <LogOut aria-hidden="true" />
                 Check out
               </DropdownMenuItem>
-              {hasOutstandingStayPayment(booking) ? (
-                <DropdownMenuLabel className="max-w-56 text-xs font-normal text-muted-foreground">
-                  Check-out opens once the payment for the added nights or
-                  guests is verified.
-                </DropdownMenuLabel>
-              ) : null}
-              {/* Only a stay that's underway can grow. */}
+              {/* Only a stay that's underway can grow, and not again until
+                  the last change is paid for. */}
               {canChangeStay(booking) ? (
                 <>
-                  <DropdownMenuItem onSelect={() => setDialog("extend")}>
+                  <DropdownMenuItem
+                    disabled={!canStartStayChange(booking)}
+                    onSelect={() => setDialog("extend")}
+                  >
                     <CalendarPlus aria-hidden="true" />
                     Extend booking
                   </DropdownMenuItem>
-                  <DropdownMenuItem onSelect={() => setDialog("extra_persons")}>
+                  <DropdownMenuItem
+                    disabled={!canStartStayChange(booking)}
+                    onSelect={() => setDialog("extra_persons")}
+                  >
                     <UserPlus aria-hidden="true" />
                     Extra person
                   </DropdownMenuItem>
                 </>
+              ) : null}
+              {hasOutstandingStayPayment(booking) ? (
+                <DropdownMenuLabel className="max-w-56 text-xs font-normal text-muted-foreground">
+                  Check-out and further changes open once the payment for the
+                  added nights or guests is verified.
+                </DropdownMenuLabel>
               ) : null}
               <DropdownMenuSeparator />
               <DropdownMenuItem
@@ -198,7 +214,7 @@ function BookingActionsMenu({
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {isRequest ? (
+      {!canAct ? null : isRequest ? (
         <>
           <ApproveBookingDialog
             booking={booking}

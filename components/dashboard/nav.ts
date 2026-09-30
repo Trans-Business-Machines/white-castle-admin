@@ -15,9 +15,12 @@ import {
 import {
   AUDIT_ROLES,
   CATERING_ROLES,
+  GUESTS_ROLES,
+  OPERATIONS_ROLES,
   PAYMENTS_ROLES,
   REPORTS_ROLES,
   SETTINGS_ROLES,
+  UNITS_ROLES,
   USER_MANAGEMENT_ROLES,
   hasRole,
   type RoleName,
@@ -37,30 +40,35 @@ export const dashboardNav: NavItem[] = [
     description: "Live room status across the property",
     href: "/dashboard",
     icon: ChartColumnBig,
+    roles: OPERATIONS_ROLES,
   },
   {
     title: "Requests",
     description: "Booking requests waiting for approval",
     href: "/requests",
     icon: NotebookPen,
+    roles: OPERATIONS_ROLES,
   },
   {
     title: "Bookings",
     description: "Confirmed stays, arrivals and departures",
     href: "/bookings",
     icon: Calendars,
+    roles: OPERATIONS_ROLES,
   },
   {
     title: "Guest Management",
     description: "Everyone who has stayed at the property",
     href: "/guests",
     icon: Users,
+    roles: GUESTS_ROLES,
   },
   {
     title: "Units",
     description: "Rooms, rates and availability",
     href: "/units",
     icon: Bed,
+    roles: UNITS_ROLES,
   },
   {
     title: "Payments",
@@ -125,4 +133,23 @@ export function findNavItem(pathname: string) {
 export function canSeeNavItem(item: NavItem, role: string | undefined) {
   if (!item.roles) return true
   return hasRole(role, item.roles)
+}
+
+/**
+ * Whether `role` may open `pathname`: the page's nav item decides, so hiding
+ * a link and blocking its route can't drift apart. Paths outside the nav
+ * (404s) are left for the not-found screen.
+ */
+export function canAccessPath(pathname: string, role: string | undefined) {
+  const item = findNavItem(pathname)
+  return !item || canSeeNavItem(item, role)
+}
+
+/**
+ * Where a role starts: the first nav page it can open. That's the dashboard
+ * for most staff, the bed and breakfast list for catering and the units page
+ * for housekeeping.
+ */
+export function getHomeNavItem(role: string | undefined) {
+  return dashboardNav.find((item) => canSeeNavItem(item, role)) ?? profileNav
 }

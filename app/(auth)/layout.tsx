@@ -5,7 +5,7 @@ export default function AuthLayout({ children }: PropsWithChildren) {
     <div className="flex min-h-svh flex-col lg:flex-row">
       <aside className="relative flex flex-col justify-center gap-12 overflow-hidden bg-linear-to-br from-brand-navy via-brand-azure to-brand-teal px-6 py-8 text-white lg:w-[48%] lg:shrink-0 lg:px-12 lg:py-14">
         <div>
-          <h2 className="font-sans text-3xl font-bold">WHITE CASTLE</h2>
+          <h2 className="font-sans text-3xl font-bold">WHITE CASTLE MOTEL</h2>
           <p className="mt-2 font-ibm-plex text-base text-white/80">
             Motel &middot; Eldoret
           </p>

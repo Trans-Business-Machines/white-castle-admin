@@ -80,6 +80,11 @@ export function sortPayments<T extends Pick<Payment, "status">>(
   return [...payments].sort((a, b) => getPaymentRank(a) - getPaymentRank(b))
 }
 
+/** Whether a payment still needs verifying or rejecting. */
+export function isPendingPayment(payment: Pick<Payment, "status">) {
+  return payment.status.toLowerCase() === "pending"
+}
+
 /** Pill tone for a payment record's status; unknown slugs go neutral. */
 export function getPaymentRecordStatusClasses(status: string) {
   return PAYMENT_STATUS_BADGES[status.toLowerCase()] ?? NEUTRAL_BADGE

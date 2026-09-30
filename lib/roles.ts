@@ -54,6 +54,39 @@ export function hasRole(
   return isRoleName(slug) && allowed.includes(slug)
 }
 
+/**
+ * Roles allowed into the dashboard, requests and bookings. Catering only get
+ * the bed and breakfast list and housekeeping only the units page (plus
+ * their profile).
+ */
+export const OPERATIONS_ROLES: readonly RoleName[] = [
+  "super_admin",
+  "admin",
+  "receptionist",
+  "finance",
+]
+
+/** Roles allowed into the guests pages (`/guests`); not finance. */
+export const GUESTS_ROLES: readonly RoleName[] = [
+  "super_admin",
+  "admin",
+  "receptionist",
+]
+
+/** Roles allowed into the units pages (`/units`); housekeeping but not finance. */
+export const UNITS_ROLES: readonly RoleName[] = [
+  "super_admin",
+  "admin",
+  "receptionist",
+  "housekeeping",
+]
+
+/**
+ * Roles allowed to add, edit and delete rooms. Receptionists and
+ * housekeeping can only view them and set their status (`UNIT_STATUS_ROLES`).
+ */
+export const UNIT_MANAGE_ROLES: readonly RoleName[] = ["super_admin", "admin"]
+
 /** Roles allowed into the user management module (`/users`). */
 export const USER_MANAGEMENT_ROLES: readonly RoleName[] = [
   "super_admin",
@@ -94,13 +127,59 @@ export const PAYMENT_REVIEW_ROLES: readonly RoleName[] = [
 /** Roles allowed to delete a guest record. */
 export const GUEST_DELETE_ROLES: readonly RoleName[] = ["super_admin", "admin"]
 
+/**
+ * Roles allowed to act on a booking (approve / reject, check in / out,
+ * extend, extra person, cancel). Finance can only view bookings.
+ */
+export const BOOKING_ACTION_ROLES: readonly RoleName[] = [
+  "super_admin",
+  "admin",
+  "receptionist",
+]
+
+/** Roles shown the month-to-date stat cards on `/bookings`; not receptionist. */
+export const BOOKING_STATS_ROLES: readonly RoleName[] = [
+  "super_admin",
+  "admin",
+  "finance",
+]
+
+/** Roles shown this month's payment stat cards on `/payments`; not receptionist. */
+export const PAYMENT_STATS_ROLES: readonly RoleName[] = [
+  "super_admin",
+  "admin",
+  "finance",
+]
+
+/** Roles allowed to export payments as CSV from `/payments`; not receptionist. */
+export const PAYMENT_EXPORT_ROLES: readonly RoleName[] = [
+  "super_admin",
+  "admin",
+  "finance",
+]
+
+/** Roles allowed to create a booking; not finance. */
+export const BOOKING_CREATE_ROLES: readonly RoleName[] = [
+  "super_admin",
+  "admin",
+  "receptionist",
+]
+
 /** Roles allowed to delete a booking. */
 export const BOOKING_DELETE_ROLES: readonly RoleName[] = ["super_admin"]
+
+/** Roles shown the occupancy stat cards on the units page. */
+export const UNIT_STATS_ROLES: readonly RoleName[] = [
+  "super_admin",
+  "admin",
+  "receptionist",
+]
 
 /** Roles allowed to set a room's status (available / housekeeping / maintenance). */
 export const UNIT_STATUS_ROLES: readonly RoleName[] = [
   "super_admin",
   "admin",
+  "receptionist",
   "housekeeping",
 ]
 

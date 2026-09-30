@@ -22,6 +22,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import {
+  actionNeededRowClassName,
   TableError,
   TableMessageRow,
   TableSkeletonRows,
@@ -40,6 +41,7 @@ import {
   getEvidenceFileId,
   getPaymentMethodLabel,
   getPaymentTypeLabel,
+  isPendingPayment,
   sortPayments,
 } from "@/lib/payments"
 
@@ -140,7 +142,13 @@ export function PaymentsTable() {
             <TableMessageRow columns={COLUMNS}>{emptyMessage}</TableMessageRow>
           ) : (
             pagination.pageItems.map((payment) => (
-              <TableRow key={payment.payment_id} className="h-14">
+              <TableRow
+                key={payment.payment_id}
+                className={cn(
+                  "h-14",
+                  isPendingPayment(payment) && actionNeededRowClassName
+                )}
+              >
                 <TableCell className="px-4 font-mono text-sm font-semibold text-foreground">
                   {payment.booking_ref}
                 </TableCell>

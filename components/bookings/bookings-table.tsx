@@ -27,6 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import {
+  actionNeededRowClassName,
   TableError,
   TableMessageRow,
   TableSkeletonRows,
@@ -48,10 +49,13 @@ import {
 } from "@/lib/api/bookings"
 import { getApiErrorStatus } from "@/lib/api/errors"
 import { fetchUnits, unitsQueryKey } from "@/lib/api/units"
-import { sortBookings } from "@/lib/bookings"
+import { isPendingBooking, sortBookings } from "@/lib/bookings"
 import { formatCurrency, formatDate } from "@/lib/format"
+import { BOOKING_ACTION_ROLES, hasRole } from "@/lib/roles"
+import { useAuth } from "@/providers/auth-provider"
 
-const COLUMNS = 9
+/** Columns before the optional Actions column. */
+const DATA_COLUMNS = 8
 
 /** How long a hover-prefetched booking stays fresh before another hover refetches it. */
 const PREFETCH_STALE_MS = 30_000
@@ -61,12 +65,18 @@ const PREFETCH_STALE_MS = 30_000
  * serves. `requests` pins the list to pending bookings — the requests
  * guests raise from the website — so its status filter is dropped and its
  * row menu offers the approve / reject decisions instead of the
- * lifecycle actions.
+ * lifecycle actions. `highlightPending` tints pending rows on `/bookings`
+ * to flag the requests still waiting on a decision; on `/requests` every
+ * row is pending, so it's off there. `actionRoles` limits who sees the
+ * Actions column: on `/requests` it only holds approve / reject, so roles
+ * that can't decide (finance) don't get the column at all.
  */
 const VARIANTS = {
   bookings: {
     lockedStatus: "",
     menu: "booking",
+    highlightPending: true,
+    actionRoles: null,
     noun: "booking",
     plural: "bookings",
     empty: "No bookings yet. Create the first one above.",
@@ -74,6 +84,8 @@ const VARIANTS = {
   requests: {
     lockedStatus: BOOKING_REQUEST_STATUS,
     menu: "request",
+    highlightPending: false,
+    actionRoles: BOOKING_ACTION_ROLES,
     noun: "booking request",
     plural: "booking requests",
     empty: "No pending booking requests right now.",
@@ -101,6 +113,10 @@ export function BookingsTable({
   variant?: BookingsTableVariant
 }) {
   const config = VARIANTS[variant]
+  const { user } = useAuth()
+  const showActions =
+    config.actionRoles === null || hasRole(user?.role, config.actionRoles)
+  const columns = showActions ? DATA_COLUMNS + 1 : DATA_COLUMNS
   const [filters, setFilters] = useState(EMPTY_BOOKING_FILTERS)
   const [search, setSearch] = useState("")
   const router = useRouter()
@@ -223,20 +239,22 @@ export function BookingsTable({
             <TableHead className={tableHeadClassName}>Status</TableHead>
             <TableHead className={tableHeadClassName}>Total cost</TableHead>
             <TableHead className={tableHeadClassName}>Payment</TableHead>
-            <TableHead className={cn(tableHeadClassName, "w-24 text-center")}>
-              Actions
-            </TableHead>
+            {showActions ? (
+              <TableHead className={cn(tableHeadClassName, "w-24 text-center")}>
+                Actions
+              </TableHead>
+            ) : null}
           </TableRow>
         </TableHeader>
         <TableBody>
           {active.isPending ? (
-            <TableSkeletonRows columns={COLUMNS} />
+            <TableSkeletonRows columns={columns} />
           ) : lookupMissed ? (
-            <TableMessageRow columns={COLUMNS}>
+            <TableMessageRow columns={columns}>
               No {config.noun} with reference &ldquo;{reference}&rdquo;.
             </TableMessageRow>
           ) : active.isError ? (
-            <TableMessageRow columns={COLUMNS}>
+            <TableMessageRow columns={columns}>
               <TableError
                 message={
                   searching
@@ -247,7 +265,7 @@ export function BookingsTable({
               />
             </TableMessageRow>
           ) : rows.length === 0 ? (
-            <TableMessageRow columns={COLUMNS}>
+            <TableMessageRow columns={columns}>
               {hasActiveFilters(filters)
                 ? `No ${config.plural} match the current filters.`
                 : config.empty}
@@ -256,7 +274,12 @@ export function BookingsTable({
             pagination.pageItems.map((booking) => (
               <TableRow
                 key={booking.booking_id}
-                className="h-14"
+                className={cn(
+                  "h-14",
+                  config.highlightPending &&
+                    isPendingBooking(booking) &&
+                    actionNeededRowClassName
+                )}
                 onMouseEnter={() => prefetchBooking(booking.booking_id)}
                 onFocus={() => prefetchBooking(booking.booking_id)}
               >
@@ -295,9 +318,14 @@ export function BookingsTable({
                 <TableCell className="px-4">
                   <PaymentStatusBadge status={booking.payment_status} />
                 </TableCell>
-                <TableCell className="px-4 text-center">
-                  <BookingActionsMenu booking={booking} variant={config.menu} />
-                </TableCell>
+                {showActions ? (
+                  <TableCell className="px-4 text-center">
+                    <BookingActionsMenu
+                      booking={booking}
+                      variant={config.menu}
+                    />
+                  </TableCell>
+                ) : null}
               </TableRow>
             ))
           )}

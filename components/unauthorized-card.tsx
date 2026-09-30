@@ -1,5 +1,8 @@
+"use client"
+
 import Link from "next/link"
 import { ShieldAlert } from "lucide-react"
+import { getHomeNavItem } from "@/components/dashboard/nav"
 import { Button } from "@/components/ui/button"
 import {
   Card,
@@ -9,6 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card"
+import { useAuth } from "@/providers/auth-provider"
 
 interface Props {
   /** What the visitor tried to open, e.g. "user management". */
@@ -17,6 +21,11 @@ interface Props {
 
 /** Full-width notice shown in place of a page the signed-in role may not open. */
 export function UnauthorizedCard({ area }: Props) {
+  const { user } = useAuth()
+  // The dashboard for most roles; catering can't open it, so they go back
+  // to the bed and breakfast list instead.
+  const home = getHomeNavItem(user?.role)
+
   return (
     <div className="flex justify-center py-12">
       <Card className="w-full max-w-md items-center text-center">
@@ -38,7 +47,7 @@ export function UnauthorizedCard({ area }: Props) {
             asChild
             className="bg-brand-azure text-white hover:bg-brand-azure/90"
           >
-            <Link href="/dashboard">Back to dashboard</Link>
+            <Link href={home.href}>Back to {home.title.toLowerCase()}</Link>
           </Button>
         </CardFooter>
       </Card>

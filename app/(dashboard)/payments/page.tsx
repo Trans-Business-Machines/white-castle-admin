@@ -15,13 +15,12 @@ export default function Payments() {
           <RecordPaymentButton />
         </div>
 
-        {/* This month's totals by status */}
+        {/* This month's totals by status (hidden from receptionists);
+            carries its own gap */}
         <PaymentStatsCards />
 
         {/* Payment listings */}
-        <div className="mt-6">
-          <PaymentsTable />
-        </div>
+        <PaymentsTable />
       </section>
     </RequireRole>
   )

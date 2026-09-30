@@ -6,6 +6,8 @@ import {
   fetchBookings,
   type BookingListFilters,
 } from "@/lib/api/bookings"
+import { hasRole, OPERATIONS_ROLES } from "@/lib/roles"
+import { useAuth } from "@/providers/auth-provider"
 
 /** Bookings raised from the website sit in this status until staff decide. */
 export const BOOKING_REQUEST_STATUS = "pending"
@@ -36,13 +38,15 @@ export function useBookingsList(
  * page — plus how many there are. The `/requests` table and the sidebar's
  * nav badge both read this, so the count in the rail can't disagree with
  * the rows in the table, and approving or rejecting a request (which
- * invalidates `bookingsQueryKey`) updates both at once.
+ * invalidates `bookingsQueryKey`) updates both at once. Only fetched for
+ * roles that can open `/requests`, so catering never asks for bookings.
  */
 export function useBookingRequests() {
-  const query = useBookingsList({
-    ...ALL_DATES,
-    status: BOOKING_REQUEST_STATUS,
-  })
+  const { user } = useAuth()
+  const query = useBookingsList(
+    { ...ALL_DATES, status: BOOKING_REQUEST_STATUS },
+    { enabled: hasRole(user?.role, OPERATIONS_ROLES) }
+  )
 
   return {
     requests: query.data ?? [],

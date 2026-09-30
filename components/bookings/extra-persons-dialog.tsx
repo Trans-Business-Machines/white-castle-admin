@@ -17,6 +17,7 @@ import {
 } from "@/components/bookings/booking-form-fields"
 import {
   BookingChangeSummary,
+  getPreviousTotal,
   pluralizeNights,
   primaryButtonClassName,
 } from "@/components/bookings/booking-change-summary"
@@ -364,6 +365,10 @@ function ExtraPersonsSummary({
           label: "Additional charge",
           value: formatCurrency(extra.total_extra_charge),
           emphasis: true,
+        },
+        {
+          label: "Previous total",
+          value: formatCurrency(getPreviousTotal(extra)),
         },
         {
           label: "New booking total",

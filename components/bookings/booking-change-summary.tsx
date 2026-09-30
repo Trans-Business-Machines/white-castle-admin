@@ -139,9 +139,25 @@ function BookingChangeSummary({
 const primaryButtonClassName =
   "h-11 rounded-full bg-brand-azure px-5 text-white hover:bg-brand-azure/90 focus-visible:ring-brand-azure/30"
 
+/**
+ * What the booking cost before the change. The responses only carry the new
+ * total and the charge the change added, so it's the difference.
+ */
+function getPreviousTotal(change: {
+  new_total: number
+  total_extra_charge: number
+}) {
+  return change.new_total - change.total_extra_charge
+}
+
 /** "1 night" / "2 nights". */
 function pluralizeNights(count: number) {
   return `${count} night${count === 1 ? "" : "s"}`
 }
 
-export { BookingChangeSummary, pluralizeNights, primaryButtonClassName }
+export {
+  BookingChangeSummary,
+  getPreviousTotal,
+  pluralizeNights,
+  primaryButtonClassName,
+}

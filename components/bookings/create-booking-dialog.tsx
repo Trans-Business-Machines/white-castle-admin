@@ -33,7 +33,9 @@ import {
   toCreateBookingPayload,
   type CreateBookingValues,
 } from "@/lib/schemas/bookings"
+import { BOOKING_CREATE_ROLES, hasRole } from "@/lib/roles"
 import type { Guest } from "@/lib/types"
+import { useAuth } from "@/providers/auth-provider"
 
 const createBookingMutationKey = ["bookings", "create"] as const
 
@@ -51,8 +53,19 @@ const emptyValues: CreateBookingValues = {
   special_requests: "",
 }
 
-/** "Create booking" CTA plus the dialog it opens. */
+/**
+ * "Create booking" CTA plus the dialog it opens; hidden from finance (and
+ * any role outside `BOOKING_CREATE_ROLES`), who then skip the prefetch too.
+ */
 export function CreateBookingDialog() {
+  const { user } = useAuth()
+
+  if (!hasRole(user?.role, BOOKING_CREATE_ROLES)) return null
+
+  return <CreateBookingCta />
+}
+
+function CreateBookingCta() {
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
   const saving = useIsMutating({ mutationKey: createBookingMutationKey }) > 0

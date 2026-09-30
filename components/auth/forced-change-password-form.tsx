@@ -15,7 +15,7 @@ import {
   changePasswordSchema,
   type ChangePasswordValues,
 } from "@/lib/schemas/auth"
-import { useAuth } from "@/providers/auth-provider"
+import { getLandingPath, useAuth } from "@/providers/auth-provider"
 
 function ForcedChangePasswordForm() {
   const router = useRouter()
@@ -36,7 +36,7 @@ function ForcedChangePasswordForm() {
   useEffect(() => {
     if (status === "unauthenticated") router.replace("/login")
     else if (status === "authenticated" && user && !user.must_change_password) {
-      router.replace("/dashboard")
+      router.replace(getLandingPath(user))
     }
   }, [status, user, router])
 
@@ -45,9 +45,9 @@ function ForcedChangePasswordForm() {
   async function onSubmit(values: ChangePasswordValues) {
     try {
       await changePassword(values.currentPassword, values.password)
-      await refreshUser()
+      const profile = await refreshUser()
       toast.success("Your password has been updated. Welcome aboard!")
-      router.replace("/dashboard")
+      router.replace(getLandingPath(profile))
     } catch (error) {
       setError("root", {
         message: getApiErrorMessage(

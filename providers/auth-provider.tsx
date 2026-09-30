@@ -12,6 +12,7 @@ import {
   type PropsWithChildren,
 } from "react"
 import { useRouter } from "next/navigation"
+import { getHomeNavItem } from "@/components/dashboard/nav"
 import { WorkspaceLoader } from "@/components/workspace-loader"
 import * as authApi from "@/lib/api/auth"
 import {
@@ -63,8 +64,11 @@ const APP_ROUTES = [
   "/guests",
   "/units",
   "/payments",
+  "/catering",
   "/reports",
   "/users",
+  "/audits",
+  "/settings",
   "/profile",
 ]
 
@@ -80,9 +84,17 @@ function shouldRedirectToLogin(pathname: string) {
   return isAppRoute(pathname) && !isPublicRoute(pathname)
 }
 
-/** Where a signed-in user should land: the dashboard, unless they must first set a new password. */
-export function getLandingPath(user: Pick<AuthUser, "must_change_password">) {
-  return user.must_change_password ? CHANGE_PASSWORD_ROUTE : "/dashboard"
+/**
+ * Where a signed-in user should land: their role's home page (the dashboard,
+ * or the bed and breakfast list for catering), unless they must first set a
+ * new password.
+ */
+export function getLandingPath(
+  user: Pick<AuthUser, "must_change_password" | "role">
+) {
+  return user.must_change_password
+    ? CHANGE_PASSWORD_ROUTE
+    : getHomeNavItem(user.role).href
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)
@@ -130,7 +142,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         } else if (profile.must_change_password && !onChangePassword) {
           router.replace(landing)
         } else if (onChangePassword && !profile.must_change_password) {
-          router.replace("/dashboard")
+          router.replace(landing)
         }
       } catch {
         endSession()

@@ -20,6 +20,7 @@ import {
   Wallet,
 } from "lucide-react"
 import { BookingActionsMenu } from "@/components/bookings/booking-actions-menu"
+import { canAccessPath } from "@/components/dashboard/nav"
 import {
   BookingStatusBadge,
   PaymentStatusBadge,
@@ -43,6 +44,7 @@ import { getMealPlanLabel, isBedAndBreakfast } from "@/lib/bookings"
 import { formatCurrency, formatDate, formatTimestamp } from "@/lib/format"
 import type { Booking } from "@/lib/types"
 import { getRoomTypeLabel } from "@/lib/units"
+import { useAuth } from "@/providers/auth-provider"
 
 /** "2 adults, 1 child" / "1 adult, 0 children". */
 function formatOccupants(adults: number, children: number) {
@@ -152,6 +154,10 @@ function BookingDetailsSkeleton() {
 /** A booking's full record: stay, guest, payment, QR code and audit trail. */
 function BookingDetails({ bookingId }: { bookingId: string }) {
   const router = useRouter()
+  const { user } = useAuth()
+  // Finance can't open the room or guest pages, so they get plain text.
+  const canOpenUnits = canAccessPath("/units", user?.role)
+  const canOpenGuests = canAccessPath("/guests", user?.role)
   const query = useQuery({
     queryKey: bookingQueryKey(bookingId),
     queryFn: () => fetchBookingDetails(bookingId),
@@ -300,7 +306,7 @@ function BookingDetails({ bookingId }: { bookingId: string }) {
                 icon={BedDouble}
                 label="Room"
                 value={
-                  room ? (
+                  room && canOpenUnits ? (
                     <Link
                       href={getUnitHref(room.room_id)}
                       className="underline-offset-4 hover:underline"
@@ -310,6 +316,13 @@ function BookingDetails({ bookingId }: { bookingId: string }) {
                         {getRoomTypeLabel(room.room_type)}
                       </span>
                     </Link>
+                  ) : room ? (
+                    <>
+                      Room {room.room_number}
+                      <span className="ml-2 text-xs font-normal text-muted-foreground">
+                        {getRoomTypeLabel(room.room_type)}
+                      </span>
+                    </>
                   ) : units.isPending ? (
                     <Skeleton className="h-5 w-24 rounded" />
                   ) : (
@@ -386,7 +399,7 @@ function BookingDetails({ bookingId }: { bookingId: string }) {
                   icon={UserRound}
                   label="Name"
                   value={
-                    booking.guest_id ? (
+                    booking.guest_id && canOpenGuests ? (
                       <Link
                         href={getGuestHref(booking.guest_id)}
                         className="underline-offset-4 hover:underline"

@@ -23,7 +23,7 @@ import { UpdateUnitStatusDialog } from "@/components/units/update-unit-status-di
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/errors"
 import { fetchUnitDetails, unitQueryKey } from "@/lib/api/units"
 import { formatCurrency, formatDate, humanizeSlug } from "@/lib/format"
-import { hasRole, UNIT_STATUS_ROLES } from "@/lib/roles"
+import { hasRole, UNIT_MANAGE_ROLES, UNIT_STATUS_ROLES } from "@/lib/roles"
 import { isSettableUnitStatus } from "@/lib/schemas/units"
 import { getBbRateLabel, getRoomTypeLabel } from "@/lib/units"
 import { useAuth } from "@/providers/auth-provider"
@@ -117,6 +117,8 @@ function UnitDetails({ roomId }: { roomId: string }) {
   const [action, setAction] = useState<"edit" | "status" | "delete" | null>(
     null
   )
+  // Receptionists and housekeeping only get the Update status CTA.
+  const canManage = hasRole(user?.role, UNIT_MANAGE_ROLES)
   const canSetStatus = hasRole(user?.role, UNIT_STATUS_ROLES)
 
   const unit = useQuery({
@@ -180,15 +182,17 @@ function UnitDetails({ roomId }: { roomId: string }) {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="default"
-            className="h-11 rounded-md bg-brand-azure px-5"
-            onClick={() => setAction("edit")}
-          >
-            <SquarePen aria-hidden="true" />
-            Update unit
-          </Button>
+          {canManage ? (
+            <Button
+              type="button"
+              variant="default"
+              className="h-11 rounded-md bg-brand-azure px-5"
+              onClick={() => setAction("edit")}
+            >
+              <SquarePen aria-hidden="true" />
+              Update unit
+            </Button>
+          ) : null}
           {canSetStatus ? (
             <Button
               type="button"
@@ -201,15 +205,17 @@ function UnitDetails({ roomId }: { roomId: string }) {
               Update status
             </Button>
           ) : null}
-          <Button
-            type="button"
-            variant="destructive"
-            className="h-11 rounded-md px-5"
-            onClick={() => setAction("delete")}
-          >
-            <Trash2 aria-hidden="true" />
-            Delete unit
-          </Button>
+          {canManage ? (
+            <Button
+              type="button"
+              variant="destructive"
+              className="h-11 rounded-md px-5"
+              onClick={() => setAction("delete")}
+            >
+              <Trash2 aria-hidden="true" />
+              Delete unit
+            </Button>
+          ) : null}
         </div>
       </div>
 

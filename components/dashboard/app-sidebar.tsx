@@ -7,6 +7,7 @@ import { cn } from "cn"
 import {
   canSeeNavItem,
   dashboardNav,
+  getHomeNavItem,
   settingsNav,
 } from "@/components/dashboard/nav"
 import { SidebarUser } from "@/components/dashboard/sidebar-user"
@@ -83,7 +84,7 @@ function AppSidebar() {
               <Menu aria-hidden="true" className="size-5" />
             </button>
             <Link
-              href="/dashboard"
+              href={getHomeNavItem(user?.role).href}
               className={cn(
                 "overflow-hidden font-heading text-lg font-bold tracking-[0.12em] whitespace-nowrap uppercase",
                 labelClassName

@@ -12,13 +12,12 @@ export default function Bookings() {
         <CreateBookingDialog />
       </div>
 
-      {/* Month-to-date booking statistics */}
+      {/* Month-to-date booking statistics (hidden from receptionists);
+          carries its own gap */}
       <BookingStatsCards />
 
       {/* Booking listings */}
-      <div className="mt-6">
-        <BookingsTable />
-      </div>
+      <BookingsTable />
     </section>
   )
 }

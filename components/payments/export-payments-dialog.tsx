@@ -6,12 +6,19 @@ import {
 } from "@/components/export-csv-dialog"
 import { exportPayments } from "@/lib/api/payments"
 import { getCurrentMonthRange, PAYMENT_EXPORT_STATUSES } from "@/lib/payments"
+import { hasRole, PAYMENT_EXPORT_ROLES } from "@/lib/roles"
+import { useAuth } from "@/providers/auth-provider"
 
 /**
  * Payments CSV export (`GET /payments/export/payments`). Starts on every
- * status (no `status` param) and the current month.
+ * status (no `status` param) and the current month. Hidden from roles
+ * outside `PAYMENT_EXPORT_ROLES` (receptionists).
  */
 export function ExportPaymentsDialog() {
+  const { user } = useAuth()
+
+  if (!hasRole(user?.role, PAYMENT_EXPORT_ROLES)) return null
+
   return (
     <ExportCsvDialog
       noun="payments"

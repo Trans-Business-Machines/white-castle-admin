@@ -10,13 +10,31 @@ import {
 } from "@/lib/api/bookings"
 import { getApiErrorMessage } from "@/lib/api/errors"
 import { BOOKING_STAT_CARDS, getMonthToDateRange } from "@/lib/bookings"
+import { BOOKING_STATS_ROLES, hasRole } from "@/lib/roles"
+import { useAuth } from "@/providers/auth-provider"
 
 // 15rem columns: wide enough for a "KES 1,250,000" value, so with the
 // sidebar expanded the fifth card wraps to a new row instead of squeezing.
 const gridClassName =
   "grid grid-cols-[repeat(auto-fit,minmax(min(15rem,100%),1fr))] gap-4"
 
+/**
+ * The month-to-date cards with the gap beneath them, or nothing for roles
+ * outside `BOOKING_STATS_ROLES` (receptionists), who then never fetch them.
+ */
 export function BookingStatsCards() {
+  const { user } = useAuth()
+
+  if (!hasRole(user?.role, BOOKING_STATS_ROLES)) return null
+
+  return (
+    <div className="mb-6">
+      <BookingStats />
+    </div>
+  )
+}
+
+function BookingStats() {
   const range = getMonthToDateRange()
   const stats = useQuery({
     queryKey: bookingStatsQueryKey(range),
