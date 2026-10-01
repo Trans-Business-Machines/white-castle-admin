@@ -59,9 +59,9 @@ export const REPORT_TYPES: readonly ReportType[] = [
   },
   {
     slug: "bed-and-breakfast",
-    title: "Bed and breakfast",
+    title: "Breakfast List",
     description:
-      "B&B summary report bed and breakfast bookings, guests and revenue. Pick a date to get the breakfast list for a specific day.",
+      "Meal plan summary report: Bed & Breakfast, Half Board and Full Board bookings, guests and revenue. Pick a date to get the breakfast list for a specific day.",
     icon: Coffee,
   },
   {
@@ -82,7 +82,7 @@ export const REPORT_TYPES: readonly ReportType[] = [
     slug: "revenue",
     title: "Revenue",
     description:
-      "Revenue report expected vs actual collected, payment method breakdown, cancellation fees collected, B&B revenue, extra charges.",
+      "Revenue report expected vs actual collected, payment method breakdown, cancellation fees collected, meal plan revenue, extra charges.",
     icon: TrendingUp,
   },
   {
@@ -275,7 +275,7 @@ export const BOOKINGS_REPORT_STAT_CARDS: ReadonlyArray<{
   },
   {
     key: "bb_bookings",
-    title: "Bed and breakfast",
+    title: "Bed & Breakfast",
     label: "bookings with breakfast",
     titleClassName: "text-amber-700 dark:text-amber-300",
     format: formatCount,
@@ -351,7 +351,7 @@ export function getRevenueStatCards(
     },
     {
       key: "bb",
-      title: "Bed and breakfast",
+      title: "Bed & Breakfast",
       text: formatCurrency(revenue.bb_revenue),
       label: "breakfast revenue",
       titleClassName: "text-amber-700 dark:text-amber-300",
@@ -726,65 +726,65 @@ export function parseBbRatio(ratio: string) {
   return match ? { bb: Number(match[1]), roomOnly: Number(match[2]) } : null
 }
 
-/** The B&B summary report's headline cards. */
+/** The meal plan summary report's headline cards. */
 export function getBbSummaryStatCards(
   summary: BbSummaryReport["summary"]
 ): ReportStatCard[] {
-  const ratio = parseBbRatio(summary.bb_vs_room_only_ratio)
+  const ratio = parseBbRatio(summary.meal_vs_room_only_ratio)
   const total = ratio ? ratio.bb + ratio.roomOnly : 0
   return [
     {
       key: "bookings",
-      title: "B&B bookings",
-      text: formatCount(summary.total_bb_bookings),
+      title: "Breakfast bookings",
+      text: formatCount(summary.total_meal_plan_bookings),
       label: "with breakfast",
       titleClassName: "text-amber-700 dark:text-amber-300",
     },
     {
       key: "revenue",
-      title: "B&B revenue",
-      text: formatCurrency(summary.total_bb_revenue),
-      label: "from breakfasts",
+      title: "Breakfast revenue",
+      text: formatCurrency(summary.total_meal_plan_revenue),
+      label: "from meal plans",
       titleClassName: "text-emerald-700 dark:text-emerald-300",
     },
     {
       key: "average",
       title: "Average",
-      text: formatCurrency(summary.avg_bb_revenue_per_booking),
-      label: "B&B revenue per booking",
+      text: formatCurrency(summary.avg_meal_revenue_per_booking),
+      label: "meal plan revenue per booking",
       titleClassName: "text-brand-navy dark:text-sky-200",
     },
     {
       key: "share",
-      title: "B&B share",
+      title: "Meal plan share",
       text:
         ratio && total > 0
           ? formatPercent((ratio.bb / total) * 100)
-          : summary.bb_vs_room_only_ratio || "—",
+          : summary.meal_vs_room_only_ratio || "—",
       label: ratio
         ? `${formatCount(ratio.bb)} of ${formatBookingCount(total)}`
-        : "B&B to room only",
+        : "Breakfast to Bed Only",
       titleClassName: "text-violet-700 dark:text-violet-300",
     },
   ]
 }
 
-/** B&B vs room-only bookings, or null when the ratio can't be read. */
+/** Meal plan vs bed-only bookings, or null when the ratio can't be read. */
 export function getMealPlanSegments(
   summary: BbSummaryReport["summary"]
 ): ShareSegment[] | null {
-  const ratio = parseBbRatio(summary.bb_vs_room_only_ratio)
+  const ratio = parseBbRatio(summary.meal_vs_room_only_ratio)
   if (!ratio) return null
   return [
     {
-      key: "bed_and_breakfast",
-      label: "Bed and breakfast",
+      key: "meal_plans",
+      label: "Breakfast plans",
       value: ratio.bb,
       className: "bg-amber-600",
     },
     {
       key: "room_only",
-      label: "Room only",
+      label: "Bed Only",
       value: ratio.roomOnly,
       className: "bg-brand-azure dark:bg-sky-600",
     },

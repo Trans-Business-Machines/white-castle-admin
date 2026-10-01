@@ -353,11 +353,11 @@ function ExtraPersonsSummary({
             </>
           ),
         },
-        ...(extra.includes_bb
+        ...(extra.meal_plan_charge > 0
           ? [
               {
-                label: "Bed and breakfast",
-                value: formatCurrency(extra.bb_charge),
+                label: "Meal plan surcharge",
+                value: formatCurrency(extra.meal_plan_charge),
               },
             ]
           : []),

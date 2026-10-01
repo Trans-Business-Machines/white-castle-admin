@@ -11,6 +11,29 @@ import { normalizeUnit } from "@/lib/units"
 export const unitsQueryKey = ["units"] as const
 export const unitStatsQueryKey = ["units", "stats"] as const
 export const unitQueryKey = (roomId: string) => ["units", roomId] as const
+export const roomTypesQueryKey = ["units", "room-types"] as const
+
+/** Default rate card returned by `GET /bookings/room-types`. */
+export interface RoomTypeDefault {
+  type: string
+  display_name: string
+  description: string
+  max_occupancy: number
+  base_rate: number
+  bb_rate: number
+  hb_rate: number
+  fb_rate: number
+  base_rate_usd: number
+  bb_rate_usd: number
+  hb_rate_usd: number
+  fb_rate_usd: number
+}
+
+/** GET /bookings/room-types → default rate cards for each room type. */
+export async function fetchRoomTypes(): Promise<RoomTypeDefault[]> {
+  const response = await axiosInstance.get<RoomTypeDefault[]>("/bookings/room-types")
+  return response.data
+}
 
 /** GET /bookings/rooms → every room on the property. */
 export async function fetchUnits() {

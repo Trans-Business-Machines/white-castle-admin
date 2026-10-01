@@ -1,7 +1,6 @@
 import { ROOM_TYPES } from "@/lib/schemas/units"
 import { formatCurrency, humanizeSlug } from "@/lib/format"
 import type { Unit, UnitsOccupancyStats } from "@/lib/types"
-
 /** Every status a room can be in; also the units table's status filter. */
 export const UNIT_STATUSES = [
   "available",
@@ -118,20 +117,23 @@ export function parseAmenities(value: unknown): string[] {
 
 /**
  * Cleans up a room straight from the API: applies `parseAmenities`, and
- * defaults the bed and breakfast fields for responses that omit them.
+ * defaults the meal plan rate fields for responses that omit them.
  */
 export function normalizeUnit(unit: Unit): Unit {
   return {
     ...unit,
-    amenities: parseAmenities(unit.amenities),
-    bb_available: unit.bb_available ?? false,
-    bb_rate: unit.bb_rate ?? null,
+    amenities:     parseAmenities(unit.amenities),
+    bb_rate:       unit.bb_rate       ?? null,
+    hb_rate:       unit.hb_rate       ?? null,
+    fb_rate:       unit.fb_rate       ?? null,
+    base_rate_usd: unit.base_rate_usd ?? null,
+    bb_rate_usd:   unit.bb_rate_usd   ?? null,
+    hb_rate_usd:   unit.hb_rate_usd   ?? null,
+    fb_rate_usd:   unit.fb_rate_usd   ?? null,
   }
 }
 
-/** "KES 800", or null when the room has no bed and breakfast to offer. */
-export function getBbRateLabel(unit: Pick<Unit, "bb_available" | "bb_rate">) {
-  return unit.bb_available && unit.bb_rate != null
-    ? formatCurrency(unit.bb_rate)
-    : null
+/** "KES 2,500 BB / KES 3,500 HB / KES 4,500 FB" — null when no rates set. */
+export function getBbRateLabel(unit: Pick<Unit, "bb_rate">) {
+  return unit.bb_rate != null ? formatCurrency(unit.bb_rate) : null
 }

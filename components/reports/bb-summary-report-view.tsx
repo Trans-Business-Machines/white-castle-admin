@@ -82,7 +82,7 @@ export function BbSummaryReportView({
   return (
     <section className="grid gap-6">
       <ReportHeader
-        title="Bed and breakfast report"
+        title="Breakfast List Report"
         from={filters.from_date}
         to={filters.to_date}
         chips={
@@ -103,7 +103,7 @@ export function BbSummaryReportView({
         <ReportError
           message={getApiErrorMessage(
             report.error,
-            "We couldn't generate the bed and breakfast report."
+            "We couldn't generate the breakfast list report."
           )}
           onRetry={() => report.refetch()}
         />
@@ -156,9 +156,9 @@ function BbSummary({ report }: { report: BbSummaryReport }) {
         ) : (
           <ReportPanel title="Meal plan">
             <p className="text-sm text-muted-foreground">
-              B&amp;B to room only:{" "}
+              Breakfast plans to Bed Only:{" "}
               <span className="font-semibold text-foreground">
-                {report.summary.bb_vs_room_only_ratio || "—"}
+                {report.summary.meal_vs_room_only_ratio || "—"}
               </span>
             </p>
           </ReportPanel>
@@ -254,8 +254,8 @@ function BbTables({ filters }: { filters: BbSummaryReportFilters }) {
     >
       <TabsList className="max-w-full overflow-x-auto">
         <TabsTrigger value="bookings" className="px-3">
-          B&amp;B bookings
-          <TabCount count={report.data.bb_bookings.length} />
+          Breakfast bookings
+          <TabCount count={report.data.meal_plan_bookings.length} />
         </TabsTrigger>
         <TabsTrigger value="breakfast" className="px-3">
           Breakfast list · {formatDate(list.date, "d MMM")}
@@ -265,7 +265,7 @@ function BbTables({ filters }: { filters: BbSummaryReportFilters }) {
 
       <TabsContent value="bookings">
         <BbBookingsTable
-          bookings={report.data.bb_bookings}
+          bookings={report.data.meal_plan_bookings}
           dimmed={report.isPlaceholderData}
           filtersKey={filtersKey}
         />
@@ -330,7 +330,7 @@ function BookingsHeader() {
         <TableHead className={tableHeadClassName}>Party</TableHead>
         <TableHead className={tableHeadClassName}>Status</TableHead>
         <TableHead className={cn(tableHeadClassName, "text-right")}>
-          B&amp;B total
+          Meal plan total
         </TableHead>
       </TableRow>
     </TableHeader>
@@ -359,7 +359,7 @@ function BbBookingsTable({
           value={search}
           onChange={handleSearchChange}
           placeholder="Search reference, guest or email"
-          label="Search bed and breakfast bookings"
+          label="Search breakfast bookings"
         />
       </div>
 
@@ -370,7 +370,7 @@ function BbBookingsTable({
             <TableMessageRow columns={BOOKING_COLUMNS}>
               {search.trim()
                 ? `No bookings match "${search.trim()}".`
-                : "No bed and breakfast bookings in this period."}
+                : "No breakfast bookings in this period."}
             </TableMessageRow>
           ) : (
             pagination.pageItems.map((booking) => (

@@ -50,7 +50,7 @@ import {
 import { getApiErrorStatus } from "@/lib/api/errors"
 import { fetchUnits, unitsQueryKey } from "@/lib/api/units"
 import { isPendingBooking, sortBookings } from "@/lib/bookings"
-import { formatCurrency, formatDate } from "@/lib/format"
+import { formatAmount, formatCurrency, formatDate } from "@/lib/format"
 import { BOOKING_ACTION_ROLES, hasRole } from "@/lib/roles"
 import { useAuth } from "@/providers/auth-provider"
 
@@ -313,7 +313,7 @@ export function BookingsTable({
                   <BookingStatusBadge status={booking.status} />
                 </TableCell>
                 <TableCell className="px-4 font-mono">
-                  {formatCurrency(booking.total_amount)}
+                  {formatAmount(booking.total_amount, booking.currency ?? "KES")}
                 </TableCell>
                 <TableCell className="px-4">
                   <PaymentStatusBadge status={booking.payment_status} />

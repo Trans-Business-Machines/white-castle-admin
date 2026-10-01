@@ -247,9 +247,18 @@ export function getMealPlanLabel(mealPlan: string) {
   return MEAL_PLAN_LABELS.get(mealPlan) ?? humanizeSlug(mealPlan)
 }
 
-/** Whether the booking is on the bed and breakfast list. */
+/** Whether the booking includes any meal plan (breakfast list). */
+export function hasMealPlan(booking: Pick<Booking, "meal_plan">) {
+  return (
+    booking.meal_plan === "bed_and_breakfast" ||
+    booking.meal_plan === "half_board" ||
+    booking.meal_plan === "full_board"
+  )
+}
+
+/** Whether the booking is on the bed and breakfast list (kept for compatibility). */
 export function isBedAndBreakfast(booking: Pick<Booking, "meal_plan">) {
-  return booking.meal_plan === "bed_and_breakfast"
+  return hasMealPlan(booking)
 }
 
 /** 1.7 → "1.7%"; the API already reports a percentage, not a ratio. */

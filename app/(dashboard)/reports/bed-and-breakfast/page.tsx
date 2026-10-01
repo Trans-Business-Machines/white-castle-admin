@@ -7,7 +7,7 @@ import {
   type ReportSearchParams,
 } from "@/lib/reports"
 
-export const metadata: Metadata = { title: "Bed and breakfast report" }
+export const metadata: Metadata = { title: "Breakfast List Report" }
 
 interface BbSummaryReportPageProps {
   searchParams: Promise<ReportSearchParams>

@@ -79,7 +79,7 @@ export const dashboardNav: NavItem[] = [
   },
   {
     title: "Catering",
-    description: "Guests on the bed and breakfast list",
+    description: "Guests on the breakfast list",
     href: "/catering",
     icon: Coffee,
     roles: CATERING_ROLES,

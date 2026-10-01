@@ -3,6 +3,7 @@
 import { useState, type KeyboardEvent } from "react"
 import { Plus, Undo2, X } from "lucide-react"
 import { Controller, useWatch, type UseFormReturn } from "react-hook-form"
+import { useQuery } from "@tanstack/react-query"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -13,7 +14,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import {
   PhotoDropzone,
@@ -26,6 +26,7 @@ import {
   ROOM_TYPES,
   type UnitType,
 } from "@/lib/schemas/units"
+import { fetchRoomTypes, roomTypesQueryKey } from "@/lib/api/units"
 
 const labelClassName =
   "font-ibm-plex text-xs font-semibold tracking-wide text-iron uppercase"
@@ -38,6 +39,43 @@ function FieldError({ id, message }: { id: string; message?: string }) {
     <p id={id} className="text-sm text-destructive">
       {message}
     </p>
+  )
+}
+
+function RateInput({
+  id,
+  label,
+  fieldName,
+  form,
+  placeholder,
+}: {
+  id: string
+  label: string
+  fieldName: keyof UnitType
+  form: UseFormReturn<UnitType>
+  placeholder?: string
+}) {
+  const { register, formState: { errors } } = form
+  const error = errors[fieldName]
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor={id} className={labelClassName}>
+        {label}
+      </Label>
+      <Input
+        id={id}
+        type="number"
+        inputMode="decimal"
+        min={0}
+        step="0.01"
+        placeholder={placeholder ?? "0"}
+        className={inputClassName}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${id}-error` : undefined}
+        {...register(fieldName, { valueAsNumber: true })}
+      />
+      <FieldError id={`${id}-error`} message={error?.message as string | undefined} />
+    </div>
   )
 }
 
@@ -56,9 +94,9 @@ interface UnitFormFieldsProps {
 }
 
 /**
- * Every input for a room — details, amenity chips and the photo picker —
- * shared by the add and edit dialogs. The owning dialog holds the form and
- * the mutation; this only renders fields against it.
+ * Every input for a room — details, rate grid, amenity chips and the photo
+ * picker — shared by the add and edit dialogs. The owning dialog holds the
+ * form and the mutation; this only renders fields against it.
  */
 export function UnitFormFields({
   form,
@@ -80,11 +118,31 @@ export function UnitFormFields({
   const [amenityError, setAmenityError] = useState<string | null>(null)
 
   const amenities = useWatch({ control, name: "amenities" })
-  const bbAvailable = useWatch({ control, name: "bb_available" })
   const photos = useWatch({ control, name: "photos" })
 
-  // The ten-photo cap is a property of the room, not of this picker, so
-  // the photos it already keeps count against what can still be added.
+  // Fetch room type defaults for auto-fill
+  const { data: roomTypeDefaults = [] } = useQuery({
+    queryKey: roomTypesQueryKey,
+    queryFn: fetchRoomTypes,
+  })
+
+  // When a room type is selected, auto-fill all rate fields from defaults
+  function handleRoomTypeChange(value: string, fieldOnChange: (v: string) => void) {
+    fieldOnChange(value)
+    const defaults = roomTypeDefaults.find((rt) => rt.type === value)
+    if (defaults) {
+      setValue("max_occupancy",  defaults.max_occupancy,  { shouldDirty: true })
+      setValue("base_rate",      defaults.base_rate,      { shouldDirty: true })
+      setValue("bb_rate",        defaults.bb_rate,        { shouldDirty: true })
+      setValue("hb_rate",        defaults.hb_rate,        { shouldDirty: true })
+      setValue("fb_rate",        defaults.fb_rate,        { shouldDirty: true })
+      setValue("base_rate_usd",  defaults.base_rate_usd,  { shouldDirty: true })
+      setValue("bb_rate_usd",    defaults.bb_rate_usd,    { shouldDirty: true })
+      setValue("hb_rate_usd",    defaults.hb_rate_usd,    { shouldDirty: true })
+      setValue("fb_rate_usd",    defaults.fb_rate_usd,    { shouldDirty: true })
+    }
+  }
+
   const keptExisting = existingPhotos.filter(
     (url) => !removedPhotos.includes(url)
   ).length
@@ -118,7 +176,6 @@ export function UnitFormFields({
   }
 
   function handleAmenityKeyDown(event: KeyboardEvent<HTMLInputElement>) {
-    // Enter adds the amenity instead of submitting the whole form.
     if (event.key === "Enter") {
       event.preventDefault()
       addAmenity()
@@ -128,7 +185,7 @@ export function UnitFormFields({
   return (
     <>
       <fieldset disabled={detailsLocked} className="grid min-w-0 gap-4">
-        {/* Room number & type inputs */}
+        {/* Room number & type */}
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="unit-room-number" className={labelClassName}>
@@ -155,12 +212,20 @@ export function UnitFormFields({
           <div className="grid gap-2">
             <Label htmlFor="unit-room-type" className={labelClassName}>
               Room type
+              {roomTypeDefaults.length > 0 && (
+                <span className="ml-1 font-normal normal-case tracking-normal text-iron">
+                  — rates auto-fill
+                </span>
+              )}
             </Label>
             <Controller
               control={control}
               name="room_type"
               render={({ field }) => (
-                <Select value={field.value} onValueChange={field.onChange}>
+                <Select
+                  value={field.value}
+                  onValueChange={(value) => handleRoomTypeChange(value, field.onChange)}
+                >
                   <SelectTrigger
                     id="unit-room-type"
                     ref={field.ref}
@@ -190,112 +255,54 @@ export function UnitFormFields({
           </div>
         </div>
 
-        {/* Occupancy and base rate inputs */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="grid gap-2">
-            <Label htmlFor="unit-max-occupancy" className={labelClassName}>
-              Max occupancy
-            </Label>
-            <Input
-              id="unit-max-occupancy"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              step={1}
-              placeholder="2"
-              className={inputClassName}
-              aria-invalid={Boolean(errors.max_occupancy)}
-              aria-describedby={
-                errors.max_occupancy ? "unit-max-occupancy-error" : undefined
-              }
-              {...register("max_occupancy", { valueAsNumber: true })}
-            />
-            <FieldError
-              id="unit-max-occupancy-error"
-              message={errors.max_occupancy?.message}
-            />
-          </div>
+        {/* Max occupancy */}
+        <div className="grid gap-2 sm:w-1/2">
+          <Label htmlFor="unit-max-occupancy" className={labelClassName}>
+            Max occupancy
+          </Label>
+          <Input
+            id="unit-max-occupancy"
+            type="number"
+            inputMode="numeric"
+            min={1}
+            step={1}
+            placeholder="2"
+            className={inputClassName}
+            aria-invalid={Boolean(errors.max_occupancy)}
+            aria-describedby={
+              errors.max_occupancy ? "unit-max-occupancy-error" : undefined
+            }
+            {...register("max_occupancy", { valueAsNumber: true })}
+          />
+          <FieldError
+            id="unit-max-occupancy-error"
+            message={errors.max_occupancy?.message}
+          />
+        </div>
 
-          <div className="grid gap-2">
-            <Label htmlFor="unit-base-rate" className={labelClassName}>
-              Base rate (KES / night)
-            </Label>
-            <Input
-              id="unit-base-rate"
-              type="number"
-              inputMode="decimal"
-              min={0}
-              step="0.01"
-              placeholder="4500"
-              className={inputClassName}
-              aria-invalid={Boolean(errors.base_rate)}
-              aria-describedby={
-                errors.base_rate ? "unit-base-rate-error" : undefined
-              }
-              {...register("base_rate", { valueAsNumber: true })}
-            />
-            <FieldError
-              id="unit-base-rate-error"
-              message={errors.base_rate?.message}
-            />
+        {/* KES rates */}
+        <div className="grid gap-2">
+          <p className={labelClassName}>Resident rates (KES / night)</p>
+          <div className="grid gap-4 sm:grid-cols-4">
+            <RateInput id="unit-base-rate"    label="Room only"        fieldName="base_rate" form={form} placeholder="2000" />
+            <RateInput id="unit-bb-rate"      label="Bed & Breakfast"  fieldName="bb_rate"   form={form} placeholder="2500" />
+            <RateInput id="unit-hb-rate"      label="Half board"       fieldName="hb_rate"   form={form} placeholder="3500" />
+            <RateInput id="unit-fb-rate"      label="Full board"       fieldName="fb_rate"   form={form} placeholder="4500" />
           </div>
         </div>
 
-        {/* Bed and breakfast toggle and rate */}
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="grid gap-2">
-            <Label htmlFor="unit-bb-available" className={labelClassName}>
-              Bed and breakfast
-            </Label>
-            <Controller
-              control={control}
-              name="bb_available"
-              render={({ field }) => (
-                <label className="flex h-11 cursor-pointer items-center gap-3 rounded-lg border border-border bg-canvas px-3.5 text-base has-disabled:cursor-not-allowed dark:bg-input/30">
-                  <Switch
-                    id="unit-bb-available"
-                    ref={field.ref}
-                    checked={field.value}
-                    onCheckedChange={(checked) => {
-                      field.onChange(checked)
-                      if (!checked) clearErrors("bb_rate")
-                    }}
-                    onBlur={field.onBlur}
-                    className="data-checked:bg-brand-azure"
-                  />
-                  {field.value ? "Offered" : "Not offered"}
-                </label>
-              )}
-            />
-          </div>
-
-          <div className="grid gap-2">
-            <Label htmlFor="unit-bb-rate" className={labelClassName}>
-              B&B rate (KES)
-            </Label>
-            <Input
-              id="unit-bb-rate"
-              type="number"
-              inputMode="decimal"
-              min={0}
-              step="0.01"
-              placeholder={bbAvailable ? "800" : "—"}
-              disabled={!bbAvailable}
-              className={inputClassName}
-              aria-invalid={Boolean(errors.bb_rate)}
-              aria-describedby={
-                errors.bb_rate ? "unit-bb-rate-error" : undefined
-              }
-              {...register("bb_rate", { valueAsNumber: true })}
-            />
-            <FieldError
-              id="unit-bb-rate-error"
-              message={errors.bb_rate?.message}
-            />
+        {/* USD rates */}
+        <div className="grid gap-2">
+          <p className={labelClassName}>Non-resident rates (USD / night)</p>
+          <div className="grid gap-4 sm:grid-cols-4">
+            <RateInput id="unit-base-rate-usd" label="Room only"       fieldName="base_rate_usd" form={form} placeholder="20" />
+            <RateInput id="unit-bb-rate-usd"   label="Bed & Breakfast" fieldName="bb_rate_usd"   form={form} placeholder="25" />
+            <RateInput id="unit-hb-rate-usd"   label="Half board"      fieldName="hb_rate_usd"   form={form} placeholder="35" />
+            <RateInput id="unit-fb-rate-usd"   label="Full board"      fieldName="fb_rate_usd"   form={form} placeholder="40" />
           </div>
         </div>
 
-        {/* Description input */}
+        {/* Description */}
         <div className="grid gap-2">
           <Label htmlFor="unit-description" className={labelClassName}>
             Description
@@ -317,7 +324,7 @@ export function UnitFormFields({
           />
         </div>
 
-        {/* Amenities input */}
+        {/* Amenities */}
         <div className="grid gap-2">
           <Label htmlFor="unit-amenity" className={labelClassName}>
             Amenities
@@ -414,8 +421,6 @@ export function UnitFormFields({
                         ? `Keep photo ${index + 1}`
                         : `Remove photo ${index + 1}`
                     }
-                    // Restoring a photo would put the room back over the cap
-                    // when ten are already accounted for.
                     disabled={pending || (marked && remaining === 0)}
                     onAction={() => onToggleRemovePhoto?.(url)}
                   />
@@ -449,3 +454,4 @@ export function UnitFormFields({
     </>
   )
 }
+

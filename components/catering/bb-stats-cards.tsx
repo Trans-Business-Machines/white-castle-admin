@@ -33,7 +33,7 @@ export function BbStatsCards({ date }: { date: string }) {
       <ReportError
         message={getApiErrorMessage(
           list.error,
-          "Could not load the bed and breakfast totals."
+          "Could not load the breakfast list totals."
         )}
         onRetry={() => list.refetch()}
       />

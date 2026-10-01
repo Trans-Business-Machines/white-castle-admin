@@ -30,6 +30,7 @@ import { fetchUnits, unitsQueryKey } from "@/lib/api/units"
 import {
   createBookingSchema,
   DEFAULT_MEAL_PLAN,
+  DEFAULT_CURRENCY,
   toCreateBookingPayload,
   type CreateBookingValues,
 } from "@/lib/schemas/bookings"
@@ -48,8 +49,10 @@ const emptyValues: CreateBookingValues = {
   check_in_date: null,
   check_out_date: null,
   adults: 1,
-  children: 0,
+  children_under_5: 0,
+  children_6_to_12: 0,
   meal_plan: DEFAULT_MEAL_PLAN,
+  currency: DEFAULT_CURRENCY,
   special_requests: "",
 }
 

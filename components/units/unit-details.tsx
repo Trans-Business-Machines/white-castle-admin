@@ -22,10 +22,10 @@ import { UnitStatusBadge } from "@/components/units/unit-status-badge"
 import { UpdateUnitStatusDialog } from "@/components/units/update-unit-status-dialog"
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/errors"
 import { fetchUnitDetails, unitQueryKey } from "@/lib/api/units"
-import { formatCurrency, formatDate, humanizeSlug } from "@/lib/format"
+import { formatCurrency, formatCurrencyUsd, formatDate, humanizeSlug } from "@/lib/format"
 import { hasRole, UNIT_MANAGE_ROLES, UNIT_STATUS_ROLES } from "@/lib/roles"
 import { isSettableUnitStatus } from "@/lib/schemas/units"
-import { getBbRateLabel, getRoomTypeLabel } from "@/lib/units"
+import { getRoomTypeLabel } from "@/lib/units"
 import { useAuth } from "@/providers/auth-provider"
 
 function formatTimestamp(value: string | null | undefined) {
@@ -163,7 +163,6 @@ function UnitDetails({ roomId }: { roomId: string }) {
   }
 
   const room = unit.data
-  const bbRate = getBbRateLabel(room)
 
   return (
     <div className="grid gap-6">
@@ -241,29 +240,43 @@ function UnitDetails({ roomId }: { roomId: string }) {
               value={`${room.max_occupancy} ${room.max_occupancy === 1 ? "guest" : "guests"}`}
             />
             <DetailItem
-              label="Rate / night"
+              label="BO (Room only)"
               value={formatCurrency(room.base_rate)}
               mono
             />
             <DetailItem
-              label="Bed & breakfast"
-              value={
-                room.bb_available ? (
-                  <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-0.5 text-sm font-medium text-emerald-800 dark:bg-emerald-500/15 dark:text-emerald-300">
-                    Available
-                  </span>
-                ) : (
-                  <span className="text-muted-foreground">Not offered</span>
-                )
-              }
+              label="BB (Bed & Breakfast)"
+              value={room.bb_rate != null ? formatCurrency(room.bb_rate) : <span className="font-sans text-muted-foreground">—</span>}
+              mono
             />
             <DetailItem
-              label="B&B rate"
-              value={
-                bbRate ?? (
-                  <span className="font-sans text-muted-foreground">—</span>
-                )
-              }
+              label="HB (Half board)"
+              value={room.hb_rate != null ? formatCurrency(room.hb_rate) : <span className="font-sans text-muted-foreground">—</span>}
+              mono
+            />
+            <DetailItem
+              label="FB (Full board)"
+              value={room.fb_rate != null ? formatCurrency(room.fb_rate) : <span className="font-sans text-muted-foreground">—</span>}
+              mono
+            />
+            <DetailItem
+              label="BO (USD)"
+              value={room.base_rate_usd != null ? formatCurrencyUsd(room.base_rate_usd) : <span className="font-sans text-muted-foreground">—</span>}
+              mono
+            />
+            <DetailItem
+              label="BB (USD)"
+              value={room.bb_rate_usd != null ? formatCurrencyUsd(room.bb_rate_usd) : <span className="font-sans text-muted-foreground">—</span>}
+              mono
+            />
+            <DetailItem
+              label="HB (USD)"
+              value={room.hb_rate_usd != null ? formatCurrencyUsd(room.hb_rate_usd) : <span className="font-sans text-muted-foreground">—</span>}
+              mono
+            />
+            <DetailItem
+              label="FB (USD)"
+              value={room.fb_rate_usd != null ? formatCurrencyUsd(room.fb_rate_usd) : <span className="font-sans text-muted-foreground">—</span>}
               mono
             />
 

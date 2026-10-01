@@ -1,6 +1,7 @@
 import { format, isAfter, isBefore, parseISO, startOfToday } from "date-fns"
 import { z } from "zod"
 import type {
+  BookingCurrency,
   CancelBookingPayload,
   CreateBookingPayload,
   ExtendBookingPayload,
@@ -25,17 +26,31 @@ function toIsoDate(date: Date | null) {
   return format(date, "yyyy-MM-dd")
 }
 
-/** New bookings are room only unless staff pick bed and breakfast. */
+/** New bookings are room only unless staff pick a meal plan. */
 export const DEFAULT_MEAL_PLAN: MealPlan = "room_only"
 
 export const MEAL_PLANS = [
-  { value: "room_only", label: "Room only" },
-  { value: "bed_and_breakfast", label: "Bed and breakfast" },
+  { value: "room_only",         label: "Bed Only" },
+  { value: "bed_and_breakfast", label: "Bed & Breakfast" },
+  { value: "half_board",        label: "Half Board" },
+  { value: "full_board",        label: "Full Board" },
 ] as const satisfies readonly { value: MealPlan; label: string }[]
+
+export const CURRENCIES = [
+  { value: "KES", label: "Resident (KES)" },
+  { value: "USD", label: "Non-resident (USD)" },
+] as const satisfies readonly { value: BookingCurrency; label: string }[]
+
+export const DEFAULT_CURRENCY: BookingCurrency = "KES"
 
 const mealPlanValues = MEAL_PLANS.map((plan) => plan.value) as [
   MealPlan,
   ...MealPlan[],
+]
+
+const currencyValues = CURRENCIES.map((c) => c.value) as [
+  BookingCurrency,
+  ...BookingCurrency[],
 ]
 
 const occupantCount = (label: string, min: number, minMessage: string) =>
@@ -55,8 +70,10 @@ export const createBookingSchema = z
     ),
     check_out_date: dateField("Pick a check-out date."),
     adults: occupantCount("adults", 1, "At least one adult must stay."),
-    children: occupantCount("children", 0, "Children can't be negative."),
+    children_under_5: occupantCount("children under 5", 0, "Can't be negative."),
+    children_6_to_12: occupantCount("children aged 6–12", 0, "Can't be negative."),
     meal_plan: z.enum(mealPlanValues, { error: "Choose a meal plan." }),
+    currency: z.enum(currencyValues, { error: "Choose a currency." }),
     special_requests: z
       .string()
       .trim()
@@ -89,12 +106,14 @@ export function toCreateBookingPayload(
     check_in_date: toIsoDate(values.check_in_date),
     check_out_date: toIsoDate(values.check_out_date),
     adults: values.adults,
-    children: values.children,
+    children_under_5: values.children_under_5,
+    children_6_to_12: values.children_6_to_12,
     special_requests: values.special_requests.trim(),
     guest_name: guest.full_name,
     guest_email: guest.email ?? "",
     guest_phone: guest.phone ?? "",
     meal_plan: values.meal_plan,
+    currency: values.currency,
   }
 }
 

@@ -24,6 +24,7 @@ import { Textarea } from "@/components/ui/textarea"
 import {
   MAX_OCCUPANTS,
   MEAL_PLANS,
+  CURRENCIES,
   type CreateBookingValues,
 } from "@/lib/schemas/bookings"
 import type { Guest, Unit } from "@/lib/types"
@@ -264,21 +265,40 @@ export function CreateBookingFields({
         </Field>
 
         <Field
-          id="booking-children"
-          label="Children"
-          error={errors.children?.message}
+          id="booking-children-under-5"
+          label={<>Children under 5 <span className="font-normal text-muted-foreground normal-case">(free)</span></>}
+          error={errors.children_under_5?.message}
         >
           <Input
-            id="booking-children"
+            id="booking-children-under-5"
             type="number"
             inputMode="numeric"
             min={0}
             max={MAX_OCCUPANTS}
             step={1}
             className={inputClassName}
-            aria-invalid={Boolean(errors.children)}
-            aria-describedby={describe("booking-children", errors.children)}
-            {...register("children", { valueAsNumber: true })}
+            aria-invalid={Boolean(errors.children_under_5)}
+            aria-describedby={describe("booking-children-under-5", errors.children_under_5)}
+            {...register("children_under_5", { valueAsNumber: true })}
+          />
+        </Field>
+
+        <Field
+          id="booking-children-6-12"
+          label={<>Children 6–12 <span className="font-normal text-muted-foreground normal-case">(50% of plan rate)</span></>}
+          error={errors.children_6_to_12?.message}
+        >
+          <Input
+            id="booking-children-6-12"
+            type="number"
+            inputMode="numeric"
+            min={0}
+            max={MAX_OCCUPANTS}
+            step={1}
+            className={inputClassName}
+            aria-invalid={Boolean(errors.children_6_to_12)}
+            aria-describedby={describe("booking-children-6-12", errors.children_6_to_12)}
+            {...register("children_6_to_12", { valueAsNumber: true })}
           />
         </Field>
       </div>
@@ -324,12 +344,52 @@ export function CreateBookingFields({
           id="booking-meal-plan-hint"
           className="text-sm text-muted-foreground"
         >
-          Bed and breakfast adds the guest to the bed and breakfast list and
-          costs extra.
+          Bed & Breakfast, Half Board and Full Board add the guest to the breakfast list.
         </p>
         <FieldError
           id="booking-meal-plan-error"
           message={errors.meal_plan?.message}
+        />
+      </div>
+
+      <div className="grid gap-2">
+        <Label htmlFor="booking-currency" className={labelClassName}>
+          Residency
+        </Label>
+        <Controller
+          control={control}
+          name="currency"
+          render={({ field }) => (
+            <Select
+              value={field.value}
+              onValueChange={field.onChange}
+              disabled={pending}
+            >
+              <SelectTrigger
+                id="booking-currency"
+                ref={field.ref}
+                onBlur={field.onBlur}
+                aria-invalid={Boolean(errors.currency)}
+                aria-describedby={
+                  errors.currency ? "booking-currency-error" : undefined
+                }
+                className={selectClassName}
+              >
+                <SelectValue placeholder="Choose residency" />
+              </SelectTrigger>
+              <SelectContent>
+                {CURRENCIES.map((c) => (
+                  <SelectItem key={c.value} value={c.value}>
+                    {c.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        />
+        <FieldError
+          id="booking-currency-error"
+          message={errors.currency?.message}
         />
       </div>
 

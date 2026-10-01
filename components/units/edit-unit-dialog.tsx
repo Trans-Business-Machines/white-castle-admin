@@ -44,16 +44,20 @@ class PhotoRemovalError extends Error {
 /** Pre-fills the form from the room; the photo picker always starts empty. */
 function toFormValues(unit: Unit): UnitType {
   return {
-    room_number: unit.room_number,
-    room_type: unit.room_type as UnitType["room_type"],
-    description: unit.description ?? "",
+    room_number:   unit.room_number,
+    room_type:     unit.room_type as UnitType["room_type"],
+    description:   unit.description ?? "",
     max_occupancy: unit.max_occupancy,
-    base_rate: unit.base_rate,
-    amenities: unit.amenities ?? [],
-    bb_available: unit.bb_available,
-    // A room without B&B comes back with a 0 rate; show that as empty.
-    bb_rate: unit.bb_available && unit.bb_rate ? unit.bb_rate : Number.NaN,
-    photos: [],
+    base_rate:     unit.base_rate,
+    bb_rate:       unit.bb_rate       ?? Number.NaN,
+    hb_rate:       unit.hb_rate       ?? Number.NaN,
+    fb_rate:       unit.fb_rate       ?? Number.NaN,
+    base_rate_usd: unit.base_rate_usd ?? Number.NaN,
+    bb_rate_usd:   unit.bb_rate_usd   ?? Number.NaN,
+    hb_rate_usd:   unit.hb_rate_usd   ?? Number.NaN,
+    fb_rate_usd:   unit.fb_rate_usd   ?? Number.NaN,
+    amenities:     unit.amenities ?? [],
+    photos:        [],
   }
 }
 

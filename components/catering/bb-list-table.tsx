@@ -22,6 +22,7 @@ import { useBbList } from "@/hooks/use-bb-list"
 import { usePagination } from "@/hooks/use-pagination"
 import { formatPartySize, matchesBbSearch } from "@/lib/catering"
 import { formatCurrency, formatDate } from "@/lib/format"
+import { getMealPlanLabel } from "@/lib/bookings"
 import { getRoomTypeLabel } from "@/lib/units"
 
 const COLUMNS = 7
@@ -59,7 +60,7 @@ export function BbListTable({ date }: { date: string }) {
 
   const emptyMessage = search.trim()
     ? `No guests on this day's list match "${search.trim()}".`
-    : `No guests are booked for bed and breakfast on ${formatDate(date)}.`
+    : `No guests are on the breakfast list for ${formatDate(date)}.`
 
   return (
     <div className="overflow-hidden rounded-xl bg-card shadow-sm ring-1 ring-foreground/10">
@@ -68,7 +69,7 @@ export function BbListTable({ date }: { date: string }) {
           value={search}
           onChange={handleSearchChange}
           placeholder="Search guest, reference or room"
-          label="Search the bed and breakfast list"
+          label="Search the breakfast list"
         />
       </div>
 
@@ -85,7 +86,7 @@ export function BbListTable({ date }: { date: string }) {
             <TableHead className={tableHeadClassName}>Room</TableHead>
             <TableHead className={tableHeadClassName}>Party</TableHead>
             <TableHead className={tableHeadClassName}>Stay</TableHead>
-            <TableHead className={tableHeadClassName}>B&amp;B</TableHead>
+            <TableHead className={tableHeadClassName}>Meal Plan</TableHead>
             <TableHead className={tableHeadClassName}>
               Special requests
             </TableHead>
@@ -97,7 +98,7 @@ export function BbListTable({ date }: { date: string }) {
           ) : list.isError ? (
             <TableMessageRow columns={COLUMNS}>
               <TableError
-                message="We couldn't load the bed and breakfast list."
+                message="We couldn't load the breakfast list."
                 onRetry={() => list.refetch()}
               />
             </TableMessageRow>
@@ -146,11 +147,11 @@ export function BbListTable({ date }: { date: string }) {
                 </TableCell>
                 <TableCell className="px-4">
                   <div className="grid">
-                    <span className="font-mono text-foreground">
-                      {formatCurrency(booking.bb_total)}
+                    <span className="text-foreground text-sm font-medium">
+                      {getMealPlanLabel(booking.meal_plan)}
                     </span>
-                    <span className="text-xs text-muted-foreground">
-                      {formatCurrency(booking.bb_rate)} per person / night
+                    <span className="font-mono text-xs text-muted-foreground">
+                      {formatCurrency(booking.bb_total)} total
                     </span>
                   </div>
                 </TableCell>

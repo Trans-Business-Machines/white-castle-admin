@@ -27,8 +27,8 @@ export function BbSummaryReportDialog({
   return (
     <ReportParamsDialog
       slug="bed-and-breakfast"
-      title="Generate bed and breakfast report"
-      description="Every field is optional. Leave the dates empty to include every bed and breakfast booking."
+      title="Generate breakfast list report"
+      description="Every field is optional. Leave the dates empty to include all meal plan bookings."
       initialValues={initialFilters}
       renderFields={(filters, update) => (
         <>

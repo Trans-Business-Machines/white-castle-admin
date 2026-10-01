@@ -36,9 +36,11 @@ export const amenitySchema = z
   .max(50, "Keep the amenity under 50 characters.")
 
 export const ROOM_TYPES = [
-  { value: "single", label: "Single" },
-  { value: "1_bedroom", label: "1 bedroom" },
-  { value: "2_bedroom", label: "2 bedroom" },
+  { value: "standard_single", label: "Standard Single" },
+  { value: "standard_double", label: "Standard Double" },
+  { value: "deluxe_single",   label: "Deluxe Single" },
+  { value: "deluxe_double",   label: "Deluxe Double" },
+  { value: "executive",       label: "Executive" },
 ] as const
 
 export type RoomType = (typeof ROOM_TYPES)[number]["value"]
@@ -47,6 +49,9 @@ const roomTypeValues = ROOM_TYPES.map((type) => type.value) as [
   RoomType,
   ...RoomType[],
 ]
+
+const rateField = (label: string) =>
+  z.number({ error: `Enter the ${label}.` }).min(0, `${label} can't be negative.`)
 
 const unitFields = z.object({
   room_number: z
@@ -60,13 +65,17 @@ const unitFields = z.object({
     .number({ error: "Enter how many guests the room sleeps." })
     .int("Occupancy must be a whole number.")
     .positive("Occupancy must be at least 1."),
-  base_rate: z
-    .number({ error: "Enter the nightly rate." })
-    .positive("The rate must be greater than 0."),
+  // KES rates
+  base_rate:    rateField("room only rate (KES)"),
+  bb_rate:      rateField("bed & breakfast rate (KES)"),
+  hb_rate:      rateField("half board rate (KES)"),
+  fb_rate:      rateField("full board rate (KES)"),
+  // USD rates
+  base_rate_usd: rateField("room only rate (USD)"),
+  bb_rate_usd:   rateField("bed & breakfast rate (USD)"),
+  hb_rate_usd:   rateField("half board rate (USD)"),
+  fb_rate_usd:   rateField("full board rate (USD)"),
   amenities: z.array(amenitySchema),
-  bb_available: z.boolean(),
-  // NaN while the input is empty; only required when B&B is offered.
-  bb_rate: z.number().or(z.nan()),
   photos: z
     .array(z.custom<File>((value) => value instanceof File))
     .max(MAX_ROOM_PHOTOS, `Attach at most ${MAX_ROOM_PHOTOS} photos.`)
@@ -80,33 +89,25 @@ const unitFields = z.object({
     }),
 })
 
-export const unitsSchema = unitFields.refine(
-  (values) => !values.bb_available || values.bb_rate > 0,
-  {
-    message: "Enter a bed and breakfast rate greater than 0.",
-    path: ["bb_rate"],
-    // Still runs while other fields are invalid, so the error shows up
-    // alongside theirs instead of only once everything else passes.
-    when: (payload) =>
-      unitFields
-        .pick({ bb_available: true, bb_rate: true })
-        .safeParse(payload.value).success,
-  }
-)
+export const unitsSchema = unitFields
 
 export type UnitType = z.infer<typeof unitsSchema>
 
 export function toUnitPayload(values: UnitType) {
   return {
-    room_number: values.room_number.trim(),
-    room_type: values.room_type,
-    description: values.description.trim(),
-    max_occupancy: values.max_occupancy,
-    base_rate: values.base_rate,
-    amenities: values.amenities.map((amenity) => amenity.trim()),
-    bb_available: values.bb_available,
-    // The backend expects 0 when the room doesn't offer B&B.
-    bb_rate: values.bb_available ? values.bb_rate : 0,
+    room_number:    values.room_number.trim(),
+    room_type:      values.room_type,
+    description:    values.description.trim(),
+    max_occupancy:  values.max_occupancy,
+    base_rate:      values.base_rate,
+    bb_rate:        values.bb_rate,
+    hb_rate:        values.hb_rate,
+    fb_rate:        values.fb_rate,
+    base_rate_usd:  values.base_rate_usd,
+    bb_rate_usd:    values.bb_rate_usd,
+    hb_rate_usd:    values.hb_rate_usd,
+    fb_rate_usd:    values.fb_rate_usd,
+    amenities:      values.amenities.map((amenity) => amenity.trim()),
   }
 }
 

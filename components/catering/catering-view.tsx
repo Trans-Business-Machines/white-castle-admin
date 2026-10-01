@@ -20,7 +20,7 @@ export function CateringView() {
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <p className="text-sm text-muted-foreground">
-            Bed and breakfast list for
+            Breakfast list for
           </p>
           <h2 className="font-heading text-xl font-bold text-brand-navy dark:text-foreground">
             {formatDate(date, "EEEE, d MMM yyyy")}

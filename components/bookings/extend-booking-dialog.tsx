@@ -47,6 +47,7 @@ import {
 } from "@/lib/schemas/bookings"
 import type { Booking, ExtendBookingResponse } from "@/lib/types"
 import { useAuth } from "@/providers/auth-provider"
+import { getMealPlanLabel } from "@/lib/bookings"
 
 interface ExtendBookingDialogProps {
   booking: Booking
@@ -281,17 +282,13 @@ function ExtensionSummary({
           value: pluralizeNights(extension.extra_nights),
         },
         {
-          label: "Room charge",
-          value: formatCurrency(extension.room_rate_charge),
+          label: "Rate per night",
+          value: formatCurrency(extension.plan_rate_per_night),
         },
-        ...(extension.includes_bb
-          ? [
-              {
-                label: "Bed and breakfast",
-                value: formatCurrency(extension.bb_charge),
-              },
-            ]
-          : []),
+        {
+          label: "Meal plan",
+          value: getMealPlanLabel(extension.meal_plan as string ?? "room_only"),
+        },
         {
           label: "Extension total",
           value: formatCurrency(extension.total_extra_charge),

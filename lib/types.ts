@@ -31,14 +31,25 @@ export interface Unit {
   room_type: string
   description: string
   max_occupancy: number
+  /** Room Only rate (KES). */
   base_rate: number
+  /** Bed & Breakfast rate (KES). */
+  bb_rate: number | null
+  /** Half Board rate (KES). */
+  hb_rate: number | null
+  /** Full Board rate (KES). */
+  fb_rate: number | null
+  /** Room Only rate (USD). */
+  base_rate_usd: number | null
+  /** Bed & Breakfast rate (USD). */
+  bb_rate_usd: number | null
+  /** Half Board rate (USD). */
+  hb_rate_usd: number | null
+  /** Full Board rate (USD). */
+  fb_rate_usd: number | null
   status: string
   amenities: string[]
   photos: string[]
-  /** Whether the room can be booked on the bed and breakfast meal plan. */
-  bb_available: boolean
-  /** The bed and breakfast charge; `null` when the room doesn't offer it. */
-  bb_rate: number | null
   created_at: string
   updated_at: string
 }
@@ -80,10 +91,17 @@ export interface GuestsStats {
 }
 
 /**
- * `bed_and_breakfast` puts the guest on the bed and breakfast list (and
- * costs extra); `room_only` leaves them off it.
+ * `bed_and_breakfast` / `half_board` / `full_board` puts the guest on the
+ * breakfast list (and costs extra); `room_only` leaves them off it.
  */
-export type MealPlan = "room_only" | "bed_and_breakfast"
+export type MealPlan =
+  | "room_only"
+  | "bed_and_breakfast"
+  | "half_board"
+  | "full_board"
+
+/** Currency for a booking: KES = resident, USD = non-resident. */
+export type BookingCurrency = "KES" | "USD"
 
 /** One booking on the bed and breakfast list (`GET /bookings/bb-list`). */
 export interface BbListBooking {
@@ -125,12 +143,15 @@ export interface CreateBookingPayload {
   check_in_date: string
   check_out_date: string
   adults: number
-  children: number
+  children_under_5: number
+  children_6_to_12: number
   special_requests: string
   guest_name: string
   guest_email: string
   guest_phone: string
   meal_plan: MealPlan
+  /** KES = resident rates, USD = non-resident rates. Default KES. */
+  currency: BookingCurrency
 }
 
 /** Body for `PATCH /bookings/{id}/checkin`. */
@@ -164,11 +185,9 @@ export interface ExtendBookingPayload {
 /** What `PATCH /bookings/{id}/extend` charged for the added nights. */
 export interface BookingExtension {
   extra_nights: number
-  room_rate_charge: number
-  /** Bed-and-breakfast cost of the added nights, 0 when `includes_bb` is false. */
-  bb_charge: number
+  plan_rate_per_night: number
+  meal_plan: MealPlan | string
   total_extra_charge: number
-  includes_bb: boolean
   /** Whether the guest owes money for the extension. */
   payment_required: boolean
   /** The booking's total after the extension. */
@@ -212,10 +231,10 @@ export interface BookingExtraPersons {
   /** Nights the surcharge applies to. */
   nights: number
   room_charge: number
-  /** Bed-and-breakfast cost for the added people, 0 when `includes_bb` is false. */
-  bb_charge: number
+  /** Meal plan surcharge for the added people, 0 when room_only. */
+  meal_plan_charge: number
+  meal_plan: MealPlan | string
   total_extra_charge: number
-  includes_bb: boolean
   /** Whether the guest owes money for the added people. */
   payment_required: boolean
   /** The booking's total after the change. */
@@ -268,6 +287,10 @@ export interface Booking {
   nights: number
   adults: number
   children: number
+  children_under_5: number
+  children_6_to_12: number
+  /** Charge for children_6_to_12 (50% of plan rate × nights). */
+  children_total: number
   special_requests: string | null
   status: BookingStatus | string
   payment_status: string
@@ -277,10 +300,12 @@ export interface Booking {
   guest_name: string
   guest_email: string | null
   guest_phone: string | null
-  /** `bed_and_breakfast` puts the booking on the kitchen's list. */
+  /** Meal plan chosen for this booking. */
   meal_plan?: MealPlan | string
-  /** Breakfast charge for the whole stay; only meaningful on a B&B booking. */
+  /** Meal plan surcharge for the whole stay (0 for room_only). */
   bb_total?: number | null
+  /** Currency the booking was priced in: KES (resident) or USD (non-resident). */
+  currency?: BookingCurrency | string
   approved_by: string | null
   approved_at: string | null
   rejection_reason: string | null
@@ -605,21 +630,27 @@ export interface CancellationsReport {
 }
 
 /**
- * `GET /motel/reports/bb-summary`. `today_breakfast_list` is the kitchen
- * list for `target_date` (today when not sent) in the `/bookings/bb-list`
- * shape; `bb_vs_room_only_ratio` is "<b&b>/<room only>", e.g. "3/7".
+ * `GET /motel/reports/bb-summary` — meal plan summary (BB + HB + FB).
+ * `today_breakfast_list` is the kitchen list for `target_date`.
+ * `meal_vs_room_only_ratio` is "<meal_plans>/<bed_only>", e.g. "6/1".
  */
 export interface BbSummaryReport {
   period: { from: string | null; to: string | null }
   currency: string
   summary: {
-    total_bb_bookings: number
-    total_bb_revenue: number
-    avg_bb_revenue_per_booking: number
-    bb_vs_room_only_ratio: string
+    total_meal_plan_bookings: number
+    total_meal_plan_revenue: number
+    avg_meal_revenue_per_booking: number
+    by_plan: {
+      bed_and_breakfast: number
+      half_board: number
+      full_board: number
+      room_only: number
+    }
+    meal_vs_room_only_ratio: string
   }
   today_breakfast_list: BbList
-  bb_bookings: BookingsReportBooking[]
+  meal_plan_bookings: BookingsReportBooking[]
 }
 
 /**

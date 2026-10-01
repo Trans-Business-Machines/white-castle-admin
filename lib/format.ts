@@ -7,9 +7,29 @@ const kes = new Intl.NumberFormat("en-KE", {
   maximumFractionDigits: 0,
 })
 
+const usd = new Intl.NumberFormat("en-US", {
+  style: "currency",
+  currency: "USD",
+  currencyDisplay: "code",
+  maximumFractionDigits: 0,
+})
+
 /** Formats an amount as "KES 13,500". */
 export function formatCurrency(amount: number) {
-  return kes.format(amount)
+  return kes.format(amount).replace(/\u00a0/g, " ")
+}
+
+/** Formats an amount as "USD 85". */
+export function formatCurrencyUsd(amount: number) {
+  return usd.format(amount).replace(/\u00a0/g, " ")
+}
+
+/**
+ * Formats an amount in the given currency.
+ * currency = "KES" → "KES 13,500"; "USD" → "USD 85".
+ */
+export function formatAmount(amount: number, currency: string) {
+  return currency === "USD" ? formatCurrencyUsd(amount) : formatCurrency(amount)
 }
 
 /** Formats a date as "16 Sep 2026" by default. */

@@ -41,7 +41,7 @@ import {
 } from "@/lib/api/units"
 import { formatCurrency, humanizeSlug } from "@/lib/format"
 import type { Unit } from "@/lib/types"
-import { getBbRateLabel, getRoomTypeLabel, UNIT_STATUSES } from "@/lib/units"
+import { getRoomTypeLabel, UNIT_STATUSES } from "@/lib/units"
 
 const COLUMNS = 7
 
@@ -51,13 +51,15 @@ const ALL_STATUSES = "all"
 /** How long a hover-prefetched room stays fresh before another hover refetches it. */
 const PREFETCH_STALE_MS = 30_000
 
-/** The room's B&B rate, or a muted "Not offered". */
-function BbRate({ unit }: { unit: Unit }) {
-  const rate = getBbRateLabel(unit)
-  return rate ? (
-    <span className="font-mono">{rate}</span>
-  ) : (
-    <span className="text-muted-foreground">Not offered</span>
+/** Shows full meal plan rates. */
+function RatesSummary({ unit }: { unit: Unit }) {
+  return (
+    <span className="font-mono text-xs text-muted-foreground">
+      Bed Only {formatCurrency(unit.base_rate)}
+      {unit.bb_rate != null ? ` · B&B ${formatCurrency(unit.bb_rate)}` : ""}
+      {unit.hb_rate != null ? ` · Half Board ${formatCurrency(unit.hb_rate)}` : ""}
+      {unit.fb_rate != null ? ` · Full Board ${formatCurrency(unit.fb_rate)}` : ""}
+    </span>
   )
 }
 
@@ -153,19 +155,16 @@ export function UnitsTable() {
 
       <Table>
         <TableHeader>
-          <TableRow className="hover:bg-transparent">
-            <TableHead className={tableHeadClassName}>Room</TableHead>
-            <TableHead className={tableHeadClassName}>Type</TableHead>
-            <TableHead className={tableHeadClassName}>Max occupancy</TableHead>
-            <TableHead className={tableHeadClassName}>Rate / night</TableHead>
-            <TableHead className={tableHeadClassName}>
-              Bed & breakfast
-            </TableHead>
-            <TableHead className={tableHeadClassName}>Status</TableHead>
-            <TableHead className={cn(tableHeadClassName, "w-24 text-center")}>
-              Actions
-            </TableHead>
-          </TableRow>
+           <TableRow className="hover:bg-transparent">
+             <TableHead className={tableHeadClassName}>Room</TableHead>
+             <TableHead className={tableHeadClassName}>Type</TableHead>
+             <TableHead className={tableHeadClassName}>Max occupancy</TableHead>
+             <TableHead className={tableHeadClassName}>Rates / night</TableHead>
+             <TableHead className={tableHeadClassName}>Status</TableHead>
+             <TableHead className={cn(tableHeadClassName, "w-24 text-center")}>
+               Actions
+             </TableHead>
+           </TableRow>
         </TableHeader>
         <TableBody>
           {units.isPending ? (
@@ -197,11 +196,8 @@ export function UnitsTable() {
                   {unit.max_occupancy}{" "}
                   {unit.max_occupancy === 1 ? "guest" : "guests"}
                 </TableCell>
-                <TableCell className="px-4 font-mono">
-                  {formatCurrency(unit.base_rate)}
-                </TableCell>
                 <TableCell className="px-4">
-                  <BbRate unit={unit} />
+                  <RatesSummary unit={unit} />
                 </TableCell>
                 <TableCell className="px-4">
                   <UnitStatusBadge status={unit.status} />
