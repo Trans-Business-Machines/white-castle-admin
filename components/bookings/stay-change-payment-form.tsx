@@ -15,7 +15,7 @@ import { DialogFooter } from "@/components/ui/dialog"
 import { bookingsQueryKey } from "@/lib/api/bookings"
 import { getApiErrorMessage } from "@/lib/api/errors"
 import { createPayment, paymentsQueryKey } from "@/lib/api/payments"
-import { formatCurrency } from "@/lib/format"
+import { formatAmount } from "@/lib/format"
 import {
   emptyStayChangePaymentValues,
   isCashMethod,
@@ -40,6 +40,8 @@ interface StayChangePaymentFormProps {
   bookingRef: string
   /** The change's `total_extra_charge`. */
   amount: number
+  /** The booking's currency; KES when missing. */
+  currency?: string | null
   paymentType: StayChangePaymentType
   /** Hides the form again without saving. */
   onCancel: () => void
@@ -58,6 +60,7 @@ export function StayChangePaymentForm({
   bookingId,
   bookingRef,
   amount,
+  currency,
   paymentType,
   onCancel,
   onRecorded,
@@ -96,7 +99,7 @@ export function StayChangePaymentForm({
         queryClient.invalidateQueries({ queryKey: bookingsQueryKey }),
       ])
       toast.success(
-        `${formatCurrency(amount)} recorded on ${bookingRef}. Verify it on Payments before check-out.`
+        `${formatAmount(amount, currency)} recorded on ${bookingRef}. Verify it on Payments before check-out.`
       )
       onRecorded()
     },
@@ -123,7 +126,7 @@ export function StayChangePaymentForm({
         <p className="text-sm text-muted-foreground">
           Recording{" "}
           <span className="font-semibold text-foreground">
-            {formatCurrency(amount)}
+            {formatAmount(amount, currency)}
           </span>{" "}
           as {PAYMENT_TYPE_COPY[paymentType]} on{" "}
           <span className="font-semibold text-foreground">{bookingRef}</span>.

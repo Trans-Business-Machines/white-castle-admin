@@ -11,7 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
-import { formatCurrency } from "@/lib/format"
+import { formatAmount } from "@/lib/format"
 
 export interface ChargeRow {
   label: string
@@ -23,6 +23,8 @@ export interface ChargeRow {
 export interface ChangePayment {
   required: boolean
   amount: number
+  /** The booking's currency; KES when missing. */
+  currency?: string | null
   reference: string
   /** Completes "Ask {guest} to pay KES … {reason}", e.g. "for the extra nights". */
   reason: string
@@ -107,7 +109,7 @@ function BookingChangeSummary({
           <span>
             Ask {guestName} to pay{" "}
             <span className="font-semibold">
-              {formatCurrency(payment.amount)}
+              {formatAmount(payment.amount, payment.currency)}
             </span>{" "}
             {payment.reason}, quoting booking reference{" "}
             <span className="font-semibold">{payment.reference}</span>.

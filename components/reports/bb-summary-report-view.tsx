@@ -42,7 +42,7 @@ import { usePagination } from "@/hooks/use-pagination"
 import { getApiErrorMessage } from "@/lib/api/errors"
 import type { BbSummaryReportFilters } from "@/lib/api/reports"
 import { formatPartySize, matchesBbSearch } from "@/lib/catering"
-import { formatCurrency, formatDate } from "@/lib/format"
+import { formatAmount, formatDate } from "@/lib/format"
 import {
   formatBookingCount,
   formatCount,
@@ -405,7 +405,7 @@ function BbBookingsTable({
                   <BookingStatusBadge status={booking.status} />
                 </TableCell>
                 <TableCell className="px-4 text-right font-mono tabular-nums">
-                  {formatCurrency(booking.bb_total ?? 0)}
+                  {formatAmount(booking.bb_total ?? 0, booking.currency)}
                 </TableCell>
               </TableRow>
             ))

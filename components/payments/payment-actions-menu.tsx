@@ -19,7 +19,7 @@ import {
 import { bookingsQueryKey } from "@/lib/api/bookings"
 import { getApiErrorMessage } from "@/lib/api/errors"
 import { paymentsQueryKey, verifyPayment } from "@/lib/api/payments"
-import { formatCurrency } from "@/lib/format"
+import { formatAmount } from "@/lib/format"
 import { getPaymentMethodLabel } from "@/lib/payments"
 import { hasRole, PAYMENT_REVIEW_ROLES } from "@/lib/roles"
 import type { Payment } from "@/lib/types"
@@ -129,7 +129,7 @@ function PaymentActionsMenu({ payment }: { payment: Payment }) {
             description={
               <>
                 Confirm you&apos;ve received the{" "}
-                {formatCurrency(payment.amount)}{" "}
+                {formatAmount(payment.amount, payment.currency)}{" "}
                 {getPaymentMethodLabel(payment.method)} payment
                 {payment.reference ? ` (${payment.reference})` : ""} on booking{" "}
                 <span className="font-semibold text-foreground">

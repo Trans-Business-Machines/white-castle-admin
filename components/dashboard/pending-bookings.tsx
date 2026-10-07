@@ -25,7 +25,7 @@ import {
 import { useDashboardReport } from "@/hooks/use-dashboard-report"
 import { bookingQueryKey, fetchBookingDetails } from "@/lib/api/bookings"
 import { getApiErrorMessage } from "@/lib/api/errors"
-import { formatCurrency, formatDate } from "@/lib/format"
+import { formatAmount, formatDate } from "@/lib/format"
 
 const COLUMNS = 5
 
@@ -139,7 +139,7 @@ export function PendingBookings() {
                   {booking.nights === 1 ? "night" : "nights"}
                 </TableCell>
                 <TableCell className="px-4 font-mono">
-                  {formatCurrency(booking.total_amount)}
+                  {formatAmount(booking.total_amount, booking.currency)}
                 </TableCell>
                 <TableCell className="px-4">
                   <PaymentStatusBadge status={booking.payment_status} />

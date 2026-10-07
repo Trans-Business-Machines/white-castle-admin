@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, type KeyboardEvent } from "react"
+import { useEffect, useState, type KeyboardEvent } from "react"
 import { Plus, Undo2, X } from "lucide-react"
 import { Controller, useWatch, type UseFormReturn } from "react-hook-form"
 import { useQuery } from "@tanstack/react-query"
@@ -26,7 +26,11 @@ import {
   ROOM_TYPES,
   type UnitType,
 } from "@/lib/schemas/units"
-import { fetchRoomTypes, roomTypesQueryKey } from "@/lib/api/units"
+import {
+  fetchRoomTypes,
+  roomTypesQueryKey,
+  type RoomTypeDefault,
+} from "@/lib/api/units"
 
 const labelClassName =
   "font-ibm-plex text-xs font-semibold tracking-wide text-iron uppercase"
@@ -42,21 +46,34 @@ function FieldError({ id, message }: { id: string; message?: string }) {
   )
 }
 
+/** The eight nightly rates, all copied from the room type's defaults. */
+const RATE_FIELDS = [
+  "base_rate",
+  "bb_rate",
+  "hb_rate",
+  "fb_rate",
+  "base_rate_usd",
+  "bb_rate_usd",
+  "hb_rate_usd",
+  "fb_rate_usd",
+] as const satisfies readonly (keyof UnitType & keyof RoomTypeDefault)[]
+
+/** A read-only rate: the value always comes from the room type. */
 function RateInput({
   id,
   label,
   fieldName,
   form,
-  placeholder,
 }: {
   id: string
   label: string
-  fieldName: keyof UnitType
+  fieldName: (typeof RATE_FIELDS)[number]
   form: UseFormReturn<UnitType>
-  placeholder?: string
 }) {
-  const { register, formState: { errors } } = form
-  const error = errors[fieldName]
+  const {
+    register,
+    formState: { errors },
+  } = form
   return (
     <div className="grid gap-2">
       <Label htmlFor={id} className={labelClassName}>
@@ -65,16 +82,13 @@ function RateInput({
       <Input
         id={id}
         type="number"
-        inputMode="decimal"
-        min={0}
-        step="0.01"
-        placeholder={placeholder ?? "0"}
-        className={inputClassName}
-        aria-invalid={Boolean(error)}
-        aria-describedby={error ? `${id}-error` : undefined}
+        readOnly
+        placeholder="—"
+        className={`${inputClassName} cursor-default read-only:bg-muted read-only:focus-visible:border-border read-only:focus-visible:ring-0`}
+        aria-invalid={Boolean(errors[fieldName])}
+        aria-describedby="unit-rates-status"
         {...register(fieldName, { valueAsNumber: true })}
       />
-      <FieldError id={`${id}-error`} message={error?.message as string | undefined} />
     </div>
   )
 }
@@ -110,6 +124,7 @@ export function UnitFormFields({
     control,
     register,
     setValue,
+    getValues,
     setError,
     clearErrors,
     formState: { errors },
@@ -120,28 +135,57 @@ export function UnitFormFields({
   const amenities = useWatch({ control, name: "amenities" })
   const photos = useWatch({ control, name: "photos" })
 
-  // Fetch room type defaults for auto-fill
-  const { data: roomTypeDefaults = [] } = useQuery({
+  // Each room type's default occupancy and rates; the rates can't be typed.
+  const roomTypes = useQuery({
     queryKey: roomTypesQueryKey,
     queryFn: fetchRoomTypes,
   })
+  const roomType = useWatch({ control, name: "room_type" })
+  const roomTypeDefaults = roomTypes.data?.find(
+    (defaults) => defaults.type === roomType
+  )
+  const rateError = RATE_FIELDS.some((name) => errors[name])
 
-  // When a room type is selected, auto-fill all rate fields from defaults
-  function handleRoomTypeChange(value: string, fieldOnChange: (v: string) => void) {
-    fieldOnChange(value)
-    const defaults = roomTypeDefaults.find((rt) => rt.type === value)
-    if (defaults) {
-      setValue("max_occupancy",  defaults.max_occupancy,  { shouldDirty: true })
-      setValue("base_rate",      defaults.base_rate,      { shouldDirty: true })
-      setValue("bb_rate",        defaults.bb_rate,        { shouldDirty: true })
-      setValue("hb_rate",        defaults.hb_rate,        { shouldDirty: true })
-      setValue("fb_rate",        defaults.fb_rate,        { shouldDirty: true })
-      setValue("base_rate_usd",  defaults.base_rate_usd,  { shouldDirty: true })
-      setValue("bb_rate_usd",    defaults.bb_rate_usd,    { shouldDirty: true })
-      setValue("hb_rate_usd",    defaults.hb_rate_usd,    { shouldDirty: true })
-      setValue("fb_rate_usd",    defaults.fb_rate_usd,    { shouldDirty: true })
+  /** Copies the type's defaults in; `onlyMissing` keeps values already set. */
+  function applyRoomTypeDefaults(
+    defaults: RoomTypeDefault,
+    { onlyMissing }: { onlyMissing: boolean }
+  ) {
+    const fields = ["max_occupancy", ...RATE_FIELDS] as const
+    for (const name of fields) {
+      if (onlyMissing && !Number.isNaN(getValues(name))) continue
+      setValue(name, defaults[name], { shouldDirty: true })
     }
+    clearErrors([...fields])
   }
+
+  // Fills whatever is still empty once the defaults arrive: every rate on a
+  // new room (which starts on a room type), and any rate an existing room
+  // was saved without. Rates already on the room are left alone.
+  useEffect(() => {
+    if (roomTypeDefaults) {
+      applyRoomTypeDefaults(roomTypeDefaults, { onlyMissing: true })
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- runs per type / response, not per render
+  }, [roomTypeDefaults])
+
+  // Picking a type replaces the occupancy and all eight rates.
+  function handleRoomTypeChange(
+    value: string,
+    fieldOnChange: (v: string) => void
+  ) {
+    fieldOnChange(value)
+    const defaults = roomTypes.data?.find((rt) => rt.type === value)
+    if (defaults) applyRoomTypeDefaults(defaults, { onlyMissing: false })
+  }
+
+  let ratesStatus: string | null = null
+  if (roomTypes.isPending) ratesStatus = "Loading the room type rates…"
+  else if (roomTypes.isError)
+    ratesStatus = "We couldn't load the room type rates."
+  else if (roomType && !roomTypeDefaults)
+    ratesStatus = "This room type has no rates set yet."
+  else if (rateError) ratesStatus = "Choose a room type to fill in its rates."
 
   const keptExisting = existingPhotos.filter(
     (url) => !removedPhotos.includes(url)
@@ -212,11 +256,9 @@ export function UnitFormFields({
           <div className="grid gap-2">
             <Label htmlFor="unit-room-type" className={labelClassName}>
               Room type
-              {roomTypeDefaults.length > 0 && (
-                <span className="ml-1 font-normal normal-case tracking-normal text-iron">
-                  — rates auto-fill
-                </span>
-              )}
+              <span className="ml-1 font-normal tracking-normal text-iron normal-case">
+                — sets the rates
+              </span>
             </Label>
             <Controller
               control={control}
@@ -224,7 +266,9 @@ export function UnitFormFields({
               render={({ field }) => (
                 <Select
                   value={field.value}
-                  onValueChange={(value) => handleRoomTypeChange(value, field.onChange)}
+                  onValueChange={(value) =>
+                    handleRoomTypeChange(value, field.onChange)
+                  }
                 >
                   <SelectTrigger
                     id="unit-room-type"
@@ -256,7 +300,7 @@ export function UnitFormFields({
         </div>
 
         {/* Max occupancy */}
-        <div className="grid gap-2 sm:w-1/2">
+        <div className="grid gap-2">
           <Label htmlFor="unit-max-occupancy" className={labelClassName}>
             Max occupancy
           </Label>
@@ -284,10 +328,30 @@ export function UnitFormFields({
         <div className="grid gap-2">
           <p className={labelClassName}>Resident rates (KES / night)</p>
           <div className="grid gap-4 sm:grid-cols-4">
-            <RateInput id="unit-base-rate"    label="Room only"        fieldName="base_rate" form={form} placeholder="2000" />
-            <RateInput id="unit-bb-rate"      label="Bed & Breakfast"  fieldName="bb_rate"   form={form} placeholder="2500" />
-            <RateInput id="unit-hb-rate"      label="Half board"       fieldName="hb_rate"   form={form} placeholder="3500" />
-            <RateInput id="unit-fb-rate"      label="Full board"       fieldName="fb_rate"   form={form} placeholder="4500" />
+            <RateInput
+              id="unit-base-rate"
+              label="Bed Only"
+              fieldName="base_rate"
+              form={form}
+            />
+            <RateInput
+              id="unit-bb-rate"
+              label="Bed & Breakfast"
+              fieldName="bb_rate"
+              form={form}
+            />
+            <RateInput
+              id="unit-hb-rate"
+              label="Half Board"
+              fieldName="hb_rate"
+              form={form}
+            />
+            <RateInput
+              id="unit-fb-rate"
+              label="Full Board"
+              fieldName="fb_rate"
+              form={form}
+            />
           </div>
         </div>
 
@@ -295,12 +359,60 @@ export function UnitFormFields({
         <div className="grid gap-2">
           <p className={labelClassName}>Non-resident rates (USD / night)</p>
           <div className="grid gap-4 sm:grid-cols-4">
-            <RateInput id="unit-base-rate-usd" label="Room only"       fieldName="base_rate_usd" form={form} placeholder="20" />
-            <RateInput id="unit-bb-rate-usd"   label="Bed & Breakfast" fieldName="bb_rate_usd"   form={form} placeholder="25" />
-            <RateInput id="unit-hb-rate-usd"   label="Half board"      fieldName="hb_rate_usd"   form={form} placeholder="35" />
-            <RateInput id="unit-fb-rate-usd"   label="Full board"      fieldName="fb_rate_usd"   form={form} placeholder="40" />
+            <RateInput
+              id="unit-base-rate-usd"
+              label="Bed Only"
+              fieldName="base_rate_usd"
+              form={form}
+            />
+            <RateInput
+              id="unit-bb-rate-usd"
+              label="Bed & Breakfast"
+              fieldName="bb_rate_usd"
+              form={form}
+            />
+            <RateInput
+              id="unit-hb-rate-usd"
+              label="Half Board"
+              fieldName="hb_rate_usd"
+              form={form}
+            />
+            <RateInput
+              id="unit-fb-rate-usd"
+              label="Full Board"
+              fieldName="fb_rate_usd"
+              form={form}
+            />
           </div>
         </div>
+
+        {ratesStatus ? (
+          <div
+            id="unit-rates-status"
+            role={rateError || roomTypes.isError ? "alert" : "status"}
+            className={`flex flex-wrap items-center gap-x-3 gap-y-1 text-sm ${
+              rateError || roomTypes.isError
+                ? "text-destructive"
+                : "text-muted-foreground"
+            }`}
+          >
+            {ratesStatus}
+            {roomTypes.isError ? (
+              <Button
+                type="button"
+                variant="link"
+                onClick={() => roomTypes.refetch()}
+                className="h-auto p-0 text-brand-azure"
+              >
+                Try again
+              </Button>
+            ) : null}
+          </div>
+        ) : (
+          <p id="unit-rates-status" className="text-sm text-muted-foreground">
+            Rates follow the room type and can&apos;t be edited here.
+          </p>
+        )}
 
         {/* Description */}
         <div className="grid gap-2">
@@ -454,4 +566,3 @@ export function UnitFormFields({
     </>
   )
 }
-

@@ -5,11 +5,14 @@ import {
   fetchPaymentEvidence,
   paymentEvidenceQueryKey,
 } from "@/lib/api/payments"
-import { formatCurrency } from "@/lib/format"
+import { formatAmount } from "@/lib/format"
 import type { Payment } from "@/lib/types"
 
 interface PaymentEvidenceDialogProps {
-  payment: Pick<Payment, "booking_ref" | "amount" | "evidence_filename">
+  payment: Pick<
+    Payment,
+    "booking_ref" | "amount" | "currency" | "evidence_filename"
+  >
   /** From `getEvidenceFileId(payment)`. */
   fileId: string
 }
@@ -29,7 +32,7 @@ function PaymentEvidenceDialog({
       title="Proof of payment"
       description={
         <>
-          {formatCurrency(payment.amount)} on booking{" "}
+          {formatAmount(payment.amount, payment.currency)} on booking{" "}
           <span className="font-semibold text-foreground">
             {payment.booking_ref}
           </span>

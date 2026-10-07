@@ -1,6 +1,12 @@
+import { MEAL_PLANS } from "@/lib/schemas/bookings"
 import { ROOM_TYPES } from "@/lib/schemas/units"
-import { formatCurrency, humanizeSlug } from "@/lib/format"
-import type { Unit, UnitsOccupancyStats } from "@/lib/types"
+import { humanizeSlug } from "@/lib/format"
+import type {
+  BookingCurrency,
+  MealPlan,
+  Unit,
+  UnitsOccupancyStats,
+} from "@/lib/types"
 /** Every status a room can be in; also the units table's status filter. */
 export const UNIT_STATUSES = [
   "available",
@@ -122,18 +128,40 @@ export function parseAmenities(value: unknown): string[] {
 export function normalizeUnit(unit: Unit): Unit {
   return {
     ...unit,
-    amenities:     parseAmenities(unit.amenities),
-    bb_rate:       unit.bb_rate       ?? null,
-    hb_rate:       unit.hb_rate       ?? null,
-    fb_rate:       unit.fb_rate       ?? null,
+    amenities: parseAmenities(unit.amenities),
+    bb_rate: unit.bb_rate ?? null,
+    hb_rate: unit.hb_rate ?? null,
+    fb_rate: unit.fb_rate ?? null,
     base_rate_usd: unit.base_rate_usd ?? null,
-    bb_rate_usd:   unit.bb_rate_usd   ?? null,
-    hb_rate_usd:   unit.hb_rate_usd   ?? null,
-    fb_rate_usd:   unit.fb_rate_usd   ?? null,
+    bb_rate_usd: unit.bb_rate_usd ?? null,
+    hb_rate_usd: unit.hb_rate_usd ?? null,
+    fb_rate_usd: unit.fb_rate_usd ?? null,
   }
 }
 
-/** "KES 2,500 BB / KES 3,500 HB / KES 4,500 FB" — null when no rates set. */
-export function getBbRateLabel(unit: Pick<Unit, "bb_rate">) {
-  return unit.bb_rate != null ? formatCurrency(unit.bb_rate) : null
+/** Which `Unit` fields hold each meal plan's nightly rate, per currency. */
+const RATE_FIELDS = {
+  room_only: { abbr: "BO", KES: "base_rate", USD: "base_rate_usd" },
+  bed_and_breakfast: { abbr: "BB", KES: "bb_rate", USD: "bb_rate_usd" },
+  half_board: { abbr: "HB", KES: "hb_rate", USD: "hb_rate_usd" },
+  full_board: { abbr: "FB", KES: "fb_rate", USD: "fb_rate_usd" },
+} as const satisfies Record<
+  MealPlan,
+  { abbr: string } & Record<BookingCurrency, keyof Unit>
+>
+
+/**
+ * The room's nightly rate for every meal plan in one currency, in
+ * `MEAL_PLANS` order; `rate` is null when the room has none set.
+ */
+export function getUnitRates(unit: Unit, currency: BookingCurrency) {
+  return MEAL_PLANS.map(({ value, label }) => {
+    const fields = RATE_FIELDS[value]
+    return {
+      plan: value,
+      label,
+      abbr: fields.abbr,
+      rate: unit[fields[currency]] as number | null,
+    }
+  })
 }

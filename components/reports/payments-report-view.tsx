@@ -43,7 +43,12 @@ import { usePagination } from "@/hooks/use-pagination"
 import { usePaymentsReport } from "@/hooks/use-payments-report"
 import { getApiErrorMessage } from "@/lib/api/errors"
 import type { PaymentsReportFilters } from "@/lib/api/reports"
-import { formatCurrency, formatTimestamp, humanizeSlug } from "@/lib/format"
+import {
+  formatAmount,
+  formatCurrency,
+  formatTimestamp,
+  humanizeSlug,
+} from "@/lib/format"
 import {
   getEvidenceFileId,
   getPaymentMethodLabel,
@@ -291,7 +296,7 @@ function PaymentsReportTable({ filters }: { filters: PaymentsReportFilters }) {
                     </Link>
                   </TableCell>
                   <TableCell className="px-4 text-right font-mono text-foreground tabular-nums">
-                    {formatCurrency(payment.amount)}
+                    {formatAmount(payment.amount, payment.currency)}
                   </TableCell>
                   <TableCell className="px-4">
                     {getPaymentTypeLabel(payment.payment_type)}

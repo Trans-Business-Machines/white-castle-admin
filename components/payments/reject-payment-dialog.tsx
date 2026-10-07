@@ -20,7 +20,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { bookingsQueryKey } from "@/lib/api/bookings"
 import { getApiErrorMessage } from "@/lib/api/errors"
 import { paymentsQueryKey, rejectPayment } from "@/lib/api/payments"
-import { formatCurrency } from "@/lib/format"
+import { formatAmount } from "@/lib/format"
 import {
   rejectPaymentSchema,
   toRejectPaymentPayload,
@@ -100,7 +100,8 @@ function RejectForm({
             Reject this payment?
           </DialogTitle>
           <DialogDescription className="text-base text-muted-foreground">
-            The {formatCurrency(payment.amount)} payment on booking{" "}
+            The {formatAmount(payment.amount, payment.currency)} payment on
+            booking{" "}
             <span className="font-semibold text-foreground">
               {payment.booking_ref}
             </span>{" "}

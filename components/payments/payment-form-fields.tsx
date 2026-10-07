@@ -188,6 +188,10 @@ export function PaymentFormFields({
   } = form
   const isCash = isCashMethod(useWatch({ control, name: "method" }))
   const paymentType = useWatch({ control, name: "payment_type" })
+  const bookingId = useWatch({ control, name: "booking_id" })
+  const currency =
+    bookings.data?.find((booking) => booking.booking_id === bookingId)
+      ?.currency ?? "KES"
 
   /**
    * The amount isn't typed: it follows the picked booking and type (the
@@ -308,7 +312,7 @@ export function PaymentFormFields({
           {/* Amount */}
           <div className="grid gap-2">
             <Label htmlFor="payment-amount" className={labelClassName}>
-              Amount (KES)
+              Amount ({currency})
             </Label>
             <Input
               id="payment-amount"

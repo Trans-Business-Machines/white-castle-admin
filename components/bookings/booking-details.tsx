@@ -41,7 +41,7 @@ import { bookingQueryKey, fetchBookingDetails } from "@/lib/api/bookings"
 import { getApiErrorStatus } from "@/lib/api/errors"
 import { fetchUnits, unitsQueryKey } from "@/lib/api/units"
 import { getMealPlanLabel, isBedAndBreakfast } from "@/lib/bookings"
-import { formatAmount, formatCurrency, formatDate, formatTimestamp } from "@/lib/format"
+import { formatAmount, formatDate, formatTimestamp } from "@/lib/format"
 import type { Booking } from "@/lib/types"
 import { getRoomTypeLabel } from "@/lib/units"
 import { useAuth } from "@/providers/auth-provider"
@@ -271,13 +271,13 @@ function BookingDetails({ bookingId }: { bookingId: string }) {
         <StatCard
           title="Total"
           titleClassName="text-emerald-700 dark:text-emerald-300"
-          text={formatAmount(booking.total_amount, booking.currency ?? "KES")}
+          text={formatAmount(booking.total_amount, booking.currency)}
           label="For the whole stay"
         />
         <StatCard
           title="Deposit"
           titleClassName="text-amber-700 dark:text-amber-300"
-          text={formatAmount(booking.deposit_amount, booking.currency ?? "KES")}
+          text={formatAmount(booking.deposit_amount, booking.currency)}
           label="Due to confirm"
         />
         <StatCard
@@ -363,7 +363,7 @@ function BookingDetails({ bookingId }: { bookingId: string }) {
                   mono
                   value={
                     booking.bb_total != null ? (
-                      formatAmount(booking.bb_total, booking.currency ?? "KES")
+                      formatAmount(booking.bb_total, booking.currency)
                     ) : (
                       <span className="text-muted-foreground">—</span>
                     )

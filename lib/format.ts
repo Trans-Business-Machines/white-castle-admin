@@ -25,10 +25,10 @@ export function formatCurrencyUsd(amount: number) {
 }
 
 /**
- * Formats an amount in the given currency.
- * currency = "KES" → "KES 13,500"; "USD" → "USD 85".
+ * Formats an amount in a booking's or payment's currency: "USD" → "USD 85",
+ * anything else (including a missing currency) → "KES 13,500".
  */
-export function formatAmount(amount: number, currency: string) {
+export function formatAmount(amount: number, currency?: string | null) {
   return currency === "USD" ? formatCurrencyUsd(amount) : formatCurrency(amount)
 }
 

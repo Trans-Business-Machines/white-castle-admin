@@ -17,7 +17,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { formatCurrency, formatDate } from "@/lib/format"
+import { formatAmount, formatDate } from "@/lib/format"
 import type { Booking } from "@/lib/types"
 
 interface PaymentBookingComboboxProps {
@@ -42,9 +42,9 @@ interface PaymentBookingComboboxProps {
   className?: string
 }
 
-/** Secondary line under a booking's reference: "Jane Doe · KES 13,500". */
+/** Secondary line under a booking's reference: "Jane Doe · KES 13,500" (USD for non-residents). */
 function getSummaryLine(booking: Booking) {
-  return `${booking.guest_name} · ${formatCurrency(booking.total_amount)}`
+  return `${booking.guest_name} · ${formatAmount(booking.total_amount, booking.currency)}`
 }
 
 /**

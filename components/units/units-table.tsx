@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { Fragment, useMemo, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { cn } from "cn"
@@ -39,9 +39,10 @@ import {
   unitQueryKey,
   unitsQueryKey,
 } from "@/lib/api/units"
-import { formatCurrency, humanizeSlug } from "@/lib/format"
-import type { Unit } from "@/lib/types"
-import { getRoomTypeLabel, UNIT_STATUSES } from "@/lib/units"
+import { useRateCurrency } from "@/hooks/use-rate-currency"
+import { formatAmount, humanizeSlug } from "@/lib/format"
+import type { BookingCurrency, Unit } from "@/lib/types"
+import { getRoomTypeLabel, getUnitRates, UNIT_STATUSES } from "@/lib/units"
 
 const COLUMNS = 7
 
@@ -51,19 +52,38 @@ const ALL_STATUSES = "all"
 /** How long a hover-prefetched room stays fresh before another hover refetches it. */
 const PREFETCH_STALE_MS = 30_000
 
-/** Shows full meal plan rates. */
-function RatesSummary({ unit }: { unit: Unit }) {
+/** Every meal plan's nightly rate, in the currency picked in the header. */
+function RatesSummary({
+  unit,
+  currency,
+}: {
+  unit: Unit
+  currency: BookingCurrency
+}) {
+  const rates = getUnitRates(unit, currency).filter(
+    (entry): entry is typeof entry & { rate: number } => entry.rate != null
+  )
+  if (rates.length === 0) {
+    return <span className="text-muted-foreground">—</span>
+  }
+  // The plan names stay muted so the prices read first.
   return (
     <span className="font-mono text-xs text-muted-foreground">
-      Bed Only {formatCurrency(unit.base_rate)}
-      {unit.bb_rate != null ? ` · B&B ${formatCurrency(unit.bb_rate)}` : ""}
-      {unit.hb_rate != null ? ` · Half Board ${formatCurrency(unit.hb_rate)}` : ""}
-      {unit.fb_rate != null ? ` · Full Board ${formatCurrency(unit.fb_rate)}` : ""}
+      {rates.map(({ plan, label, rate }, index) => (
+        <Fragment key={plan}>
+          {index > 0 ? " · " : null}
+          {label}{" "}
+          <span className="font-semibold text-foreground">
+            {formatAmount(rate, currency)}
+          </span>
+        </Fragment>
+      ))}
     </span>
   )
 }
 
 export function UnitsTable() {
+  const [currency] = useRateCurrency()
   const [search, setSearch] = useState("")
   // "" means every status; filtered here since the endpoint lists all rooms.
   const [status, setStatus] = useState("")
@@ -155,16 +175,16 @@ export function UnitsTable() {
 
       <Table>
         <TableHeader>
-           <TableRow className="hover:bg-transparent">
-             <TableHead className={tableHeadClassName}>Room</TableHead>
-             <TableHead className={tableHeadClassName}>Type</TableHead>
-             <TableHead className={tableHeadClassName}>Max occupancy</TableHead>
-             <TableHead className={tableHeadClassName}>Rates / night</TableHead>
-             <TableHead className={tableHeadClassName}>Status</TableHead>
-             <TableHead className={cn(tableHeadClassName, "w-24 text-center")}>
-               Actions
-             </TableHead>
-           </TableRow>
+          <TableRow className="hover:bg-transparent">
+            <TableHead className={tableHeadClassName}>Room</TableHead>
+            <TableHead className={tableHeadClassName}>Type</TableHead>
+            <TableHead className={tableHeadClassName}>Max occupancy</TableHead>
+            <TableHead className={tableHeadClassName}>Rates / night</TableHead>
+            <TableHead className={tableHeadClassName}>Status</TableHead>
+            <TableHead className={cn(tableHeadClassName, "w-24 text-center")}>
+              Actions
+            </TableHead>
+          </TableRow>
         </TableHeader>
         <TableBody>
           {units.isPending ? (
@@ -197,7 +217,7 @@ export function UnitsTable() {
                   {unit.max_occupancy === 1 ? "guest" : "guests"}
                 </TableCell>
                 <TableCell className="px-4">
-                  <RatesSummary unit={unit} />
+                  <RatesSummary unit={unit} currency={currency} />
                 </TableCell>
                 <TableCell className="px-4">
                   <UnitStatusBadge status={unit.status} />

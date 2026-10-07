@@ -37,7 +37,7 @@ import { useCancellationsReport } from "@/hooks/use-cancellations-report"
 import { usePagination } from "@/hooks/use-pagination"
 import { getApiErrorMessage } from "@/lib/api/errors"
 import type { ReportDateRange } from "@/lib/api/reports"
-import { formatCurrency, formatTimestamp } from "@/lib/format"
+import { formatAmount, formatTimestamp } from "@/lib/format"
 import {
   formatBookingCount,
   formatCount,
@@ -277,8 +277,14 @@ function CancellationsTable({ range }: { range: ReportDateRange }) {
                 <TableCell className="px-4">
                   <PaymentStatusBadge status={booking.payment_status} />
                 </TableCell>
-                <MoneyCell value={booking.cancellation_fee} />
-                <MoneyCell value={booking.refund_amount} />
+                <MoneyCell
+                  value={booking.cancellation_fee}
+                  currency={booking.currency}
+                />
+                <MoneyCell
+                  value={booking.refund_amount}
+                  currency={booking.currency}
+                />
               </TableRow>
             ))
           )}
@@ -300,13 +306,19 @@ function CancellationsTable({ range }: { range: ReportDateRange }) {
 }
 
 /** A fee or refund, or a muted dash when the API has none. */
-function MoneyCell({ value }: { value: number | null }) {
+function MoneyCell({
+  value,
+  currency,
+}: {
+  value: number | null
+  currency?: string | null
+}) {
   return (
     <TableCell className="px-4 text-right font-mono tabular-nums">
       {value == null ? (
         <span className="text-muted-foreground">—</span>
       ) : (
-        formatCurrency(value)
+        formatAmount(value, currency)
       )}
     </TableCell>
   )

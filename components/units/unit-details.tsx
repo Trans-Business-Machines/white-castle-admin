@@ -22,10 +22,11 @@ import { UnitStatusBadge } from "@/components/units/unit-status-badge"
 import { UpdateUnitStatusDialog } from "@/components/units/update-unit-status-dialog"
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/errors"
 import { fetchUnitDetails, unitQueryKey } from "@/lib/api/units"
-import { formatCurrency, formatCurrencyUsd, formatDate, humanizeSlug } from "@/lib/format"
+import { useRateCurrency } from "@/hooks/use-rate-currency"
+import { formatAmount, formatDate, humanizeSlug } from "@/lib/format"
 import { hasRole, UNIT_MANAGE_ROLES, UNIT_STATUS_ROLES } from "@/lib/roles"
 import { isSettableUnitStatus } from "@/lib/schemas/units"
-import { getRoomTypeLabel } from "@/lib/units"
+import { getRoomTypeLabel, getUnitRates } from "@/lib/units"
 import { useAuth } from "@/providers/auth-provider"
 
 function formatTimestamp(value: string | null | undefined) {
@@ -114,6 +115,7 @@ function UnitDetailsSkeleton() {
 function UnitDetails({ roomId }: { roomId: string }) {
   const router = useRouter()
   const { user } = useAuth()
+  const [currency] = useRateCurrency()
   const [action, setAction] = useState<"edit" | "status" | "delete" | null>(
     null
   )
@@ -239,47 +241,20 @@ function UnitDetails({ roomId }: { roomId: string }) {
               label="Max occupancy"
               value={`${room.max_occupancy} ${room.max_occupancy === 1 ? "guest" : "guests"}`}
             />
-            <DetailItem
-              label="BO (Room only)"
-              value={formatCurrency(room.base_rate)}
-              mono
-            />
-            <DetailItem
-              label="BB (Bed & Breakfast)"
-              value={room.bb_rate != null ? formatCurrency(room.bb_rate) : <span className="font-sans text-muted-foreground">—</span>}
-              mono
-            />
-            <DetailItem
-              label="HB (Half board)"
-              value={room.hb_rate != null ? formatCurrency(room.hb_rate) : <span className="font-sans text-muted-foreground">—</span>}
-              mono
-            />
-            <DetailItem
-              label="FB (Full board)"
-              value={room.fb_rate != null ? formatCurrency(room.fb_rate) : <span className="font-sans text-muted-foreground">—</span>}
-              mono
-            />
-            <DetailItem
-              label="BO (USD)"
-              value={room.base_rate_usd != null ? formatCurrencyUsd(room.base_rate_usd) : <span className="font-sans text-muted-foreground">—</span>}
-              mono
-            />
-            <DetailItem
-              label="BB (USD)"
-              value={room.bb_rate_usd != null ? formatCurrencyUsd(room.bb_rate_usd) : <span className="font-sans text-muted-foreground">—</span>}
-              mono
-            />
-            <DetailItem
-              label="HB (USD)"
-              value={room.hb_rate_usd != null ? formatCurrencyUsd(room.hb_rate_usd) : <span className="font-sans text-muted-foreground">—</span>}
-              mono
-            />
-            <DetailItem
-              label="FB (USD)"
-              value={room.fb_rate_usd != null ? formatCurrencyUsd(room.fb_rate_usd) : <span className="font-sans text-muted-foreground">—</span>}
-              mono
-            />
-
+            {getUnitRates(room, currency).map(({ plan, abbr, label, rate }) => (
+              <DetailItem
+                key={plan}
+                label={`${abbr} (${label})`}
+                value={
+                  rate != null ? (
+                    formatAmount(rate, currency)
+                  ) : (
+                    <span className="font-sans text-muted-foreground">—</span>
+                  )
+                }
+                mono
+              />
+            ))}
             <DetailItem
               label="Added"
               value={formatTimestamp(room.created_at)}

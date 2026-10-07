@@ -24,20 +24,21 @@ import { toUnitPayload, unitsSchema, type UnitType } from "@/lib/schemas/units"
 import type { Unit } from "@/lib/types"
 
 const emptyValues: UnitType = {
-  room_number:    "",
-  room_type:      "" as UnitType["room_type"],
-  description:    "",
-  max_occupancy:  Number.NaN,
-  base_rate:      Number.NaN,
-  bb_rate:        Number.NaN,
-  hb_rate:        Number.NaN,
-  fb_rate:        Number.NaN,
-  base_rate_usd:  Number.NaN,
-  bb_rate_usd:    Number.NaN,
-  hb_rate_usd:    Number.NaN,
-  fb_rate_usd:    Number.NaN,
-  amenities:      [],
-  photos:         [],
+  room_number: "",
+  // New rooms start as a standard single; its rates fill in once loaded.
+  room_type: "standard_single",
+  description: "",
+  max_occupancy: Number.NaN,
+  base_rate: Number.NaN,
+  bb_rate: Number.NaN,
+  hb_rate: Number.NaN,
+  fb_rate: Number.NaN,
+  base_rate_usd: Number.NaN,
+  bb_rate_usd: Number.NaN,
+  hb_rate_usd: Number.NaN,
+  fb_rate_usd: Number.NaN,
+  amenities: [],
+  photos: [],
 }
 
 /** Marks a failure that happened after the room itself was saved. */

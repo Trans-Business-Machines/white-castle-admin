@@ -30,10 +30,10 @@ function toIsoDate(date: Date | null) {
 export const DEFAULT_MEAL_PLAN: MealPlan = "room_only"
 
 export const MEAL_PLANS = [
-  { value: "room_only",         label: "Bed Only" },
+  { value: "room_only", label: "Bed Only" },
   { value: "bed_and_breakfast", label: "Bed & Breakfast" },
-  { value: "half_board",        label: "Half Board" },
-  { value: "full_board",        label: "Full Board" },
+  { value: "half_board", label: "Half Board" },
+  { value: "full_board", label: "Full Board" },
 ] as const satisfies readonly { value: MealPlan; label: string }[]
 
 export const CURRENCIES = [
@@ -70,8 +70,16 @@ export const createBookingSchema = z
     ),
     check_out_date: dateField("Pick a check-out date."),
     adults: occupantCount("adults", 1, "At least one adult must stay."),
-    children_under_5: occupantCount("children under 5", 0, "Can't be negative."),
-    children_6_to_12: occupantCount("children aged 6–12", 0, "Can't be negative."),
+    children_under_5: occupantCount(
+      "children under 5",
+      0,
+      "Can't be negative."
+    ),
+    children_6_to_12: occupantCount(
+      "children aged 6–12",
+      0,
+      "Can't be negative."
+    ),
     meal_plan: z.enum(mealPlanValues, { error: "Choose a meal plan." }),
     currency: z.enum(currencyValues, { error: "Choose a currency." }),
     special_requests: z
@@ -198,13 +206,25 @@ const extraCount = (label: string) =>
     .min(0, "Can't be negative.")
     .max(MAX_OCCUPANTS, `Keep it at ${MAX_OCCUPANTS} or fewer.`)
 
-/** Extra people joining a checked-in stay; at least one of them. */
+function countExtraChildren(values: {
+  children_under_5: number
+  children_6_to_12: number
+}) {
+  return values.children_under_5 + values.children_6_to_12
+}
+
+/**
+ * Extra people joining a checked-in stay; at least one of them. Children
+ * are asked for by age group like on a new booking, but the endpoint only
+ * takes a single `add_children` count, so the two are summed on the way out.
+ */
 export const extraPersonsSchema = z
   .object({
     adults: extraCount("adults"),
-    children: extraCount("children"),
+    children_under_5: extraCount("children under 5"),
+    children_6_to_12: extraCount("children aged 6–12"),
   })
-  .refine((values) => values.adults + values.children > 0, {
+  .refine((values) => values.adults + countExtraChildren(values) > 0, {
     message: "Add at least one extra adult or child.",
     path: ["adults"],
   })
@@ -215,5 +235,8 @@ export type ExtraPersonsValues = z.infer<typeof extraPersonsSchema>
 export function toExtraPersonsPayload(
   values: ExtraPersonsValues
 ): ExtraPersonsPayload {
-  return { add_adults: values.adults, add_children: values.children }
+  return {
+    add_adults: values.adults,
+    add_children: countExtraChildren(values),
+  }
 }

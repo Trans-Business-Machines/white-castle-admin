@@ -36,7 +36,7 @@ import {
   paymentsListQueryKey,
   type PaymentListFilters,
 } from "@/lib/api/payments"
-import { formatCurrency, formatTimestamp } from "@/lib/format"
+import { formatAmount, formatTimestamp } from "@/lib/format"
 import {
   getEvidenceFileId,
   getPaymentMethodLabel,
@@ -153,7 +153,7 @@ export function PaymentsTable() {
                   {payment.booking_ref}
                 </TableCell>
                 <TableCell className="px-4 font-mono">
-                  {formatCurrency(payment.amount)}
+                  {formatAmount(payment.amount, payment.currency)}
                 </TableCell>
                 <TableCell className="px-4">
                   {getPaymentTypeLabel(payment.payment_type)}

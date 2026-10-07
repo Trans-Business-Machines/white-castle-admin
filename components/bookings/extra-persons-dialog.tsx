@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, type ComponentProps } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import {
   useIsMutating,
@@ -39,7 +39,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { addExtraPersons, bookingsQueryKey } from "@/lib/api/bookings"
 import { getApiErrorMessage } from "@/lib/api/errors"
-import { formatCurrency } from "@/lib/format"
+import { formatAmount } from "@/lib/format"
 import {
   extraPersonsSchema,
   MAX_OCCUPANTS,
@@ -84,7 +84,7 @@ function ExtraPersonsForm({
     formState: { errors },
   } = useForm<ExtraPersonsValues>({
     resolver: zodResolver(extraPersonsSchema),
-    defaultValues: { adults: 0, children: 0 },
+    defaultValues: { adults: 0, children_under_5: 0, children_6_to_12: 0 },
   })
 
   // `preview=true`: works out the charges without changing the booking.
@@ -131,6 +131,7 @@ function ExtraPersonsForm({
           <ExtraPersonsSummary
             bookingId={booking.booking_id}
             guestName={booking.guest_name}
+            currency={booking.currency}
             payload={review.payload}
             preview={review.response}
             onDone={() => onOpenChange(false)}
@@ -159,55 +160,26 @@ function ExtraPersonsForm({
               noValidate
             >
               <fieldset disabled={mutation.isPending} className="grid gap-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="grid gap-2">
-                    <Label htmlFor="extra-adults" className={labelClassName}>
-                      Extra adult
-                    </Label>
-                    <Input
-                      id="extra-adults"
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      max={MAX_OCCUPANTS}
-                      step={1}
-                      autoFocus
-                      className={inputClassName}
-                      aria-invalid={Boolean(errors.adults)}
-                      aria-describedby={
-                        errors.adults ? "extra-adults-error" : undefined
-                      }
-                      {...register("adults", { valueAsNumber: true })}
-                    />
-                    <FieldError
-                      id="extra-adults-error"
-                      message={errors.adults?.message}
-                    />
-                  </div>
-
-                  <div className="grid gap-2">
-                    <Label htmlFor="extra-children" className={labelClassName}>
-                      Extra child
-                    </Label>
-                    <Input
-                      id="extra-children"
-                      type="number"
-                      inputMode="numeric"
-                      min={0}
-                      max={MAX_OCCUPANTS}
-                      step={1}
-                      className={inputClassName}
-                      aria-invalid={Boolean(errors.children)}
-                      aria-describedby={
-                        errors.children ? "extra-children-error" : undefined
-                      }
-                      {...register("children", { valueAsNumber: true })}
-                    />
-                    <FieldError
-                      id="extra-children-error"
-                      message={errors.children?.message}
-                    />
-                  </div>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <CountField
+                    id="extra-adults"
+                    label="Extra adults"
+                    error={errors.adults?.message}
+                    autoFocus
+                    {...register("adults", { valueAsNumber: true })}
+                  />
+                  <CountField
+                    id="extra-children-under-5"
+                    label="Children under 5"
+                    error={errors.children_under_5?.message}
+                    {...register("children_under_5", { valueAsNumber: true })}
+                  />
+                  <CountField
+                    id="extra-children-6-12"
+                    label="Children 6–12"
+                    error={errors.children_6_to_12?.message}
+                    {...register("children_6_to_12", { valueAsNumber: true })}
+                  />
                 </div>
 
                 {errors.root ? (
@@ -255,6 +227,39 @@ function ExtraPersonsForm({
   )
 }
 
+/** One whole-number head count input with its label and error. */
+function CountField({
+  id,
+  label,
+  error,
+  ...input
+}: {
+  id: string
+  label: string
+  error?: string
+} & ComponentProps<"input">) {
+  return (
+    <div className="grid gap-2">
+      <Label htmlFor={id} className={labelClassName}>
+        {label}
+      </Label>
+      <Input
+        id={id}
+        type="number"
+        inputMode="numeric"
+        min={0}
+        max={MAX_OCCUPANTS}
+        step={1}
+        className={inputClassName}
+        aria-invalid={Boolean(error)}
+        aria-describedby={error ? `${id}-error` : undefined}
+        {...input}
+      />
+      <FieldError id={`${id}-error`} message={error} />
+    </div>
+  )
+}
+
 function pluralize(count: number, one: string, many: string) {
   return `${count} ${count === 1 ? one : many}`
 }
@@ -273,12 +278,14 @@ const extraPersonsCommitMutationKey = (bookingId: string) =>
 function ExtraPersonsSummary({
   bookingId,
   guestName,
+  currency,
   payload,
   preview,
   onDone,
 }: {
   bookingId: string
   guestName: string
+  currency: Booking["currency"]
   payload: ExtraPersonsPayload
   preview: ExtraPersonsResponse
   onDone: () => void
@@ -330,10 +337,10 @@ function ExtraPersonsSummary({
           label: "Rate per extra adult",
           value: (
             <>
-              {formatCurrency(extra.rate_per_extra_adult)} / night
+              {formatAmount(extra.rate_per_extra_adult, currency)} / night
               <span className="block text-xs text-muted-foreground">
                 {extra.extra_person_percentage}% of{" "}
-                {formatCurrency(extra.base_rate)}
+                {formatAmount(extra.base_rate, currency)}
               </span>
             </>
           ),
@@ -342,13 +349,13 @@ function ExtraPersonsSummary({
           label: "Extra adult charge",
           value: (
             <>
-              {formatCurrency(extra.room_charge)}
+              {formatAmount(extra.room_charge, currency)}
               <span className="block text-xs text-muted-foreground">
                 {extra.extra_adults > 1
                   ? `${pluralize(extra.extra_adults, "adult", "adults")} × `
                   : ""}
                 {pluralizeNights(extra.nights)} ×{" "}
-                {formatCurrency(extra.rate_per_extra_adult)}
+                {formatAmount(extra.rate_per_extra_adult, currency)}
               </span>
             </>
           ),
@@ -357,25 +364,25 @@ function ExtraPersonsSummary({
           ? [
               {
                 label: "Meal plan surcharge",
-                value: formatCurrency(extra.meal_plan_charge),
+                value: formatAmount(extra.meal_plan_charge, currency),
               },
             ]
           : []),
         {
           label: "Additional charge",
-          value: formatCurrency(extra.total_extra_charge),
+          value: formatAmount(extra.total_extra_charge, currency),
           emphasis: true,
         },
         {
           label: "Previous total",
-          value: formatCurrency(getPreviousTotal(extra)),
+          value: formatAmount(getPreviousTotal(extra), currency),
         },
         {
           label: "New booking total",
           value: (
             <>
               <span className="font-semibold">
-                {formatCurrency(extra.new_total)}
+                {formatAmount(extra.new_total, currency)}
               </span>
               <span className="block text-xs text-muted-foreground">
                 Previous total plus the additional charge
@@ -387,6 +394,7 @@ function ExtraPersonsSummary({
       payment={{
         required: extra.payment_required,
         amount: extra.total_extra_charge,
+        currency,
         reference: extra.booking_ref,
         reason: "for the extra guests",
       }}
@@ -470,6 +478,7 @@ function ExtraPersonsSummary({
           bookingId={bookingId}
           bookingRef={extra.booking_ref || result.reference}
           amount={extra.total_extra_charge}
+          currency={currency}
           paymentType="extra_persons"
           onCancel={() => setPaying(false)}
           onRecorded={onDone}

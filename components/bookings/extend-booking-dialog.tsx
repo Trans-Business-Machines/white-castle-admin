@@ -39,7 +39,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { bookingsQueryKey, extendBooking } from "@/lib/api/bookings"
 import { getApiErrorMessage } from "@/lib/api/errors"
-import { formatCurrency, formatDate } from "@/lib/format"
+import { formatAmount, formatDate } from "@/lib/format"
 import {
   makeExtendBookingSchema,
   toExtendBookingPayload,
@@ -133,6 +133,7 @@ function ExtendForm({
           <ExtensionSummary
             bookingId={booking.booking_id}
             guestName={booking.guest_name}
+            currency={booking.currency}
             result={result}
             onDone={() => onOpenChange(false)}
           />
@@ -246,11 +247,13 @@ function ExtendForm({
 function ExtensionSummary({
   bookingId,
   guestName,
+  currency,
   result,
   onDone,
 }: {
   bookingId: string
   guestName: string
+  currency: Booking["currency"]
   result: ExtendBookingResponse
   onDone: () => void
 }) {
@@ -283,29 +286,32 @@ function ExtensionSummary({
         },
         {
           label: "Rate per night",
-          value: formatCurrency(extension.plan_rate_per_night),
+          value: formatAmount(extension.plan_rate_per_night, currency),
         },
         {
           label: "Meal plan",
-          value: getMealPlanLabel(extension.meal_plan as string ?? "room_only"),
+          value: getMealPlanLabel(
+            (extension.meal_plan as string) ?? "room_only"
+          ),
         },
         {
           label: "Extension total",
-          value: formatCurrency(extension.total_extra_charge),
+          value: formatAmount(extension.total_extra_charge, currency),
           emphasis: true,
         },
         {
           label: "Previous total",
-          value: formatCurrency(getPreviousTotal(extension)),
+          value: formatAmount(getPreviousTotal(extension), currency),
         },
         {
           label: "New booking total",
-          value: formatCurrency(extension.new_total),
+          value: formatAmount(extension.new_total, currency),
         },
       ]}
       payment={{
         required: extension.payment_required,
         amount: extension.total_extra_charge,
+        currency,
         reference: extension.booking_ref,
         reason: "for the extra nights",
       }}
@@ -329,6 +335,7 @@ function ExtensionSummary({
           bookingId={bookingId}
           bookingRef={extension.booking_ref || result.reference}
           amount={extension.total_extra_charge}
+          currency={currency}
           paymentType="extension"
           onCancel={() => setPaying(false)}
           onRecorded={onDone}

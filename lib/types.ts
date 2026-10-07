@@ -31,7 +31,7 @@ export interface Unit {
   room_type: string
   description: string
   max_occupancy: number
-  /** Room Only rate (KES). */
+  /** Bed Only rate (KES). */
   base_rate: number
   /** Bed & Breakfast rate (KES). */
   bb_rate: number | null
@@ -39,7 +39,7 @@ export interface Unit {
   hb_rate: number | null
   /** Full Board rate (KES). */
   fb_rate: number | null
-  /** Room Only rate (USD). */
+  /** Bed Only rate (USD). */
   base_rate_usd: number | null
   /** Bed & Breakfast rate (USD). */
   bb_rate_usd: number | null
@@ -95,10 +95,7 @@ export interface GuestsStats {
  * breakfast list (and costs extra); `room_only` leaves them off it.
  */
 export type MealPlan =
-  | "room_only"
-  | "bed_and_breakfast"
-  | "half_board"
-  | "full_board"
+  "room_only" | "bed_and_breakfast" | "half_board" | "full_board"
 
 /** Currency for a booking: KES = resident, USD = non-resident. */
 export type BookingCurrency = "KES" | "USD"
@@ -421,7 +418,7 @@ export interface Payment {
   booking_id: string
   booking_ref: string
   amount: number
-  /** ISO currency code; every rate in the app is quoted in KES. */
+  /** "KES", or "USD" for a non-resident booking's payment. */
   currency: string
   method: string
   reference: string

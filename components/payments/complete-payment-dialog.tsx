@@ -32,7 +32,7 @@ import {
 } from "@/lib/api/bookings"
 import { getApiErrorMessage } from "@/lib/api/errors"
 import { completePayment, paymentsQueryKey } from "@/lib/api/payments"
-import { formatCurrency } from "@/lib/format"
+import { formatAmount } from "@/lib/format"
 import { getRemainingBalance } from "@/lib/payments"
 import {
   completePaymentSchema,
@@ -104,9 +104,10 @@ function CompletePaymentForm({
   if (booking.isPending) amountNote = "Working out the balance…"
   else if (alreadyPaid) amountNote = "This booking is already fully paid."
   else if (booking.data) {
-    amountNote = `The ${formatCurrency(
-      booking.data.total_amount
-    )} booking total less the ${formatCurrency(payment.amount)} deposit.`
+    amountNote = `The ${formatAmount(
+      booking.data.total_amount,
+      booking.data.currency
+    )} booking total less the ${formatAmount(payment.amount, payment.currency)} deposit.`
   }
 
   const mutation = useMutation({
@@ -154,7 +155,8 @@ function CompletePaymentForm({
             <span className="font-semibold text-foreground">
               {payment.booking_ref}
             </span>
-            . A {formatCurrency(payment.amount)} deposit was paid.
+            . A {formatAmount(payment.amount, payment.currency)} deposit was
+            paid.
           </DialogDescription>
         </DialogHeader>
 
@@ -168,7 +170,7 @@ function CompletePaymentForm({
           >
             <div className="grid gap-2">
               <Label htmlFor="complete-amount" className={labelClassName}>
-                Amount (KES)
+                Amount ({booking.data?.currency ?? payment.currency ?? "KES"})
               </Label>
               <Input
                 id="complete-amount"

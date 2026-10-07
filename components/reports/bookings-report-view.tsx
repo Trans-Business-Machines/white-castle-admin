@@ -39,7 +39,7 @@ import { getApiErrorMessage } from "@/lib/api/errors"
 import { useBookingsReport } from "@/hooks/use-bookings-report"
 import type { BookingsReportFilters } from "@/lib/api/reports"
 import { getMealPlanLabel } from "@/lib/bookings"
-import { formatCurrency, formatTimestamp, humanizeSlug } from "@/lib/format"
+import { formatAmount, formatTimestamp, humanizeSlug } from "@/lib/format"
 import {
   BOOKINGS_REPORT_STAT_CARDS,
   getStatusBreakdown,
@@ -263,7 +263,7 @@ function BookingsReportTable({ filters }: { filters: BookingsReportFilters }) {
                   <BookingStatusBadge status={booking.status} />
                 </TableCell>
                 <TableCell className="px-4 text-right font-mono text-foreground tabular-nums">
-                  {formatCurrency(booking.total_amount)}
+                  {formatAmount(booking.total_amount, booking.currency)}
                 </TableCell>
                 <TableCell className="px-4">
                   <PaymentStatusBadge status={booking.payment_status} />
