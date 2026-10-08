@@ -24,12 +24,13 @@ import { formatCurrency } from "@/lib/format"
 import {
   formatCount,
   getBookingPaymentSegments,
+  getBookingResidencySegments,
   getPaymentMethodSegments,
   getRevenueStatCards,
 } from "@/lib/reports"
 import type { RevenueReport } from "@/lib/types"
 
-const STAT_CARD_COUNT = 5
+const STAT_CARD_COUNT = 7
 
 const statGridClassName =
   "grid grid-cols-[repeat(auto-fit,minmax(min(13rem,100%),1fr))] gap-4"
@@ -107,7 +108,7 @@ function RevenueReportBody({ report }: { report: RevenueReport }) {
         ))}
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-2">
         <ShareBreakdown
           title="Payment methods"
           total={methods.total}
@@ -122,6 +123,15 @@ function RevenueReportBody({ report }: { report: RevenueReport }) {
           total={bookings.total}
           totalLabel={plural(bookings.total, "booking", "bookings")}
           segments={getBookingPaymentSegments(bookings)}
+          format={formatCount}
+          emptyMessage="No bookings in this period."
+        />
+
+        <ShareBreakdown
+          title="Bookings by residency"
+          total={bookings.total}
+          totalLabel={plural(bookings.total, "booking", "bookings")}
+          segments={getBookingResidencySegments(bookings)}
           format={formatCount}
           emptyMessage="No bookings in this period."
         />
@@ -158,8 +168,8 @@ function RevenueReportSkeleton() {
           <StatCardSkeleton key={index} />
         ))}
       </div>
-      <div className="grid gap-4 lg:grid-cols-3">
-        {Array.from({ length: 3 }, (_, index) => (
+      <div className="grid gap-4 lg:grid-cols-2">
+        {Array.from({ length: 4 }, (_, index) => (
           <div
             key={index}
             className="grid gap-4 rounded-xl bg-card p-5 shadow-sm ring-1 ring-foreground/10"

@@ -76,49 +76,6 @@ export function ReportDateRangeFields({
   )
 }
 
-interface ReportDateFieldProps {
-  id: string
-  label: string
-  /** "yyyy-MM-dd", or "" when not picked. */
-  value: string
-  onChange: (value: string) => void
-  placeholder: string
-  /** Muted line under the picker explaining the default. */
-  hint?: string
-}
-
-/** One optional day, e.g. the B&B report's breakfast list date. */
-export function ReportDateField({
-  id,
-  label,
-  value,
-  onChange,
-  placeholder,
-  hint,
-}: ReportDateFieldProps) {
-  return (
-    <div className="grid min-w-0 gap-2">
-      <Label htmlFor={id} className={labelClassName}>
-        {label}
-      </Label>
-      <StayDatePicker
-        id={id}
-        value={toDate(value)}
-        onChange={(date) => onChange(toIso(date))}
-        placeholder={placeholder}
-        clearLabel={`Clear ${label.toLowerCase()}`}
-        describedBy={hint ? `${id}-hint` : undefined}
-        className={inputClassName}
-      />
-      {hint ? (
-        <p id={`${id}-hint`} className="text-sm text-muted-foreground">
-          {hint}
-        </p>
-      ) : null}
-    </div>
-  )
-}
-
 interface ReportSelectFieldProps {
   id: string
   label: string

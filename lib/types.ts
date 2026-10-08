@@ -531,26 +531,34 @@ export interface BookingsReport {
 }
 
 /**
- * `GET /motel/reports/revenue`. Amounts are in `currency`; `period` echoes
- * the query (null when not sent). `balance_outstanding` is expected less
- * collected, so it goes negative when more was collected than expected
- * (e.g. extra charges on top of the booked totals).
+ * `GET /motel/reports/revenue`. `period` echoes the query (null when not
+ * sent). Revenue is split by currency, but only the expected figure has a
+ * USD side; everything else (collections, payment methods, cancellation
+ * fees) is KES. `balance_outstanding_kes` is expected less collected, so it
+ * goes negative when more was collected than expected (e.g. extra charges
+ * on top of the booked totals).
  */
 export interface RevenueReport {
   period: { from: string | null; to: string | null }
-  currency: string
   bookings: {
     total: number
+    /** Bookings by residents, priced in KES. */
+    resident_kes: number
+    /** Bookings by non-residents, priced in USD. */
+    non_resident_usd: number
     fully_paid: number
     deposit_only: number
     unpaid: number
   }
   revenue: {
-    total_expected: number
-    total_collected: number
-    balance_outstanding: number
-    bb_revenue: number
-    extra_charges_revenue: number
+    total_expected_kes: number
+    total_expected_usd: number
+    total_collected_kes: number
+    balance_outstanding_kes: number
+    meal_plan_revenue_kes: number
+    /** The 50% charge for children aged 6–12. */
+    children_charges_kes: number
+    extra_charges_kes: number
   }
   payment_methods: {
     mpesa: number
@@ -638,27 +646,29 @@ export interface CancellationsReport {
 }
 
 /**
- * `GET /motel/reports/bb-summary` — meal plan summary (BB + HB + FB).
- * `today_breakfast_list` is the kitchen list for `target_date`.
- * `meal_vs_room_only_ratio` is "<meal_plans>/<bed_only>", e.g. "6/1".
+ * `GET /motel/reports/meal-plan-report`. `period` and `filters` echo the
+ * query (null when not sent). `by_plan` / `revenue_by_plan` only list the
+ * plans that occur; `revenue_by_plan` is the meal revenue on top of the
+ * room, so Bed Only is always 0 there. Booking value is split by currency.
  */
-export interface BbSummaryReport {
+export interface MealPlanReport {
   period: { from: string | null; to: string | null }
-  currency: string
-  summary: {
-    total_meal_plan_bookings: number
-    total_meal_plan_revenue: number
-    avg_meal_revenue_per_booking: number
-    by_plan: {
-      bed_and_breakfast: number
-      half_board: number
-      full_board: number
-      room_only: number
-    }
-    meal_vs_room_only_ratio: string
+  filters: {
+    meal_plan: string | null
+    status: string | null
+    currency: string | null
   }
-  today_breakfast_list: BbList
-  meal_plan_bookings: BookingsReportBooking[]
+  summary: {
+    total_bookings: number
+    total_meal_plan_revenue: number
+    /** Meal revenue per booking on a meal plan (Bed Only excluded). */
+    avg_meal_revenue_per_booking: number
+    by_plan: Record<string, number>
+    revenue_by_plan: Record<string, number>
+    total_guests: number
+    total_revenue_kes: number
+    total_revenue_usd: number
+  }
 }
 
 /**

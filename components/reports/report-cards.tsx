@@ -1,7 +1,6 @@
 import type { ComponentProps, ComponentType, ReactNode } from "react"
 import { cn } from "cn"
 import { FileChartColumn } from "lucide-react"
-import { BbSummaryReportDialog } from "@/components/reports/bb-summary-report-dialog"
 import {
   BookingsReportDialog,
   BookingsReportExportDialog,
@@ -14,6 +13,10 @@ import {
   GuestsReportDialog,
   GuestsReportExportDialog,
 } from "@/components/reports/guests-report-dialog"
+import {
+  MealPlanReportDialog,
+  MealPlanReportExportDialog,
+} from "@/components/reports/meal-plan-report-dialog"
 import {
   PaymentsReportDialog,
   PaymentsReportExportDialog,
@@ -34,19 +37,17 @@ const REPORT_DIALOGS: Record<
   ComponentType<{ children: ReactNode }>
 > = {
   bookings: BookingsReportDialog,
-  "bed-and-breakfast": BbSummaryReportDialog,
+  "meal-plans": MealPlanReportDialog,
   revenue: RevenueReportDialog,
   payments: PaymentsReportDialog,
   guests: GuestsReportDialog,
   cancellations: CancellationsReportDialog,
 }
 
-/**
- * The Download CSV CTA beside Generate report (a dialog over the same
- * filters). Partial while the breakfast list has no export yet.
- */
-const REPORT_EXPORT_DIALOGS: Partial<Record<ReportSlug, ComponentType>> = {
+/** The Download CSV CTA beside Generate report (a dialog over the same filters). */
+const REPORT_EXPORT_DIALOGS: Record<ReportSlug, ComponentType> = {
   bookings: BookingsReportExportDialog,
+  "meal-plans": MealPlanReportExportDialog,
   revenue: RevenueReportExportDialog,
   payments: PaymentsReportExportDialog,
   guests: GuestsReportExportDialog,
@@ -102,7 +103,7 @@ function ReportCard({ report }: { report: ReportType }) {
         <Dialog>
           <GenerateButton />
         </Dialog>
-        {ExportDialog ? <ExportDialog /> : null}
+        <ExportDialog />
       </div>
     </article>
   )

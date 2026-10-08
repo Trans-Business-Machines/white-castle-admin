@@ -1,11 +1,11 @@
 import { axiosInstance } from "@/lib/axios"
 import { downloadCsv } from "@/lib/api/files"
 import type {
-  BbSummaryReport,
   BookingsReport,
   CancellationsReport,
   DashboardReport,
   GuestsReport,
+  MealPlanReport,
   PaymentsReport,
   RevenueReport,
 } from "@/lib/types"
@@ -151,21 +151,33 @@ export function exportCancellationsReport(range: ReportDateRange) {
   )
 }
 
-/** Query params of `GET /motel/reports/bb-summary`; "" means "not sent". */
-export interface BbSummaryReportFilters extends ReportDateRange {
-  /** Day of the breakfast list, "yyyy-MM-dd"; the API defaults to today. */
-  target_date: string
+/** Query params of `GET /motel/reports/meal-plan-report`; "" means "not filtered". */
+export interface MealPlanReportFilters extends ReportDateRange {
+  meal_plan: string
+  /** Booking status. */
+  status: string
+  /** "KES" (residents), "USD" (non-residents) or "" for both. */
+  currency: string
 }
 
-export function bbSummaryReportQueryKey(filters: BbSummaryReportFilters) {
-  return ["reports", "bb-summary", filters] as const
+export function mealPlanReportQueryKey(filters: MealPlanReportFilters) {
+  return ["reports", "meal-plans", filters] as const
 }
 
-/** GET /motel/reports/bb-summary, sending only the params that are set. */
-export async function fetchBbSummaryReport(filters: BbSummaryReportFilters) {
-  const response = await axiosInstance.get<BbSummaryReport>(
-    "/motel/reports/bb-summary",
+/** GET /motel/reports/meal-plan-report, sending only the filters that are set. */
+export async function fetchMealPlanReport(filters: MealPlanReportFilters) {
+  const response = await axiosInstance.get<MealPlanReport>(
+    "/motel/reports/meal-plan-report",
     { params: toReportParams(filters) }
   )
   return response.data
+}
+
+/** GET /motel/reports/meal-plan-report/export: the same params as the report, as a CSV file. */
+export function exportMealPlanReport(filters: MealPlanReportFilters) {
+  return downloadCsv(
+    "/motel/reports/meal-plan-report/export",
+    filters,
+    "meal-plan-report"
+  )
 }

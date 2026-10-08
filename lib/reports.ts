@@ -1,32 +1,32 @@
 import {
   CalendarRange,
   CalendarX2,
-  Coffee,
   TrendingUp,
   Users,
+  UtensilsCrossed,
   Wallet,
   type LucideIcon,
 } from "lucide-react"
 import { isAfter, isValid, parseISO } from "date-fns"
 import type {
-  BbSummaryReportFilters,
   BookingsReportFilters,
+  MealPlanReportFilters,
   PaymentsReportFilters,
   ReportDateRange,
 } from "@/lib/api/reports"
-import { BOOKING_STATUSES, formatPercent } from "@/lib/bookings"
+import { BOOKING_STATUSES, getMealPlanLabel } from "@/lib/bookings"
 import { formatCurrency, formatCurrencyUsd, formatDate } from "@/lib/format"
 import { PAYMENT_STATUSES } from "@/lib/payments"
 import { CURRENCIES, MEAL_PLANS } from "@/lib/schemas/bookings"
 import { PAYMENT_METHODS } from "@/lib/schemas/payments"
 import { ROOM_TYPES } from "@/lib/schemas/units"
 import type {
-  BbSummaryReport,
   BookingsReport,
   BookingsReportBooking,
   CancellationsReport,
   Guest,
   GuestsReport,
+  MealPlanReport,
   PaymentsReport,
   PaymentsReportPayment,
   RevenueReport,
@@ -35,7 +35,7 @@ import type {
 /** URL segment of each report: `/reports/<slug>`. */
 export type ReportSlug =
   | "bookings"
-  | "bed-and-breakfast"
+  | "meal-plans"
   | "cancellations"
   | "guests"
   | "revenue"
@@ -58,11 +58,11 @@ export const REPORT_TYPES: readonly ReportType[] = [
     icon: CalendarRange,
   },
   {
-    slug: "bed-and-breakfast",
-    title: "Breakfast List",
+    slug: "meal-plans",
+    title: "Meal Plans",
     description:
-      "Meal plan summary report: Bed & Breakfast, Half Board and Full Board bookings, guests and revenue. Pick a date to get the breakfast list for a specific day.",
-    icon: Coffee,
+      "Meal plan report: bookings and meal revenue per plan (Bed Only, Bed & Breakfast, Half Board, Full Board), filterable by date, meal plan, booking status and residency.",
+    icon: UtensilsCrossed,
   },
   {
     slug: "cancellations",
@@ -211,19 +211,31 @@ export function parsePaymentsReportFilters(
   }
 }
 
-export const EMPTY_BB_SUMMARY_REPORT_FILTERS: BbSummaryReportFilters = {
+export const EMPTY_MEAL_PLAN_REPORT_FILTERS: MealPlanReportFilters = {
   from_date: "",
   to_date: "",
-  target_date: "",
+  meal_plan: "",
+  status: "",
+  currency: "",
 }
 
-/** Reads the B&B summary filters (period + breakfast list day) out of the URL. */
-export function parseBbSummaryReportFilters(
+/** Reads the meal plan report filters out of the URL; unknown values are dropped. */
+export function parseMealPlanReportFilters(
   params: ReportSearchParams
-): BbSummaryReportFilters {
+): MealPlanReportFilters {
   return {
     ...parseReportDateRange(params),
-    target_date: pickDateParam(params, "target_date"),
+    meal_plan: pickParam(
+      params,
+      "meal_plan",
+      MEAL_PLANS.map((plan) => plan.value)
+    ),
+    status: pickParam(params, "status", BOOKING_STATUSES),
+    currency: pickParam(
+      params,
+      "currency",
+      CURRENCIES.map((currency) => currency.value)
+    ),
   }
 }
 
@@ -377,33 +389,41 @@ export interface ReportStatCard {
 }
 
 /**
- * The revenue report's headline cards. The balance is expected less
- * collected, so a negative one is shown as the amount collected above
- * what was expected rather than as a negative outstanding figure.
+ * The revenue report's headline cards. Every figure goes through
+ * `formatStat`, so a field the response lacks reads "—". The balance is
+ * expected less collected, so a negative one is shown as the amount
+ * collected above what was expected rather than as a negative figure.
  */
 export function getRevenueStatCards(
   revenue: RevenueReport["revenue"]
 ): ReportStatCard[] {
-  const balance = revenue.balance_outstanding
+  const balance = revenue.balance_outstanding_kes
   return [
     {
-      key: "expected",
-      title: "Expected",
-      text: formatCurrency(revenue.total_expected),
-      label: "booked in this period",
+      key: "expected_kes",
+      title: "Expected (KES)",
+      text: formatStat(revenue.total_expected_kes, formatCurrency),
+      label: "booked by residents",
       titleClassName: "text-brand-navy dark:text-sky-200",
+    },
+    {
+      key: "expected_usd",
+      title: "Expected (USD)",
+      text: formatStat(revenue.total_expected_usd, formatCurrencyUsd),
+      label: "booked by non-residents",
+      titleClassName: "text-teal-700 dark:text-teal-300",
     },
     {
       key: "collected",
       title: "Collected",
-      text: formatCurrency(revenue.total_collected),
-      label: "payments received",
+      text: formatStat(revenue.total_collected_kes, formatCurrency),
+      label: "payments received in KES",
       titleClassName: "text-emerald-700 dark:text-emerald-300",
     },
     {
       key: "balance",
       title: "Balance",
-      text: formatCurrency(Math.abs(balance)),
+      text: formatStat(balance, (value) => formatCurrency(Math.abs(value))),
       label: balance > 0 ? "still to collect" : "collected above expected",
       titleClassName:
         balance > 0
@@ -411,16 +431,23 @@ export function getRevenueStatCards(
           : "text-emerald-700 dark:text-emerald-300",
     },
     {
-      key: "bb",
-      title: "Bed & Breakfast",
-      text: formatCurrency(revenue.bb_revenue),
-      label: "breakfast revenue",
+      key: "meal_plans",
+      title: "Meal plans",
+      text: formatStat(revenue.meal_plan_revenue_kes, formatCurrency),
+      label: "breakfast, half and full board",
       titleClassName: "text-amber-700 dark:text-amber-300",
+    },
+    {
+      key: "children",
+      title: "Children charges",
+      text: formatStat(revenue.children_charges_kes, formatCurrency),
+      label: "children aged 6–12",
+      titleClassName: "text-brand-azure dark:text-sky-300",
     },
     {
       key: "extras",
       title: "Extra charges",
-      text: formatCurrency(revenue.extra_charges_revenue),
+      text: formatStat(revenue.extra_charges_kes, formatCurrency),
       label: "extensions and extra guests",
       titleClassName: "text-violet-700 dark:text-violet-300",
     },
@@ -475,6 +502,31 @@ export function getPaymentMethodSegments(
       },
     ],
     methods.total
+  )
+}
+
+/** Bookings in the period by the guest's residency (KES vs USD pricing). */
+export function getBookingResidencySegments(
+  bookings: RevenueReport["bookings"]
+) {
+  return withRemainder(
+    [
+      {
+        key: "resident",
+        label: "Residents",
+        value: bookings.resident_kes,
+        className: "bg-brand-azure dark:bg-sky-600",
+        detail: "priced in KES",
+      },
+      {
+        key: "non_resident",
+        label: "Non-residents",
+        value: bookings.non_resident_usd,
+        className: "bg-violet-600",
+        detail: "priced in USD",
+      },
+    ],
+    bookings.total
   )
 }
 
@@ -779,75 +831,92 @@ export function getPaidAtCancellationSegments(
 }
 
 /**
- * "3/7" → `{ bb: 3, roomOnly: 7 }`; null when the API sends anything the
- * page can't read as two whole numbers.
+ * The meal plan report's headline cards. Meal revenue is in KES; booking
+ * value is split by currency, and the other currency's card is dropped
+ * when the report is filtered to one.
  */
-export function parseBbRatio(ratio: string) {
-  const match = /^\s*(\d+)\s*[/:]\s*(\d+)\s*$/.exec(ratio)
-  return match ? { bb: Number(match[1]), roomOnly: Number(match[2]) } : null
-}
-
-/** The meal plan summary report's headline cards. */
-export function getBbSummaryStatCards(
-  summary: BbSummaryReport["summary"]
+export function getMealPlanReportStatCards(
+  summary: MealPlanReport["summary"],
+  currency: string
 ): ReportStatCard[] {
-  const ratio = parseBbRatio(summary.meal_vs_room_only_ratio)
-  const total = ratio ? ratio.bb + ratio.roomOnly : 0
-  return [
+  const cards: (ReportStatCard & { currency?: string })[] = [
     {
       key: "bookings",
-      title: "Breakfast bookings",
-      text: formatCount(summary.total_meal_plan_bookings),
-      label: "with breakfast",
-      titleClassName: "text-amber-700 dark:text-amber-300",
+      title: "Bookings",
+      text: formatStat(summary.total_bookings, formatCount),
+      label: "in this report",
+      titleClassName: "text-brand-navy dark:text-sky-200",
     },
     {
-      key: "revenue",
-      title: "Breakfast revenue",
-      text: formatCurrency(summary.total_meal_plan_revenue),
-      label: "from meal plans",
-      titleClassName: "text-emerald-700 dark:text-emerald-300",
+      key: "guests",
+      title: "Guests",
+      text: formatStat(summary.total_guests, formatCount),
+      label: "adults and children",
+      titleClassName: "text-violet-700 dark:text-violet-300",
+    },
+    {
+      key: "meal_revenue",
+      title: "Meal revenue",
+      text: formatStat(summary.total_meal_plan_revenue, formatCurrency),
+      label: "from meal plans, on top of the room",
+      titleClassName: "text-amber-700 dark:text-amber-300",
     },
     {
       key: "average",
       title: "Average",
-      text: formatCurrency(summary.avg_meal_revenue_per_booking),
-      label: "meal plan revenue per booking",
-      titleClassName: "text-brand-navy dark:text-sky-200",
+      text: formatStat(summary.avg_meal_revenue_per_booking, formatCurrency),
+      label: "meal revenue per meal plan booking",
+      titleClassName: "text-brand-azure dark:text-sky-300",
     },
     {
-      key: "share",
-      title: "Meal plan share",
-      text:
-        ratio && total > 0
-          ? formatPercent((ratio.bb / total) * 100)
-          : summary.meal_vs_room_only_ratio || "—",
-      label: ratio
-        ? `${formatCount(ratio.bb)} of ${formatBookingCount(total)}`
-        : "Breakfast to Bed Only",
-      titleClassName: "text-violet-700 dark:text-violet-300",
+      key: "revenue_kes",
+      title: "Resident revenue",
+      text: formatStat(summary.total_revenue_kes, formatCurrency),
+      label: "booking value in KES",
+      titleClassName: "text-emerald-700 dark:text-emerald-300",
+      currency: "KES",
+    },
+    {
+      key: "revenue_usd",
+      title: "Non-resident revenue",
+      text: formatStat(summary.total_revenue_usd, formatCurrencyUsd),
+      label: "booking value in USD",
+      titleClassName: "text-teal-700 dark:text-teal-300",
+      currency: "USD",
     },
   ]
+  return cards.filter(
+    (card) => !currency || !card.currency || card.currency === currency
+  )
 }
 
-/** Meal plan vs bed-only bookings, or null when the ratio can't be read. */
+/**
+ * Bar fill per meal plan, in `MEAL_PLANS` order. Checked with the dataviz
+ * palette validator in both modes (adjacent pairs pass; amber ↔ emerald is
+ * in the CVD floor band, fine since the legend labels every segment).
+ */
+const MEAL_PLAN_FILLS: Record<string, string> = {
+  room_only: "bg-brand-azure dark:bg-sky-600",
+  bed_and_breakfast: "bg-amber-600",
+  half_board: "bg-violet-600",
+  full_board: "bg-emerald-600",
+}
+
+/**
+ * A `by_plan` / `revenue_by_plan` record as bar segments in `MEAL_PLANS`
+ * order; a plan the API adds later goes last, in grey. `exclude` drops
+ * plans that don't belong in the breakdown (Bed Only has no meal revenue).
+ */
 export function getMealPlanSegments(
-  summary: BbSummaryReport["summary"]
-): ShareSegment[] | null {
-  const ratio = parseBbRatio(summary.meal_vs_room_only_ratio)
-  if (!ratio) return null
-  return [
-    {
-      key: "meal_plans",
-      label: "Breakfast plans",
-      value: ratio.bb,
-      className: "bg-amber-600",
-    },
-    {
-      key: "room_only",
-      label: "Bed Only",
-      value: ratio.roomOnly,
-      className: "bg-brand-azure dark:bg-sky-600",
-    },
-  ]
+  byPlan: Record<string, number> | undefined,
+  exclude: readonly string[] = []
+): ShareSegment[] {
+  return getMealPlanBreakdown(byPlan)
+    .filter(([plan]) => !exclude.includes(plan))
+    .map(([plan, value]) => ({
+      key: plan,
+      label: getMealPlanLabel(plan),
+      value,
+      className: MEAL_PLAN_FILLS[plan] ?? OTHER_FILL,
+    }))
 }
