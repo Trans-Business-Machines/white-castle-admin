@@ -9,6 +9,7 @@ import {
   ChangeFiltersButton,
   ReportHeader,
 } from "@/components/reports/report-header"
+import { ReportCsvDownload } from "@/components/reports/report-csv"
 import { RevenueReportDialog } from "@/components/reports/revenue-report-dialog"
 import {
   ReportPanel,
@@ -18,7 +19,7 @@ import { StatCard } from "@/components/stat-card"
 import { Skeleton } from "@/components/ui/skeleton"
 import { useRevenueReport } from "@/hooks/use-revenue-report"
 import { getApiErrorMessage } from "@/lib/api/errors"
-import type { ReportDateRange } from "@/lib/api/reports"
+import { exportRevenueReport, type ReportDateRange } from "@/lib/api/reports"
 import { formatCurrency } from "@/lib/format"
 import {
   formatCount,
@@ -52,9 +53,16 @@ export function RevenueReportView({ range }: { range: ReportDateRange }) {
         from={range.from_date}
         to={range.to_date}
         action={
-          <RevenueReportDialog initialRange={range}>
-            <ChangeFiltersButton />
-          </RevenueReportDialog>
+          <>
+            <ReportCsvDownload
+              filters={range}
+              noun="revenue report"
+              exportFile={exportRevenueReport}
+            />
+            <RevenueReportDialog initialRange={range}>
+              <ChangeFiltersButton />
+            </RevenueReportDialog>
+          </>
         }
       />
 

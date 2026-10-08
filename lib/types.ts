@@ -499,7 +499,9 @@ export interface BookingsReportBooking extends Booking {
 
 /**
  * `GET /motel/reports/bookings`. `period` and `filters` echo the query
- * (null when not sent); `by_status` only lists statuses that occur.
+ * (null when not sent); `by_status` / `by_meal_plan` only list the values
+ * that occur. Revenue is split by currency: KES from residents, USD from
+ * non-residents.
  */
 export interface BookingsReport {
   period: { from: string | null; to: string | null }
@@ -507,14 +509,23 @@ export interface BookingsReport {
     status: string | null
     room_type: string | null
     meal_plan: string | null
+    currency: string | null
   }
   summary: {
     total: number
     by_status: Record<string, number>
-    bb_bookings: number
+    by_meal_plan: Record<string, number>
+    /** Bookings on bed & breakfast, half board or full board. */
+    breakfast_bookings: number
+    resident_bookings: number
+    non_resident_bookings: number
     total_guests: number
+    total_children_6_to_12: number
+    total_children_under_5: number
     total_nights: number
-    total_revenue: number
+    total_revenue_kes: number
+    total_revenue_usd: number
+    total_children_charges: number
   }
   bookings: BookingsReportBooking[]
 }

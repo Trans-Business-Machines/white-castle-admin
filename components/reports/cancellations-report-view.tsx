@@ -14,6 +14,7 @@ import {
   ChangeFiltersButton,
   ReportHeader,
 } from "@/components/reports/report-header"
+import { ReportCsvDownload } from "@/components/reports/report-csv"
 import { ShareBreakdown } from "@/components/reports/share-breakdown"
 import { StatCard } from "@/components/stat-card"
 import { TablePagination } from "@/components/table-pagination"
@@ -36,7 +37,10 @@ import { SearchInput } from "@/components/users/table-toolbar"
 import { useCancellationsReport } from "@/hooks/use-cancellations-report"
 import { usePagination } from "@/hooks/use-pagination"
 import { getApiErrorMessage } from "@/lib/api/errors"
-import type { ReportDateRange } from "@/lib/api/reports"
+import {
+  exportCancellationsReport,
+  type ReportDateRange,
+} from "@/lib/api/reports"
 import { formatAmount, formatTimestamp } from "@/lib/format"
 import {
   formatBookingCount,
@@ -68,9 +72,16 @@ export function CancellationsReportView({ range }: { range: ReportDateRange }) {
         from={range.from_date}
         to={range.to_date}
         action={
-          <CancellationsReportDialog initialRange={range}>
-            <ChangeFiltersButton />
-          </CancellationsReportDialog>
+          <>
+            <ReportCsvDownload
+              filters={range}
+              noun="cancellations report"
+              exportFile={exportCancellationsReport}
+            />
+            <CancellationsReportDialog initialRange={range}>
+              <ChangeFiltersButton />
+            </CancellationsReportDialog>
+          </>
         }
       />
 

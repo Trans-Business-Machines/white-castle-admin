@@ -20,6 +20,7 @@ import {
   ChangeFiltersButton,
   ReportHeader,
 } from "@/components/reports/report-header"
+import { ReportCsvDownload } from "@/components/reports/report-csv"
 import { ShareBreakdown } from "@/components/reports/share-breakdown"
 import { StatCard } from "@/components/stat-card"
 import { TablePagination } from "@/components/table-pagination"
@@ -42,7 +43,10 @@ import { SearchInput } from "@/components/users/table-toolbar"
 import { usePagination } from "@/hooks/use-pagination"
 import { usePaymentsReport } from "@/hooks/use-payments-report"
 import { getApiErrorMessage } from "@/lib/api/errors"
-import type { PaymentsReportFilters } from "@/lib/api/reports"
+import {
+  exportPaymentsReport,
+  type PaymentsReportFilters,
+} from "@/lib/api/reports"
 import {
   formatAmount,
   formatCurrency,
@@ -94,9 +98,16 @@ export function PaymentsReportView({
         to={filters.to_date}
         chips={chips}
         action={
-          <PaymentsReportDialog initialFilters={filters}>
-            <ChangeFiltersButton />
-          </PaymentsReportDialog>
+          <>
+            <ReportCsvDownload
+              filters={filters}
+              noun="payments report"
+              exportFile={exportPaymentsReport}
+            />
+            <PaymentsReportDialog initialFilters={filters}>
+              <ChangeFiltersButton />
+            </PaymentsReportDialog>
+          </>
         }
       />
 

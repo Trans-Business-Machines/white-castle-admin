@@ -14,7 +14,7 @@ interface ReportHeaderProps {
    * Omit for reports that only take a date range.
    */
   chips?: string[]
-  /** Right-hand action, usually the report's "Change filters" dialog. */
+  /** Right-hand actions, e.g. Download CSV and the "Change filters" dialog. */
   action: ReactNode
 }
 
@@ -58,7 +58,7 @@ export function ReportHeader({
         </div>
       </div>
 
-      {action}
+      <div className="flex flex-wrap gap-2">{action}</div>
     </header>
   )
 }

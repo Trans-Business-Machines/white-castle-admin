@@ -2,11 +2,26 @@ import type { ComponentProps, ComponentType, ReactNode } from "react"
 import { cn } from "cn"
 import { FileChartColumn } from "lucide-react"
 import { BbSummaryReportDialog } from "@/components/reports/bb-summary-report-dialog"
-import { BookingsReportDialog } from "@/components/reports/bookings-report-dialog"
-import { CancellationsReportDialog } from "@/components/reports/cancellations-report-dialog"
-import { GuestsReportDialog } from "@/components/reports/guests-report-dialog"
-import { PaymentsReportDialog } from "@/components/reports/payments-report-dialog"
-import { RevenueReportDialog } from "@/components/reports/revenue-report-dialog"
+import {
+  BookingsReportDialog,
+  BookingsReportExportDialog,
+} from "@/components/reports/bookings-report-dialog"
+import {
+  CancellationsReportDialog,
+  CancellationsReportExportDialog,
+} from "@/components/reports/cancellations-report-dialog"
+import {
+  GuestsReportDialog,
+  GuestsReportExportDialog,
+} from "@/components/reports/guests-report-dialog"
+import {
+  PaymentsReportDialog,
+  PaymentsReportExportDialog,
+} from "@/components/reports/payments-report-dialog"
+import {
+  RevenueReportDialog,
+  RevenueReportExportDialog,
+} from "@/components/reports/revenue-report-dialog"
 import { Button } from "@/components/ui/button"
 import { REPORT_TYPES, type ReportSlug, type ReportType } from "@/lib/reports"
 
@@ -24,6 +39,18 @@ const REPORT_DIALOGS: Record<
   payments: PaymentsReportDialog,
   guests: GuestsReportDialog,
   cancellations: CancellationsReportDialog,
+}
+
+/**
+ * The Download CSV CTA beside Generate report (a dialog over the same
+ * filters). Partial while the breakfast list has no export yet.
+ */
+const REPORT_EXPORT_DIALOGS: Partial<Record<ReportSlug, ComponentType>> = {
+  bookings: BookingsReportExportDialog,
+  revenue: RevenueReportExportDialog,
+  payments: PaymentsReportExportDialog,
+  guests: GuestsReportExportDialog,
+  cancellations: CancellationsReportExportDialog,
 }
 
 /** Same surface as the settings sections. */
@@ -46,6 +73,7 @@ export function ReportCards() {
 function ReportCard({ report }: { report: ReportType }) {
   const Icon = report.icon
   const Dialog = REPORT_DIALOGS[report.slug]
+  const ExportDialog = REPORT_EXPORT_DIALOGS[report.slug]
   const headingId = `report-${report.slug}`
 
   return (
@@ -70,10 +98,11 @@ function ReportCard({ report }: { report: ReportType }) {
         {report.description}
       </p>
 
-      <div className="mt-5">
+      <div className="mt-5 flex flex-wrap gap-2">
         <Dialog>
           <GenerateButton />
         </Dialog>
+        {ExportDialog ? <ExportDialog /> : null}
       </div>
     </article>
   )

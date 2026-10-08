@@ -1,9 +1,11 @@
 "use client"
 
 import type { ReactNode } from "react"
+import { ExportCsvDialog } from "@/components/export-csv-dialog"
 import { ReportDateRangeFields } from "@/components/reports/report-param-fields"
+import { DownloadCsvButton } from "@/components/reports/report-csv"
 import { ReportParamsDialog } from "@/components/reports/report-params-dialog"
-import type { ReportDateRange } from "@/lib/api/reports"
+import { exportGuestsReport, type ReportDateRange } from "@/lib/api/reports"
 import { EMPTY_REPORT_DATE_RANGE } from "@/lib/reports"
 
 interface GuestsReportDialogProps {
@@ -34,5 +36,27 @@ export function GuestsReportDialog({
     >
       {children}
     </ReportParamsDialog>
+  )
+}
+
+/** The report card's Download CSV: same period → `GET /motel/reports/guests/export`. */
+export function GuestsReportExportDialog() {
+  return (
+    <ExportCsvDialog
+      noun="guests report"
+      description="Pick the period to export. Leave both dates empty to include every guest."
+      initialFilters={() => EMPTY_REPORT_DATE_RANGE}
+      renderFields={(range, update) => (
+        <ReportDateRangeFields
+          idPrefix="guests-report-export"
+          value={range}
+          onChange={update}
+        />
+      )}
+      exportFile={exportGuestsReport}
+      submitLabel="Download CSV"
+    >
+      <DownloadCsvButton className="h-10" />
+    </ExportCsvDialog>
   )
 }

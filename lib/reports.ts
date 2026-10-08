@@ -15,9 +15,9 @@ import type {
   ReportDateRange,
 } from "@/lib/api/reports"
 import { BOOKING_STATUSES, formatPercent } from "@/lib/bookings"
-import { formatCurrency, formatDate } from "@/lib/format"
+import { formatCurrency, formatCurrencyUsd, formatDate } from "@/lib/format"
 import { PAYMENT_STATUSES } from "@/lib/payments"
-import { MEAL_PLANS } from "@/lib/schemas/bookings"
+import { CURRENCIES, MEAL_PLANS } from "@/lib/schemas/bookings"
 import { PAYMENT_METHODS } from "@/lib/schemas/payments"
 import { ROOM_TYPES } from "@/lib/schemas/units"
 import type {
@@ -141,6 +141,7 @@ export const EMPTY_BOOKINGS_REPORT_FILTERS: BookingsReportFilters = {
   status: "",
   room_type: "",
   meal_plan: "",
+  currency: "",
 }
 
 export const EMPTY_REPORT_DATE_RANGE: ReportDateRange = {
@@ -187,6 +188,11 @@ export function parseBookingsReportFilters(
       "meal_plan",
       MEAL_PLANS.map((plan) => plan.value)
     ),
+    currency: pickParam(
+      params,
+      "currency",
+      CURRENCIES.map((currency) => currency.value)
+    ),
   }
 }
 
@@ -229,40 +235,67 @@ export function formatReportPeriod(from: string, to: string) {
   return "All dates"
 }
 
-type BookingsReportStatKey = Exclude<
-  keyof BookingsReport["summary"],
-  "by_status"
->
+type BookingsReportSummary = BookingsReport["summary"]
+
+type BookingsReportStatKey = {
+  [K in keyof BookingsReportSummary]: BookingsReportSummary[K] extends number
+    ? K
+    : never
+}[keyof BookingsReportSummary]
 
 /** 1234 → "1,234". */
 export const formatCount = (value: number) => value.toLocaleString("en-KE")
+
+/**
+ * Formats a summary figure, or "—" when the response doesn't carry it, so a
+ * renamed or dropped backend field blanks one card instead of the page.
+ */
+export function formatStat(value: unknown, format: (value: number) => string) {
+  return typeof value === "number" && Number.isFinite(value)
+    ? format(value)
+    : "—"
+}
 
 /** Summary cards of the bookings report, in display order. */
 export const BOOKINGS_REPORT_STAT_CARDS: ReadonlyArray<{
   key: BookingsReportStatKey
   title: string
-  label: string
+  /** Line under the figure; may read other summary fields. */
+  label: string | ((summary: BookingsReportSummary) => string)
   titleClassName: string
   format: (value: number) => string
+  /** A revenue card's currency: hidden when the report is filtered to the other one. */
+  currency?: "KES" | "USD"
 }> = [
   {
     key: "total",
     title: "Bookings",
-    label: "in this report",
+    label: (summary) =>
+      `${formatStat(summary.resident_bookings, formatCount)} resident · ${formatStat(summary.non_resident_bookings, formatCount)} non-resident`,
     titleClassName: "text-brand-navy dark:text-sky-200",
     format: formatCount,
   },
   {
-    key: "total_revenue",
-    title: "Revenue",
-    label: "total booking value",
+    key: "total_revenue_kes",
+    title: "Resident revenue",
+    label: "booking value in KES",
     titleClassName: "text-emerald-700 dark:text-emerald-300",
     format: formatCurrency,
+    currency: "KES",
+  },
+  {
+    key: "total_revenue_usd",
+    title: "Non-resident revenue",
+    label: "booking value in USD",
+    titleClassName: "text-teal-700 dark:text-teal-300",
+    format: formatCurrencyUsd,
+    currency: "USD",
   },
   {
     key: "total_guests",
     title: "Guests",
-    label: "adults and children",
+    label: (summary) =>
+      `${formatStat(summary.total_children_under_5, formatCount)} under 5 · ${formatStat(summary.total_children_6_to_12, formatCount)} aged 6–12`,
     titleClassName: "text-violet-700 dark:text-violet-300",
     format: formatCount,
   },
@@ -274,24 +307,52 @@ export const BOOKINGS_REPORT_STAT_CARDS: ReadonlyArray<{
     format: formatCount,
   },
   {
-    key: "bb_bookings",
-    title: "Bed & Breakfast",
-    label: "bookings with breakfast",
+    key: "breakfast_bookings",
+    title: "Breakfast",
+    label: "bookings on a breakfast plan",
     titleClassName: "text-amber-700 dark:text-amber-300",
     format: formatCount,
   },
 ]
 
+/** The cards to show for a report filtered to `currency` ("" = both). */
+export function getBookingsReportStatCards(currency: string) {
+  return BOOKINGS_REPORT_STAT_CARDS.filter(
+    (card) => !currency || !card.currency || card.currency === currency
+  )
+}
+
+/** `by_meal_plan` as `[plan, count]` pairs in `MEAL_PLANS` order, unknown plans last. */
+export function getMealPlanBreakdown(
+  byMealPlan: Record<string, number> | undefined
+) {
+  const order: readonly string[] = MEAL_PLANS.map((plan) => plan.value)
+  const rank = (plan: string) => {
+    const index = order.indexOf(plan)
+    return index === -1 ? order.length : index
+  }
+  return Object.entries(byMealPlan ?? {}).sort(([a], [b]) => rank(a) - rank(b))
+}
+
+/** "KES" → "Resident (KES)"; anything else as-is. */
+export function getCurrencyLabel(currency: string) {
+  return (
+    CURRENCIES.find((option) => option.value === currency)?.label ?? currency
+  )
+}
+
 /**
  * `by_status` as `[status, count]` pairs in lifecycle order
  * (`BOOKING_STATUSES`), with any status the API adds later at the end.
  */
-export function getStatusBreakdown(byStatus: Record<string, number>) {
+export function getStatusBreakdown(
+  byStatus: Record<string, number> | undefined
+) {
   const rank = (status: string) => {
     const index = (BOOKING_STATUSES as readonly string[]).indexOf(status)
     return index === -1 ? BOOKING_STATUSES.length : index
   }
-  return Object.entries(byStatus).sort(([a], [b]) => rank(a) - rank(b))
+  return Object.entries(byStatus ?? {}).sort(([a], [b]) => rank(a) - rank(b))
 }
 
 /** Case-insensitive match on reference, guest name or email. */

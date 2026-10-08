@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useState, type ReactNode } from "react"
 import Link from "next/link"
 import { cn } from "cn"
 import { getBookingHref } from "@/components/bookings/booking-actions-menu"
@@ -17,6 +17,7 @@ import {
   ChangeFiltersButton,
   ReportHeader,
 } from "@/components/reports/report-header"
+import { ReportCsvDownload } from "@/components/reports/report-csv"
 import { StatCard } from "@/components/stat-card"
 import { TablePagination } from "@/components/table-pagination"
 import {
@@ -37,11 +38,18 @@ import { SearchInput } from "@/components/users/table-toolbar"
 import { usePagination } from "@/hooks/use-pagination"
 import { getApiErrorMessage } from "@/lib/api/errors"
 import { useBookingsReport } from "@/hooks/use-bookings-report"
-import type { BookingsReportFilters } from "@/lib/api/reports"
+import {
+  exportBookingsReport,
+  type BookingsReportFilters,
+} from "@/lib/api/reports"
 import { getMealPlanLabel } from "@/lib/bookings"
 import { formatAmount, formatTimestamp, humanizeSlug } from "@/lib/format"
 import {
-  BOOKINGS_REPORT_STAT_CARDS,
+  formatCount,
+  formatStat,
+  getBookingsReportStatCards,
+  getCurrencyLabel,
+  getMealPlanBreakdown,
   getStatusBreakdown,
   matchesBookingsReportSearch,
 } from "@/lib/reports"
@@ -73,7 +81,7 @@ export function BookingsReportView({
 
       {report.isPending ? (
         <div className={statGridClassName}>
-          {BOOKINGS_REPORT_STAT_CARDS.map((card) => (
+          {getBookingsReportStatCards(filters.currency).map((card) => (
             <StatCardSkeleton key={card.key} />
           ))}
         </div>
@@ -93,17 +101,24 @@ export function BookingsReportView({
           )}
         >
           <div className={statGridClassName}>
-            {BOOKINGS_REPORT_STAT_CARDS.map((card) => (
+            {getBookingsReportStatCards(filters.currency).map((card) => (
               <StatCard
                 key={card.key}
                 title={card.title}
                 titleClassName={card.titleClassName}
-                text={card.format(report.data.summary[card.key])}
-                label={card.label}
+                text={formatStat(report.data.summary[card.key], card.format)}
+                label={
+                  typeof card.label === "function"
+                    ? card.label(report.data.summary)
+                    : card.label
+                }
               />
             ))}
           </div>
-          <StatusBreakdown byStatus={report.data.summary.by_status} />
+          <Breakdowns
+            byStatus={report.data.summary.by_status}
+            byMealPlan={report.data.summary.by_meal_plan}
+          />
         </div>
       )}
 
@@ -117,6 +132,7 @@ function BookingsReportHeader({ filters }: { filters: BookingsReportFilters }) {
     filters.status && `Status: ${humanizeSlug(filters.status)}`,
     filters.room_type && `Room: ${getRoomTypeLabel(filters.room_type)}`,
     filters.meal_plan && `Meal plan: ${getMealPlanLabel(filters.meal_plan)}`,
+    filters.currency && `Residency: ${getCurrencyLabel(filters.currency)}`,
   ].filter((chip) => chip !== "")
 
   return (
@@ -126,39 +142,90 @@ function BookingsReportHeader({ filters }: { filters: BookingsReportFilters }) {
       to={filters.to_date}
       chips={chips}
       action={
-        <BookingsReportDialog initialFilters={filters}>
-          <ChangeFiltersButton />
-        </BookingsReportDialog>
+        <>
+          <ReportCsvDownload
+            filters={filters}
+            noun="bookings report"
+            exportFile={exportBookingsReport}
+          />
+          <BookingsReportDialog initialFilters={filters}>
+            <ChangeFiltersButton />
+          </BookingsReportDialog>
+        </>
       }
     />
   )
 }
 
-function StatusBreakdown({ byStatus }: { byStatus: Record<string, number> }) {
-  const rows = getStatusBreakdown(byStatus)
-  if (rows.length === 0) return null
+/** One strip: booking counts by status, then by meal plan. */
+function Breakdowns({
+  byStatus,
+  byMealPlan,
+}: {
+  byStatus: Record<string, number> | undefined
+  byMealPlan: Record<string, number> | undefined
+}) {
+  const statuses = getStatusBreakdown(byStatus)
+  const mealPlans = getMealPlanBreakdown(byMealPlan)
+  if (statuses.length === 0 && mealPlans.length === 0) return null
 
   return (
     <div
       className={cn(
         surfaceClassName,
-        "flex flex-wrap items-center gap-x-5 gap-y-3 px-5 py-4"
+        "flex flex-wrap items-center gap-x-8 gap-y-3 px-5 py-4"
       )}
     >
+      {statuses.length > 0 ? (
+        <BreakdownGroup title="By status">
+          {statuses.map(([status, count]) => (
+            <li key={status} className="inline-flex items-center gap-2">
+              <BookingStatusBadge status={status} />
+              <BreakdownCount count={count} />
+            </li>
+          ))}
+        </BreakdownGroup>
+      ) : null}
+      {mealPlans.length > 0 ? (
+        <BreakdownGroup title="By meal plan">
+          {mealPlans.map(([plan, count]) => (
+            <li key={plan} className="inline-flex items-center gap-2">
+              <span className="rounded-full bg-muted px-2.5 py-0.5 text-xs font-medium text-muted-foreground">
+                {getMealPlanLabel(plan)}
+              </span>
+              <BreakdownCount count={count} />
+            </li>
+          ))}
+        </BreakdownGroup>
+      ) : null}
+    </div>
+  )
+}
+
+function BreakdownGroup({
+  title,
+  children,
+}: {
+  title: string
+  children: ReactNode
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
       <h3 className="font-heading text-xs font-bold tracking-wide text-iron uppercase">
-        By status
+        {title}
       </h3>
       <ul className="flex flex-wrap items-center gap-x-5 gap-y-2">
-        {rows.map(([status, count]) => (
-          <li key={status} className="inline-flex items-center gap-2">
-            <BookingStatusBadge status={status} />
-            <span className="font-semibold text-foreground tabular-nums">
-              {count}
-            </span>
-          </li>
-        ))}
+        {children}
       </ul>
     </div>
+  )
+}
+
+function BreakdownCount({ count }: { count: number }) {
+  return (
+    <span className="font-semibold text-foreground tabular-nums">
+      {formatCount(count)}
+    </span>
   )
 }
 

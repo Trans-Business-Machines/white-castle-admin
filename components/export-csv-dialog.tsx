@@ -40,6 +40,8 @@ const inputClassName =
   "h-11 rounded-lg border-border bg-canvas px-3.5 text-base focus-visible:border-brand-azure focus-visible:ring-brand-azure/20 md:text-base dark:bg-input/30"
 
 interface ExportCsvDialogProps<T extends object> {
+  /** The element that opens the dialog; defaults to an "Export as CSV" button. */
+  children?: ReactNode
   /** Plural noun for the copy, e.g. "bookings". */
   noun: string
   description: string
@@ -67,18 +69,21 @@ interface ExportCsvDialogProps<T extends object> {
  * collects the filters via `renderFields` (bookings and payments use
  * `ExportStatusDateFields`), then saves whatever `exportFile` downloads.
  */
-export function ExportCsvDialog<T extends object>(
-  props: ExportCsvDialogProps<T>
-) {
+export function ExportCsvDialog<T extends object>({
+  children,
+  ...props
+}: ExportCsvDialogProps<T>) {
   const [open, setOpen] = useState(false)
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="h-11 rounded-md bg-brand-azure px-5 text-white hover:bg-brand-azure/90 focus-visible:ring-brand-azure/30">
-          <Download aria-hidden="true" />
-          Export as CSV
-        </Button>
+        {children ?? (
+          <Button className="h-11 rounded-md bg-brand-azure px-5 text-white hover:bg-brand-azure/90 focus-visible:ring-brand-azure/30">
+            <Download aria-hidden="true" />
+            Export as CSV
+          </Button>
+        )}
       </DialogTrigger>
       {/* Mounted only while open so every open starts from `initialFilters`. */}
       {open ? <ExportForm {...props} onDone={() => setOpen(false)} /> : null}
@@ -94,7 +99,7 @@ function ExportForm<T extends object>({
   exportFile,
   submitLabel = "Export CSV",
   onDone,
-}: ExportCsvDialogProps<T> & { onDone: () => void }) {
+}: Omit<ExportCsvDialogProps<T>, "children"> & { onDone: () => void }) {
   const [filters, setFilters] = useState(initialFilters)
 
   function update(patch: Partial<T>) {

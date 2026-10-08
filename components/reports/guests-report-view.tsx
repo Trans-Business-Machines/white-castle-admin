@@ -14,6 +14,7 @@ import {
   ChangeFiltersButton,
   ReportHeader,
 } from "@/components/reports/report-header"
+import { ReportCsvDownload } from "@/components/reports/report-csv"
 import { StatCard } from "@/components/stat-card"
 import { TablePagination } from "@/components/table-pagination"
 import {
@@ -35,7 +36,7 @@ import { SearchInput } from "@/components/users/table-toolbar"
 import { useGuestsReport } from "@/hooks/use-guests-report"
 import { usePagination } from "@/hooks/use-pagination"
 import { getApiErrorMessage } from "@/lib/api/errors"
-import type { ReportDateRange } from "@/lib/api/reports"
+import { exportGuestsReport, type ReportDateRange } from "@/lib/api/reports"
 import { formatCurrency, formatDate, getInitials } from "@/lib/format"
 import {
   GUESTS_REPORT_LISTS,
@@ -70,9 +71,16 @@ export function GuestsReportView({ range }: { range: ReportDateRange }) {
         from={range.from_date}
         to={range.to_date}
         action={
-          <GuestsReportDialog initialRange={range}>
-            <ChangeFiltersButton />
-          </GuestsReportDialog>
+          <>
+            <ReportCsvDownload
+              filters={range}
+              noun="guests report"
+              exportFile={exportGuestsReport}
+            />
+            <GuestsReportDialog initialRange={range}>
+              <ChangeFiltersButton />
+            </GuestsReportDialog>
+          </>
         }
       />
 

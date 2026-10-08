@@ -1,4 +1,5 @@
 import { axiosInstance } from "@/lib/axios"
+import { downloadCsv } from "@/lib/api/files"
 import type {
   BbSummaryReport,
   BookingsReport,
@@ -38,6 +39,8 @@ export interface BookingsReportFilters extends ReportDateRange {
   status: string
   room_type: string
   meal_plan: string
+  /** "KES" (residents), "USD" (non-residents) or "" for both. */
+  currency: string
 }
 
 export function bookingsReportQueryKey(filters: BookingsReportFilters) {
@@ -53,6 +56,15 @@ export async function fetchBookingsReport(filters: BookingsReportFilters) {
   return response.data
 }
 
+/** GET /motel/reports/bookings/export: the same params as the report, as a CSV file. */
+export function exportBookingsReport(filters: BookingsReportFilters) {
+  return downloadCsv(
+    "/motel/reports/bookings/export",
+    filters,
+    "bookings-report"
+  )
+}
+
 export function revenueReportQueryKey(range: ReportDateRange) {
   return ["reports", "revenue", range] as const
 }
@@ -64,6 +76,11 @@ export async function fetchRevenueReport(range: ReportDateRange) {
     { params: toReportParams(range) }
   )
   return response.data
+}
+
+/** GET /motel/reports/revenue/export: the same params as the report, as a CSV file. */
+export function exportRevenueReport(range: ReportDateRange) {
+  return downloadCsv("/motel/reports/revenue/export", range, "revenue-report")
 }
 
 /** Query params of `GET /motel/reports/payments`; "" means "not filtered". */
@@ -85,6 +102,15 @@ export async function fetchPaymentsReport(filters: PaymentsReportFilters) {
   return response.data
 }
 
+/** GET /motel/reports/payments/export: the same params as the report, as a CSV file. */
+export function exportPaymentsReport(filters: PaymentsReportFilters) {
+  return downloadCsv(
+    "/motel/reports/payments/export",
+    filters,
+    "payments-report"
+  )
+}
+
 export function guestsReportQueryKey(range: ReportDateRange) {
   return ["reports", "guests", range] as const
 }
@@ -98,6 +124,11 @@ export async function fetchGuestsReport(range: ReportDateRange) {
   return response.data
 }
 
+/** GET /motel/reports/guests/export: the same params as the report, as a CSV file. */
+export function exportGuestsReport(range: ReportDateRange) {
+  return downloadCsv("/motel/reports/guests/export", range, "guests-report")
+}
+
 export function cancellationsReportQueryKey(range: ReportDateRange) {
   return ["reports", "cancellations", range] as const
 }
@@ -109,6 +140,15 @@ export async function fetchCancellationsReport(range: ReportDateRange) {
     { params: toReportParams(range) }
   )
   return response.data
+}
+
+/** GET /motel/reports/cancellations/export: the same params as the report, as a CSV file. */
+export function exportCancellationsReport(range: ReportDateRange) {
+  return downloadCsv(
+    "/motel/reports/cancellations/export",
+    range,
+    "cancellations-report"
+  )
 }
 
 /** Query params of `GET /motel/reports/bb-summary`; "" means "not sent". */
