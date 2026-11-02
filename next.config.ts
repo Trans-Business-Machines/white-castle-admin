@@ -10,6 +10,12 @@ import type { NextConfig } from "next"
 const API_PROXY_TARGET = process.env.API_PROXY_TARGET
 
 const nextConfig: NextConfig = {
+  experimental: {
+    // The API is reached through this app's /api rewrite. Next buffers the
+    // proxied body and caps it at 10 MB by default, which broke room-photo
+    // uploads larger than that.
+    proxyClientMaxBodySize: "100mb",
+  },
   images: {
     remotePatterns: [
       {
