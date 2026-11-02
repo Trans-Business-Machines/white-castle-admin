@@ -49,13 +49,13 @@ function toFormValues(unit: Unit): UnitType {
     description:   unit.description ?? "",
     max_occupancy: unit.max_occupancy,
     base_rate:     unit.base_rate,
-    bb_rate:       unit.bb_rate       ?? Number.NaN,
-    hb_rate:       unit.hb_rate       ?? Number.NaN,
-    fb_rate:       unit.fb_rate       ?? Number.NaN,
-    base_rate_usd: unit.base_rate_usd ?? Number.NaN,
-    bb_rate_usd:   unit.bb_rate_usd   ?? Number.NaN,
-    hb_rate_usd:   unit.hb_rate_usd   ?? Number.NaN,
-    fb_rate_usd:   unit.fb_rate_usd   ?? Number.NaN,
+    bb_rate:       unit.bb_rate       ?? 0,
+    hb_rate:       unit.hb_rate       ?? 0,
+    fb_rate:       unit.fb_rate       ?? 0,
+    base_rate_usd: unit.base_rate_usd ?? 0,
+    bb_rate_usd:   unit.bb_rate_usd   ?? 0,
+    hb_rate_usd:   unit.hb_rate_usd   ?? 0,
+    fb_rate_usd:   unit.fb_rate_usd   ?? 0,
     amenities:     unit.amenities ?? [],
     photos:        [],
   }
@@ -111,6 +111,24 @@ function EditUnitForm({ unit, onOpenChange }: EditUnitDialogProps) {
     reset,
     formState: { errors },
   } = form
+
+
+  /** Deletes the marked photos and remembers what actually went through. */
+  async function deleteMarkedPhotos(urls: string[]) {
+    const results = await Promise.allSettled(
+      urls.map((url) => deleteUnitPhoto(unit.room_id, url))
+    )
+    const gone = urls.filter(
+      (_, index) => results[index].status === "fulfilled"
+    )
+    if (gone.length > 0) {
+      setDeletedPhotos((current) => [...current, ...gone])
+      setRemovedPhotos((current) =>
+        current.filter((url) => !gone.includes(url))
+      )
+    }
+    return gone.length
+  }
 
   const mutation = useMutation({
     mutationFn: async (values: UnitType) => {
@@ -217,7 +235,24 @@ function EditUnitForm({ unit, onOpenChange }: EditUnitDialogProps) {
         </DialogHeader>
 
         <form
-          onSubmit={handleSubmit((values) => mutation.mutate(values))}
+          onSubmit={handleSubmit(
+            (values) => mutation.mutate(values),
+            async () => {
+              // The rest of the form is invalid, but the user asked for these
+              // photos to go. Delete them anyway and explain what is left.
+              if (removedPhotos.length > 0) {
+                const removed = await deleteMarkedPhotos(removedPhotos)
+                setError("root", {
+                  message: `${removed} photo${removed === 1 ? "" : "s"} removed. Fix the highlighted fields to save the rest of the room.`,
+                })
+              } else {
+                setError("root", {
+                  message:
+                    "Some details need fixing before this room can be saved. Check the highlighted fields.",
+                })
+              }
+            }
+          )}
           noValidate
         >
           <div className="grid min-w-0 gap-4">
