@@ -1,0 +1,74 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-white-castle-admin
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check deployment secrets
+        id: preflight
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          if [ -z "$SSH_HOST" ] || [ -z "$SSH_USER" ] || [ -z "$SSH_KEY" ]; then
+            echo "::notice::Deployment skipped. Add repository secrets SSH_HOST, SSH_USER and SSH_KEY."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Deploy over SSH
+        if: steps.preflight.outputs.ready == 'true'
+        env:
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "$SSH_HOST" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh -i ~/.ssh/deploy_key -o IdentitiesOnly=yes -o ConnectTimeout=20 \
+            "$SSH_USER@$SSH_HOST" 'bash -s' <<'REMOTE'
+          set -euo pipefail
+          cd /opt/wc-admin
+
+          PREV=$(git rev-parse HEAD)
+          echo "Previous commit: $PREV"
+          git fetch origin main
+          git reset --hard origin/main
+          echo "Deploying: $(git rev-parse --short HEAD)"
+
+          build() {
+            npm ci
+            npm run build
+            pm2 restart wc-admin
+          }
+
+          healthy() {
+            for _ in $(seq 1 30); do
+              curl -fsS -o /dev/null http://127.0.0.1:3001/units && return 0
+              sleep 3
+            done
+            return 1
+          }
+
+          if ! build || ! healthy; then
+            echo "::error::Health check failed — rolling back to $PREV"
+            git reset --hard "$PREV"
+            build || true
+            exit 1
+          fi
+
+          echo "Deployment healthy at $(git rev-parse --short HEAD)."
+          REMOTE
