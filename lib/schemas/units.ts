@@ -1,5 +1,4 @@
 import { z } from "zod"
-import { IMAGE_PICK_MAX_BYTES } from "@/lib/image-compression"
 
 export const ROOM_PHOTO_TYPES = [
   "image/jpeg",
@@ -8,8 +7,8 @@ export const ROOM_PHOTO_TYPES = [
   "image/webp",
 ] as const
 
-/** Largest photo sent to the backend, after compression. */
-export const ROOM_PHOTO_MAX_BYTES = 2 * 1024 * 1024
+/** Largest room photo the picker accepts; it's uploaded as picked. */
+export const ROOM_PHOTO_MAX_BYTES = 10 * 1024 * 1024
 
 export const MAX_ROOM_PHOTOS = 10
 
@@ -18,8 +17,7 @@ export function getRoomPhotoError(file: File) {
   if (!(ROOM_PHOTO_TYPES as readonly string[]).includes(file.type)) {
     return "Use a JPG, PNG or WebP image."
   }
-  // Checked against the pick limit: the photo is compressed before upload.
-  if (file.size > IMAGE_PICK_MAX_BYTES) {
+  if (file.size > ROOM_PHOTO_MAX_BYTES) {
     return "Keep the image under 10 MB."
   }
   return null

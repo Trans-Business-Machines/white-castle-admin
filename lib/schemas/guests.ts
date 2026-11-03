@@ -1,7 +1,6 @@
 import { format, isAfter, isValid, parseISO, startOfToday } from "date-fns"
 import { z } from "zod"
 import { nationalities } from "@/lib/data"
-import { IMAGE_PICK_MAX_BYTES } from "@/lib/image-compression"
 import type { Guest } from "@/lib/types"
 
 /** ID documents a guest can register with; `value` is what the API receives. */
@@ -53,22 +52,20 @@ export const ID_DOCUMENT_TYPES = [
   "application/pdf",
 ] as const
 
-/**
- * Largest ID document sent to the backend: a PDF as picked, an image after
- * compression.
- */
+/** Largest ID document PDF the picker accepts; it's uploaded as picked. */
 export const ID_DOCUMENT_MAX_BYTES = 5 * 1024 * 1024
+
+/** Largest ID document image the picker accepts; it's uploaded as picked. */
+export const ID_IMAGE_MAX_BYTES = 10 * 1024 * 1024
 
 /** Returns a message when `file` can't be uploaded as an ID document. */
 export function getIdDocumentError(file: File) {
   if (!(ID_DOCUMENT_TYPES as readonly string[]).includes(file.type)) {
     return "Use a PNG, JPG or PDF file."
   }
-  // PDFs can't be compressed in the browser, so they keep the upload limit;
-  // images only need to fit the pick limit.
   if (file.type === "application/pdf") {
     if (file.size > ID_DOCUMENT_MAX_BYTES) return "Keep a PDF under 5 MB."
-  } else if (file.size > IMAGE_PICK_MAX_BYTES) {
+  } else if (file.size > ID_IMAGE_MAX_BYTES) {
     return "Keep the image under 10 MB."
   }
   return null
