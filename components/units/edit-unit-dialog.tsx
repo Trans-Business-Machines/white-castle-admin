@@ -260,6 +260,7 @@ function EditUnitForm({ unit, onOpenChange }: EditUnitDialogProps) {
               form={form}
               detailsLocked={detailsLocked}
               pending={mutation.isPending}
+              roomNumberLocked
               existingPhotos={existingPhotos}
               removedPhotos={removedPhotos}
               onToggleRemovePhoto={toggleRemovePhoto}

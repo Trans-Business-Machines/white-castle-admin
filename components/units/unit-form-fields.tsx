@@ -31,6 +31,8 @@ import {
   roomTypesQueryKey,
   type RoomTypeDefault,
 } from "@/lib/api/units"
+import { hasRole, UNIT_RATE_EDIT_ROLES } from "@/lib/roles"
+import { useAuth } from "@/providers/auth-provider"
 
 const labelClassName =
   "font-ibm-plex text-xs font-semibold tracking-wide text-iron uppercase"
@@ -46,7 +48,7 @@ function FieldError({ id, message }: { id: string; message?: string }) {
   )
 }
 
-/** The eight nightly rates, all copied from the room type's defaults. */
+/** The eight nightly rates, all seeded from the room type's defaults. */
 const RATE_FIELDS = [
   "base_rate",
   "bb_rate",
@@ -58,37 +60,48 @@ const RATE_FIELDS = [
   "fb_rate_usd",
 ] as const satisfies readonly (keyof UnitType & keyof RoomTypeDefault)[]
 
-/** A read-only rate: the value always comes from the room type. */
+/** One rate, read-only unless the signed-in user may set it by hand. */
 function RateInput({
   id,
   label,
   fieldName,
   form,
+  editable,
 }: {
   id: string
   label: string
   fieldName: (typeof RATE_FIELDS)[number]
   form: UseFormReturn<UnitType>
+  editable: boolean
 }) {
   const {
     register,
     formState: { errors },
   } = form
+  const error = editable ? errors[fieldName]?.message : undefined
   return (
-    <div className="grid gap-2">
+    <div className="grid content-start gap-2">
       <Label htmlFor={id} className={labelClassName}>
         {label}
       </Label>
       <Input
         id={id}
         type="number"
-        readOnly
+        inputMode="decimal"
+        min={0}
+        step="any"
+        readOnly={!editable}
         placeholder="—"
-        className={`${inputClassName} cursor-default read-only:bg-muted read-only:focus-visible:border-border read-only:focus-visible:ring-0`}
+        className={
+          editable
+            ? inputClassName
+            : `${inputClassName} cursor-default read-only:bg-muted read-only:focus-visible:border-border read-only:focus-visible:ring-0`
+        }
         aria-invalid={Boolean(errors[fieldName])}
-        aria-describedby="unit-rates-status"
+        aria-describedby={error ? `${id}-error` : "unit-rates-status"}
         {...register(fieldName, { valueAsNumber: true })}
       />
+      <FieldError id={`${id}-error`} message={error} />
     </div>
   )
 }
@@ -99,6 +112,8 @@ interface UnitFormFieldsProps {
   detailsLocked: boolean
   /** Disables the photo controls while a request is in flight. */
   pending: boolean
+  /** Shows the room number greyed out; it can't change once a room exists. */
+  roomNumberLocked?: boolean
   /** Photos already on the room; edit dialog only. */
   existingPhotos?: string[]
   /** Existing photo URLs the user has marked for deletion on save. */
@@ -116,6 +131,7 @@ export function UnitFormFields({
   form,
   detailsLocked,
   pending,
+  roomNumberLocked = false,
   existingPhotos = [],
   removedPhotos = [],
   onToggleRemovePhoto,
@@ -129,13 +145,15 @@ export function UnitFormFields({
     clearErrors,
     formState: { errors },
   } = form
+  const { user } = useAuth()
+  const canEditRates = hasRole(user?.role, UNIT_RATE_EDIT_ROLES)
   const [amenityInput, setAmenityInput] = useState("")
   const [amenityError, setAmenityError] = useState<string | null>(null)
 
   const amenities = useWatch({ control, name: "amenities" })
   const photos = useWatch({ control, name: "photos" })
 
-  // Each room type's default occupancy and rates; the rates can't be typed.
+  // Each room type's default occupancy and rates.
   const roomTypes = useQuery({
     queryKey: roomTypesQueryKey,
     queryFn: fetchRoomTypes,
@@ -144,7 +162,8 @@ export function UnitFormFields({
   const roomTypeDefaults = roomTypes.data?.find(
     (defaults) => defaults.type === roomType
   )
-  const rateError = RATE_FIELDS.some((name) => errors[name])
+  // Editable rates carry their own field errors instead.
+  const rateError = !canEditRates && RATE_FIELDS.some((name) => errors[name])
 
   /** Copies the type's defaults in; `onlyMissing` keeps values already set. */
   function applyRoomTypeDefaults(
@@ -184,7 +203,9 @@ export function UnitFormFields({
   else if (roomTypes.isError)
     ratesStatus = "We couldn't load the room type rates."
   else if (roomType && !roomTypeDefaults)
-    ratesStatus = "This room type has no rates set yet."
+    ratesStatus = canEditRates
+      ? "This room type has no default rates. Enter them above."
+      : "This room type has no rates set yet."
   else if (rateError) ratesStatus = "Choose a room type to fill in its rates."
 
   const keptExisting = existingPhotos.filter(
@@ -237,10 +258,16 @@ export function UnitFormFields({
             </Label>
             <Input
               id="unit-room-number"
-              autoFocus
+              autoFocus={!roomNumberLocked}
               autoComplete="off"
               placeholder="101"
-              className={inputClassName}
+              readOnly={roomNumberLocked}
+              tabIndex={roomNumberLocked ? -1 : undefined}
+              className={
+                roomNumberLocked
+                  ? `${inputClassName} cursor-not-allowed text-muted-foreground read-only:bg-muted read-only:focus-visible:border-border read-only:focus-visible:ring-0 dark:read-only:bg-muted`
+                  : inputClassName
+              }
               aria-invalid={Boolean(errors.room_number)}
               aria-describedby={
                 errors.room_number ? "unit-room-number-error" : undefined
@@ -257,7 +284,7 @@ export function UnitFormFields({
             <Label htmlFor="unit-room-type" className={labelClassName}>
               Room type
               <span className="ml-1 font-normal tracking-normal text-iron normal-case">
-                — sets the rates
+                {canEditRates ? "— sets the default rates" : "— sets the rates"}
               </span>
             </Label>
             <Controller
@@ -333,24 +360,28 @@ export function UnitFormFields({
               label="Bed Only"
               fieldName="base_rate"
               form={form}
+              editable={canEditRates}
             />
             <RateInput
               id="unit-bb-rate"
               label="Bed & Breakfast"
               fieldName="bb_rate"
               form={form}
+              editable={canEditRates}
             />
             <RateInput
               id="unit-hb-rate"
               label="Half Board"
               fieldName="hb_rate"
               form={form}
+              editable={canEditRates}
             />
             <RateInput
               id="unit-fb-rate"
               label="Full Board"
               fieldName="fb_rate"
               form={form}
+              editable={canEditRates}
             />
           </div>
         </div>
@@ -364,24 +395,28 @@ export function UnitFormFields({
               label="Bed Only"
               fieldName="base_rate_usd"
               form={form}
+              editable={canEditRates}
             />
             <RateInput
               id="unit-bb-rate-usd"
               label="Bed & Breakfast"
               fieldName="bb_rate_usd"
               form={form}
+              editable={canEditRates}
             />
             <RateInput
               id="unit-hb-rate-usd"
               label="Half Board"
               fieldName="hb_rate_usd"
               form={form}
+              editable={canEditRates}
             />
             <RateInput
               id="unit-fb-rate-usd"
               label="Full Board"
               fieldName="fb_rate_usd"
               form={form}
+              editable={canEditRates}
             />
           </div>
         </div>
@@ -410,7 +445,9 @@ export function UnitFormFields({
           </div>
         ) : (
           <p id="unit-rates-status" className="text-sm text-muted-foreground">
-            Rates follow the room type and can&apos;t be edited here.
+            {canEditRates
+              ? "Rates start from the room type. Changing the type resets them."
+              : "Rates follow the room type and can't be edited here."}
           </p>
         )}
 

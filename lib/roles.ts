@@ -87,6 +87,12 @@ export const UNITS_ROLES: readonly RoleName[] = [
  */
 export const UNIT_MANAGE_ROLES: readonly RoleName[] = ["super_admin", "admin"]
 
+/**
+ * Roles allowed to change a room's nightly rates. Admins can manage rooms,
+ * but their rates stay as the room type set them.
+ */
+export const UNIT_RATE_EDIT_ROLES: readonly RoleName[] = ["super_admin"]
+
 /** Roles allowed into the user management module (`/users`). */
 export const USER_MANAGEMENT_ROLES: readonly RoleName[] = [
   "super_admin",
