@@ -3,6 +3,7 @@ import {
   BellRing,
   CalendarX2,
   Coffee,
+  Phone,
   Settings2,
   ShieldCheck,
   type LucideIcon,
@@ -28,6 +29,10 @@ const SETTING_LABELS: Record<string, string> = {
   mpesa_paybill: "M-Pesa paybill",
   payment_deadline_hours: "Payment deadline hours",
   staff_email: "Staff email",
+  motel_phone: "Contact phone",
+  motel_email: "Contact email",
+  motel_address: "Physical address",
+  motel_website: "Website",
 }
 
 export function getSettingLabel(key: string) {
@@ -88,6 +93,12 @@ const CATEGORIES = [
     icon: BellRing,
   },
   {
+    id: "contact",
+    title: "Contact details",
+    summary: "Phone, email, address and website shown on guest emails.",
+    icon: Phone,
+  },
+  {
     id: "security",
     title: "Security",
     summary: "Sign-in limits for staff accounts.",
@@ -122,6 +133,10 @@ const SETTING_CATEGORY: Record<string, CategoryId> = {
   bb_cutoff_time: "breakfast",
   catering_email: "breakfast",
   staff_email: "notifications",
+  motel_phone: "contact",
+  motel_email: "contact",
+  motel_address: "contact",
+  motel_website: "contact",
   max_login_attempts: "security",
   lockout_minutes: "security",
 }
