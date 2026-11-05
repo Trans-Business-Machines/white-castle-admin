@@ -76,6 +76,7 @@ const unitFields = z.object({
   hb_rate_usd: rateField("Half Board rate (USD)"),
   fb_rate_usd: rateField("Full Board rate (USD)"),
   amenities: z.array(amenitySchema),
+  published: z.boolean(),
   photos: z
     .array(z.custom<File>((value) => value instanceof File))
     .max(MAX_ROOM_PHOTOS, `Attach at most ${MAX_ROOM_PHOTOS} photos.`)
@@ -108,6 +109,7 @@ export function toUnitPayload(values: UnitType) {
     hb_rate_usd: values.hb_rate_usd,
     fb_rate_usd: values.fb_rate_usd,
     amenities: values.amenities.map((amenity) => amenity.trim()),
+    published: values.published,
   }
 }
 

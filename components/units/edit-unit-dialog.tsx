@@ -57,6 +57,7 @@ function toFormValues(unit: Unit): UnitType {
     hb_rate_usd:   unit.hb_rate_usd   ?? 0,
     fb_rate_usd:   unit.fb_rate_usd   ?? 0,
     amenities:     unit.amenities ?? [],
+    published:     unit.published ?? true,
     photos:        [],
   }
 }

@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import {
   PhotoDropzone,
@@ -472,6 +473,29 @@ export function UnitFormFields({
             message={errors.description?.message}
           />
         </div>
+
+        {/* Website visibility */}
+        <Controller
+          control={control}
+          name="published"
+          render={({ field }) => (
+            <div className="flex items-start justify-between gap-4 rounded-lg border border-border bg-canvas p-3.5 dark:bg-input/30">
+              <div className="grid gap-0.5">
+                <Label htmlFor="unit-published">Show on the website</Label>
+                <p className="text-xs text-muted-foreground">
+                  Hidden rooms are not listed publicly but stay bookable from
+                  this portal.
+                </p>
+              </div>
+              <Switch
+                id="unit-published"
+                checked={field.value}
+                onCheckedChange={field.onChange}
+                disabled={pending}
+              />
+            </div>
+          )}
+        />
 
         {/* Amenities */}
         <div className="grid gap-2">

@@ -208,6 +208,11 @@ export function UnitsTable() {
               >
                 <TableCell className="px-4 font-semibold text-foreground">
                   Room {unit.room_number}
+                  {unit.published === false ? (
+                    <span className="ml-2 rounded-full bg-amber-100 px-2 py-0.5 align-middle text-[10px] font-semibold tracking-wide text-amber-800 uppercase dark:bg-amber-900/40 dark:text-amber-200">
+                      Hidden
+                    </span>
+                  ) : null}
                 </TableCell>
                 <TableCell className="px-4">
                   {getRoomTypeLabel(unit.room_type)}

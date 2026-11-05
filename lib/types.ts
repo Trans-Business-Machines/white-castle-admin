@@ -48,6 +48,8 @@ export interface Unit {
   /** Full Board rate (USD). */
   fb_rate_usd: number | null
   status: string
+  /** Listed on the public website. Hidden rooms are still bookable by staff. */
+  published: boolean
   amenities: string[]
   photos: string[]
   created_at: string

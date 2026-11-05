@@ -53,6 +53,7 @@ jobs:
 
           build() {
             npm ci
+            rm -rf .next
             npm run build
             pm2 restart wc-admin
           }

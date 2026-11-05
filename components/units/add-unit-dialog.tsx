@@ -38,6 +38,7 @@ const emptyValues: UnitType = {
   hb_rate_usd: Number.NaN,
   fb_rate_usd: Number.NaN,
   amenities: [],
+  published: true,
   photos: [],
 }
 
