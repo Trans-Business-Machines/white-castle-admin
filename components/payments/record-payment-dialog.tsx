@@ -4,7 +4,7 @@ import { useState } from "react"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Loader } from "lucide-react"
-import { useForm } from "react-hook-form"
+import { useForm, useWatch } from "react-hook-form"
 import toast from "react-hot-toast"
 import { PaymentFormFields } from "@/components/payments/payment-form-fields"
 import { Button } from "@/components/ui/button"
@@ -92,14 +92,15 @@ function RecordPaymentForm({ onOpenChange }: RecordPaymentDialogProps) {
     defaultValues: emptyPaymentValues,
   })
   const {
+    control,
     handleSubmit,
     setError,
     reset,
-    watch,
     formState: { errors },
   } = form
+  const bookingId = useWatch({ control, name: "booking_id" })
   const selectedBooking = bookings.data?.find(
-    (booking) => booking.booking_id === watch("booking_id")
+    (booking) => booking.booking_id === bookingId
   )
 
   const mutation = useMutation({
