@@ -481,7 +481,7 @@ function ExtraPersonsSummary({
           currency={currency}
           paymentType="extra_persons"
           onCancel={() => setPaying(false)}
-          onRecorded={onDone}
+          onRecorded={() => onDone()}
         />
       ) : null}
     </BookingChangeSummary>

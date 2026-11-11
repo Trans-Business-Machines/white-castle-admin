@@ -18,7 +18,12 @@ import type {
 /** The fields a booking action dialog needs to name what it is about to do. */
 export type BookingSubject = Pick<
   Booking,
-  "booking_id" | "reference" | "guest_name" | "guest_id"
+  | "booking_id"
+  | "reference"
+  | "guest_name"
+  | "guest_id"
+  | "status"
+  | "payment_status"
 >
 
 /** Every booking status the API knows, in lifecycle order (filter options). */
@@ -75,26 +80,24 @@ export function getPaymentStatusClasses(status: string) {
   return PAYMENT_STATUS_BADGES[status.toLowerCase()] ?? NEUTRAL_BADGE
 }
 
-/** Booking statuses a guest can no longer be checked in from. */
-const NO_CHECK_IN_STATUSES = new Set([
-  "checked_in",
-  "checked_out",
-  "cancelled",
-  "rejected",
-])
+/** Bookings that have been approved and can be checked in. */
+const CHECK_IN_STATUSES = new Set(["approved", "confirmed"])
 
 /**
- * A guest may only check in once the booking is fully paid (a deposit isn't
- * enough), and only if they haven't already checked in or out and the
- * booking is still live. The check-in dialog also requires the guest's ID
- * on record (`getMissingIdDetails` in `lib/guests.ts`).
+ * Payment never blocks the desk outright: a deposit is enough to check in,
+ * and an unpaid booking can be checked in with an override reason (audited by
+ * the backend) when finance is unavailable to verify a recorded payment. The
+ * check-in dialog also requires the guest's ID on record
+ * (`getMissingIdDetails` in `lib/guests.ts`).
  */
 export function canCheckIn(
   booking: Pick<Booking, "payment_status" | "status">
 ) {
   return (
-    booking.payment_status.toLowerCase() === "fully_paid" &&
-    !NO_CHECK_IN_STATUSES.has(booking.status.toLowerCase())
+    CHECK_IN_STATUSES.has(booking.status.toLowerCase()) &&
+    ["fully_paid", "deposit_paid", "unpaid"].includes(
+      booking.payment_status.toLowerCase()
+    )
   )
 }
 
@@ -215,14 +218,14 @@ export function canDeleteBooking(booking: Pick<Booking, "status">) {
 export const canChangeStay = isCheckedIn
 
 /**
- * Whether Extend booking / Extra person can be used right now: not while a
- * checked-in booking is back on `deposit_paid`, i.e. the last change's
- * payment isn't verified yet, so charges can't pile up unpaid.
+ * Whether Extend booking / Extra person can be used right now. The dialogs
+ * record the change's payment before applying it, so an outstanding balance
+ * no longer blocks starting a change.
  */
 export function canStartStayChange(
   booking: Pick<Booking, "status" | "payment_status">
 ) {
-  return canChangeStay(booking) && !hasOutstandingStayPayment(booking)
+  return canChangeStay(booking)
 }
 
 /** The 1st of the current month through today, for the occupancy stats. */

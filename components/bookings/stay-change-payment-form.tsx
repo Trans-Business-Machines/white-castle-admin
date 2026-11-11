@@ -23,7 +23,7 @@ import {
   toStayChangePaymentPayload,
   type StayChangePaymentValues,
 } from "@/lib/schemas/payments"
-import type { StayChangePaymentType } from "@/lib/types"
+import type { Payment, StayChangePaymentType } from "@/lib/types"
 
 /** Lets the dialog tell a payment is saving, so it can't be closed mid-request. */
 export const stayChangePaymentMutationKey = (bookingId: string) =>
@@ -45,8 +45,8 @@ interface StayChangePaymentFormProps {
   paymentType: StayChangePaymentType
   /** Hides the form again without saving. */
   onCancel: () => void
-  /** Called once the payment is recorded. */
-  onRecorded: () => void
+  /** Called with the recorded payment once it's saved. */
+  onRecorded: (payment: Payment) => void
 }
 
 /**
@@ -89,10 +89,11 @@ export function StayChangePaymentForm({
           booking_id: bookingId,
           booking_ref: bookingRef,
           amount,
+          currency: currency ?? "KES",
           payment_type: paymentType,
         })
       ),
-    onSuccess: async () => {
+    onSuccess: async (payment) => {
       // The new payment joins the list, and check-out now waits on it.
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: paymentsQueryKey }),
@@ -101,7 +102,7 @@ export function StayChangePaymentForm({
       toast.success(
         `${formatAmount(amount, currency)} recorded on ${bookingRef}. Verify it on Payments before check-out.`
       )
-      onRecorded()
+      onRecorded(payment)
     },
     onError: (err) => {
       setError("root", {

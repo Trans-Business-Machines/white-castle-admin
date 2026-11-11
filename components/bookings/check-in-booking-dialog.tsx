@@ -7,6 +7,7 @@ import toast from "react-hot-toast"
 import { GuestCombobox } from "@/components/bookings/guest-combobox"
 import { EditGuestDialog } from "@/components/guests/edit-guest-dialog"
 import { Button } from "@/components/ui/button"
+import { Checkbox } from "@/components/ui/checkbox"
 import {
   Dialog,
   DialogClose,
@@ -17,8 +18,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import { bookingsQueryKey, checkInBooking } from "@/lib/api/bookings"
 import { getApiErrorMessage } from "@/lib/api/errors"
+import {
+  bookingPaymentsQueryKey,
+  fetchBookingPayments,
+} from "@/lib/api/payments"
+import { formatAmount, humanizeSlug } from "@/lib/format"
 import {
   fetchGuestDetails,
   fetchGuests,
@@ -68,6 +75,11 @@ function CheckInForm({
   const [guestId, setGuestId] = useState(booking.guest_id ?? "")
   const [error, setError] = useState<string | null>(null)
   const [editingGuest, setEditingGuest] = useState(false)
+  const [allowUnpaid, setAllowUnpaid] = useState(false)
+  const [overrideReason, setOverrideReason] = useState("")
+
+  // Nothing recorded means the desk needs an explicit, audited override.
+  const needsOverride = booking.payment_status.toLowerCase() === "unpaid"
 
   // Only the "pick a guest" branch needs the list.
   const guests = useQuery({
@@ -75,6 +87,18 @@ function CheckInForm({
     queryFn: fetchGuests,
     enabled: needsGuest,
   })
+
+  // Whatever has been recorded on the booking, so the desk can see that money
+  // came in even before finance verifies it.
+  const payments = useQuery({
+    queryKey: bookingPaymentsQueryKey(booking.booking_id),
+    queryFn: () => fetchBookingPayments(booking.booking_id),
+  })
+  const latestPayment = (payments.data ?? []).find(
+    (payment) => payment.status !== "rejected"
+  )
+  const overrideReady =
+    allowUnpaid && overrideReason.trim().length >= 5
 
   // The chosen guest's full record, to confirm their ID is on file.
   const guest = useQuery({
@@ -86,7 +110,16 @@ function CheckInForm({
   const idReady = guest.isSuccess && missingId.length === 0
 
   const mutation = useMutation({
-    mutationFn: () => checkInBooking(booking.booking_id, { guest_id: guestId }),
+    mutationFn: () =>
+      checkInBooking(booking.booking_id, {
+        guest_id: guestId,
+        ...(needsOverride
+          ? {
+              allow_unpaid: allowUnpaid,
+              override_reason: overrideReason.trim(),
+            }
+          : {}),
+      }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: bookingsQueryKey })
       // The room becomes occupied.
@@ -107,6 +140,16 @@ function CheckInForm({
       return
     }
     if (!idReady) return
+    if (needsOverride && !allowUnpaid) {
+      setError(
+        "No payment is recorded. Tick the override box to check this guest in, or record a payment first."
+      )
+      return
+    }
+    if (needsOverride && overrideReason.trim().length < 5) {
+      setError("Give a short reason for checking in without a recorded payment.")
+      return
+    }
     setError(null)
     mutation.mutate()
   }
@@ -218,6 +261,69 @@ function CheckInForm({
             </div>
           ) : null}
 
+          <div className="grid gap-2 rounded-md border bg-muted/40 px-3.5 py-3 text-sm">
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-muted-foreground">Payment status</span>
+              <span className="font-semibold">
+                {humanizeSlug(booking.payment_status)}
+              </span>
+            </div>
+            {latestPayment ? (
+              <p className="text-muted-foreground">
+                {formatAmount(latestPayment.amount, latestPayment.currency)}{" "}
+                recorded ({latestPayment.status}
+                {latestPayment.reference
+                  ? `, ${latestPayment.reference}`
+                  : ""}
+                ). It can be checked in while finance verifies it.
+              </p>
+            ) : (
+              <p className="text-muted-foreground">
+                No payment is recorded on this booking.
+              </p>
+            )}
+          </div>
+
+          {needsOverride ? (
+            <div className="grid gap-3 rounded-md border border-tertiary/40 bg-tertiary/10 px-3.5 py-3 text-sm text-tertiary">
+              <label className="flex items-start gap-2.5">
+                <Checkbox
+                  checked={allowUnpaid}
+                  onCheckedChange={(checked) =>
+                    setAllowUnpaid(checked === true)
+                  }
+                  disabled={mutation.isPending}
+                  className="mt-0.5"
+                />
+                <span>
+                  Check in without a recorded payment. This is allowed when
+                  finance is unavailable, and is recorded in the audit log.
+                </span>
+              </label>
+              {allowUnpaid ? (
+                <div className="grid gap-1.5">
+                  <Label
+                    htmlFor="check-in-override-reason"
+                    className="text-xs font-semibold tracking-wide uppercase"
+                  >
+                    Reason
+                  </Label>
+                  <Textarea
+                    id="check-in-override-reason"
+                    value={overrideReason}
+                    onChange={(event) => setOverrideReason(event.target.value)}
+                    disabled={mutation.isPending}
+                    rows={2}
+                    placeholder="e.g. Guest paid cash; finance unavailable to verify"
+                    aria-invalid={
+                      Boolean(error) && overrideReason.trim().length < 5
+                    }
+                  />
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           {error ? (
             <p
               role="alert"
@@ -240,7 +346,11 @@ function CheckInForm({
             </DialogClose>
             <Button
               type="button"
-              disabled={mutation.isPending || (Boolean(guestId) && !idReady)}
+              disabled={
+                mutation.isPending ||
+                (Boolean(guestId) && !idReady) ||
+                (needsOverride && !overrideReady)
+              }
               onClick={onConfirm}
               className="h-11 rounded-full bg-brand-azure px-5 text-white hover:bg-brand-azure/90 focus-visible:ring-brand-azure/30"
             >

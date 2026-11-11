@@ -95,14 +95,20 @@ function RecordPaymentForm({ onOpenChange }: RecordPaymentDialogProps) {
     handleSubmit,
     setError,
     reset,
+    watch,
     formState: { errors },
   } = form
+  const selectedBooking = bookings.data?.find(
+    (booking) => booking.booking_id === watch("booking_id")
+  )
 
   const mutation = useMutation({
     mutationFn: async (values: PaymentValues) => {
       let saved = savedPayment
       if (!saved) {
-        saved = await createPayment(toPaymentPayload(values))
+        saved = await createPayment(
+          toPaymentPayload(values, selectedBooking?.currency)
+        )
         setSavedPayment(saved)
         queryClient.invalidateQueries({ queryKey: paymentsQueryKey })
       }

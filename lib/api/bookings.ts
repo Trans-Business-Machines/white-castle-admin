@@ -131,15 +131,21 @@ export async function rejectBooking(
   return response.data
 }
 
-/** PATCH /bookings/{id}/extend → moves a checked-in stay's check-out later and
- * returns the extension's charges. */
+/**
+ * PATCH /bookings/{id}/extend → moves a checked-in stay's check-out later and
+ * returns the extension's charges. With `preview: true` it only quotes the
+ * extension and changes nothing; record the payment, then call again with its
+ * `payment_id` to apply it.
+ */
 export async function extendBooking(
   bookingId: string,
-  payload: ExtendBookingPayload
+  payload: ExtendBookingPayload,
+  { preview = false }: { preview?: boolean } = {}
 ) {
   const response = await axiosInstance.patch<ExtendBookingResponse>(
     `/bookings/${encodeURIComponent(bookingId)}/extend`,
-    payload
+    payload,
+    { params: { preview } }
   )
   return response.data
 }

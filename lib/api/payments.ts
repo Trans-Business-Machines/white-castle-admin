@@ -49,6 +49,18 @@ export async function fetchPayments(filters: PaymentListFilters) {
   return response.data
 }
 
+/** Payments recorded against one booking, newest first. */
+export const bookingPaymentsQueryKey = (bookingId: string) =>
+  ["payments", "booking", bookingId] as const
+
+/** GET /payments/booking/{id} → every payment recorded on a booking. */
+export async function fetchBookingPayments(bookingId: string) {
+  const response = await axiosInstance.get<Payment[]>(
+    `/payments/booking/${encodeURIComponent(bookingId)}`
+  )
+  return response.data
+}
+
 /** GET /payments/pending → every payment still waiting to be verified. */
 export async function fetchPendingPayments() {
   const response = await axiosInstance.get<Payment[]>("/payments/pending")

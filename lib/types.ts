@@ -157,6 +157,12 @@ export interface CreateBookingPayload {
 export interface CheckInBookingPayload {
   /** The guest record being checked in. */
   guest_id: string
+  /**
+   * Desk override: check in even though no payment is recorded yet. Requires
+   * `override_reason`; the backend audits it as `BOOKING_CHECKIN_OVERRIDE`.
+   */
+  allow_unpaid?: boolean
+  override_reason?: string | null
 }
 
 /** Body for `PATCH /bookings/{id}/approve`. */
@@ -179,6 +185,11 @@ export interface ExtendBookingPayload {
   new_check_out_date: string
   /** `user_id` of the staff member extending the stay. */
   extended_by: string
+  /**
+   * The recorded payment that covers the added nights. Required when the
+   * extension is chargeable; take it from `POST /payments/create` first.
+   */
+  payment_id?: string
 }
 
 /** What `PATCH /bookings/{id}/extend` charged for the added nights. */
@@ -192,6 +203,11 @@ export interface BookingExtension {
   /** The booking's total after the extension. */
   new_total: number
   booking_ref: string
+  /** The booking's currency, "KES" when missing. */
+  currency?: string
+  /** The recorded payment applied with the extension, if any. */
+  payment_id?: string | null
+  payment_recorded?: boolean
 }
 
 /** Booking fields returned by the stay-changing endpoints (extend, extra people). */
@@ -403,6 +419,8 @@ export interface CreatePaymentPayload {
   /** The booking's human-readable reference, copied from the chosen booking. */
   booking_ref: string
   amount: number
+  /** "KES" or "USD"; the booking's currency. */
+  currency?: string
   method: PaymentMethod
   /** Transaction reference from the payment channel, e.g. an M-Pesa code; empty for cash. */
   reference: string

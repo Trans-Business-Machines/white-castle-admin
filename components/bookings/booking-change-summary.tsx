@@ -22,6 +22,8 @@ export interface ChargeRow {
 
 export interface ChangePayment {
   required: boolean
+  /** The change's payment has already been recorded. */
+  settled?: boolean
   amount: number
   /** The booking's currency; KES when missing. */
   currency?: string | null
@@ -114,6 +116,10 @@ function BookingChangeSummary({
             {payment.reason}, quoting booking reference{" "}
             <span className="font-semibold">{payment.reference}</span>.
           </span>
+        </p>
+      ) : payment.settled ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          Payment for this change has been recorded.
         </p>
       ) : (
         <p role="status" className="text-sm text-muted-foreground">

@@ -121,11 +121,15 @@ export const emptyPaymentValues: PaymentValues = {
  * proof image is left out because it goes to `/payments/{id}/evidence`
  * afterwards.
  */
-export function toPaymentPayload(values: PaymentValues): CreatePaymentPayload {
+export function toPaymentPayload(
+  values: PaymentValues,
+  currency?: string | null
+): CreatePaymentPayload {
   return {
     booking_id: values.booking_id,
     booking_ref: values.booking_ref,
     amount: values.amount,
+    currency: currency ?? "KES",
     method: values.method,
     reference: isCashMethod(values.method) ? "" : values.reference.trim(),
     payment_type: values.payment_type,
@@ -157,7 +161,7 @@ export function toStayChangePaymentPayload(
   values: StayChangePaymentValues,
   charge: Pick<
     CreatePaymentPayload,
-    "booking_id" | "booking_ref" | "amount"
+    "booking_id" | "booking_ref" | "amount" | "currency"
   > & {
     payment_type: StayChangePaymentType
   }

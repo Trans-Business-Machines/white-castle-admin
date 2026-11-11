@@ -5,11 +5,13 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import {
   useIsMutating,
   useMutation,
+  useQuery,
   useQueryClient,
 } from "@tanstack/react-query"
 import { addDays, parseISO } from "date-fns"
 import { CalendarPlus, HandCoins, Loader } from "lucide-react"
 import { Controller, useForm } from "react-hook-form"
+import toast from "react-hot-toast"
 import {
   FieldError,
   inputClassName,
@@ -37,15 +39,32 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { bookingsQueryKey, extendBooking } from "@/lib/api/bookings"
 import { getApiErrorMessage } from "@/lib/api/errors"
+import {
+  bookingPaymentsQueryKey,
+  fetchBookingPayments,
+  paymentsQueryKey,
+} from "@/lib/api/payments"
 import { formatAmount, formatDate } from "@/lib/format"
 import {
   makeExtendBookingSchema,
   toExtendBookingPayload,
   type ExtendBookingValues,
 } from "@/lib/schemas/bookings"
-import type { Booking, ExtendBookingResponse } from "@/lib/types"
+import type {
+  Booking,
+  ExtendBookingPayload,
+  ExtendBookingResponse,
+  Payment,
+} from "@/lib/types"
 import { useAuth } from "@/providers/auth-provider"
 import { getMealPlanLabel } from "@/lib/bookings"
 
@@ -65,9 +84,11 @@ function ExtendForm({
   booking,
   onOpenChange,
 }: Omit<ExtendBookingDialogProps, "open">) {
-  const queryClient = useQueryClient()
   const { user } = useAuth()
-  const [result, setResult] = useState<ExtendBookingResponse | null>(null)
+  const [review, setReview] = useState<{
+    payload: ExtendBookingPayload
+    result: ExtendBookingResponse
+  } | null>(null)
   const paymentSaving =
     useIsMutating({
       mutationKey: stayChangePaymentMutationKey(booking.booking_id),
@@ -91,23 +112,23 @@ function ExtendForm({
     defaultValues: { new_check_out_date: null },
   })
 
-  const mutation = useMutation({
-    mutationFn: (values: ExtendBookingValues) => {
+  // `preview=true`: works out the extension's charges without changing the
+  // booking. The payment is recorded against that quote before applying it.
+  const quote = useMutation({
+    mutationFn: async (values: ExtendBookingValues) => {
       if (!user) throw new Error("Sign in again to extend this stay.")
-      return extendBooking(
-        booking.booking_id,
-        toExtendBookingPayload(values, user.user_id)
-      )
+      const payload = toExtendBookingPayload(values, user.user_id)
+      const result = await extendBooking(booking.booking_id, payload, {
+        preview: true,
+      })
+      return { payload, result }
     },
-    onSuccess: async (data) => {
-      setResult(data)
-      await queryClient.invalidateQueries({ queryKey: bookingsQueryKey })
-    },
+    onSuccess: setReview,
     onError: (err) => {
       setError("root", {
         message: getApiErrorMessage(
           err,
-          "We couldn't extend this stay. Try again."
+          "We couldn't work out the extension charges. Try again."
         ),
       })
     },
@@ -118,7 +139,7 @@ function ExtendForm({
       open
       onOpenChange={(next) => {
         // Ignore Escape / backdrop clicks while a request is in flight.
-        if (mutation.isPending || paymentSaving) return
+        if (quote.isPending || paymentSaving) return
         if (!next) onOpenChange(false)
       }}
     >
@@ -129,12 +150,11 @@ function ExtendForm({
         showCloseButton={false}
         className="max-h-[90dvh] overflow-y-auto"
       >
-        {result ? (
-          <ExtensionSummary
-            bookingId={booking.booking_id}
-            guestName={booking.guest_name}
-            currency={booking.currency}
-            result={result}
+        {review ? (
+          <ExtensionReview
+            booking={booking}
+            payload={review.payload}
+            quote={review.result}
             onDone={() => onOpenChange(false)}
           />
         ) : (
@@ -157,10 +177,10 @@ function ExtendForm({
             </DialogHeader>
 
             <form
-              onSubmit={handleSubmit((values) => mutation.mutate(values))}
+              onSubmit={handleSubmit((values) => quote.mutate(values))}
               noValidate
             >
-              <fieldset disabled={mutation.isPending} className="grid gap-4">
+              <fieldset disabled={quote.isPending} className="grid gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="extend-check-out" className={labelClassName}>
                     New check-out date
@@ -178,7 +198,7 @@ function ExtendForm({
                         minDate={earliest}
                         placeholder="Pick a later date"
                         clearLabel="Clear new check-out date"
-                        disabled={mutation.isPending}
+                        disabled={quote.isPending}
                         invalid={Boolean(errors.new_check_out_date)}
                         describedBy={
                           errors.new_check_out_date
@@ -216,17 +236,18 @@ function ExtendForm({
                   </DialogClose>
                   <Button
                     type="submit"
+                    disabled={quote.isPending}
                     className="h-11 rounded-full bg-brand-azure px-5 text-white hover:bg-brand-azure/90 focus-visible:ring-brand-azure/30"
                   >
-                    {mutation.isPending ? (
+                    {quote.isPending ? (
                       <span className="inline-flex items-center gap-2">
                         <Loader aria-hidden="true" className="animate-spin" />
-                        Extending
+                        Working out charges
                       </span>
                     ) : (
                       <>
                         <CalendarPlus aria-hidden="true" />
-                        Extend stay
+                        Review extension
                       </>
                     )}
                   </Button>
@@ -240,105 +261,269 @@ function ExtendForm({
   )
 }
 
-/**
- * The extended stay and what the added nights cost. When there's something
- * to collect, the footer is Add payment instead of Close.
- */
-function ExtensionSummary({
-  bookingId,
-  guestName,
-  currency,
-  result,
+/** The extension quote, then the applied extension once its payment is in. */
+function ExtensionReview({
+  booking,
+  payload,
+  quote,
   onDone,
 }: {
-  bookingId: string
-  guestName: string
-  currency: Booking["currency"]
-  result: ExtendBookingResponse
+  booking: Booking
+  payload: ExtendBookingPayload
+  quote: ExtendBookingResponse
   onDone: () => void
 }) {
-  const { extension } = result
+  const queryClient = useQueryClient()
+  const [applied, setApplied] = useState<ExtendBookingResponse | null>(null)
+  const [chosenPaymentId, setChosenPaymentId] = useState("")
   const [paying, setPaying] = useState(false)
+
+  const extension = quote.extension
+  const currency = quote.extension.currency ?? booking.currency
   const owesPayment =
     extension.payment_required && extension.total_extra_charge > 0
 
+  // Payments already recorded for this booking. A recorded extension payment
+  // can be reused, e.g. when finance took it before the desk extended.
+  const payments = useQuery({
+    queryKey: bookingPaymentsQueryKey(booking.booking_id),
+    queryFn: () => fetchBookingPayments(booking.booking_id),
+    enabled: owesPayment,
+  })
+  const recordedPayments = (payments.data ?? []).filter(
+    (payment) =>
+      payment.payment_type === "extension" &&
+      payment.status !== "rejected" &&
+      (payment.currency || "KES").toUpperCase() ===
+        (currency || "KES").toUpperCase() &&
+      payment.amount + 0.01 >= extension.total_extra_charge
+  )
+  const paymentId = chosenPaymentId || recordedPayments[0]?.payment_id || ""
+
+  const apply = useMutation({
+    mutationKey: ["bookings", "extend", booking.booking_id],
+    mutationFn: (id: string) =>
+      extendBooking(booking.booking_id, {
+        ...payload,
+        payment_id: id || undefined,
+      }),
+    onSuccess: async (data) => {
+      setApplied(data)
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: bookingsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: paymentsQueryKey }),
+      ])
+      toast.success(
+        `${booking.guest_name}'s stay now runs to ${formatDate(data.check_out_date)}.`
+      )
+    },
+  })
+
+  function onPaymentRecorded(payment: Payment) {
+    setPaying(false)
+    setChosenPaymentId(payment.payment_id)
+    apply.mutate(payment.payment_id)
+  }
+
+  const result = applied ?? quote
+  const extra = result.extension
+
+  const footer = applied ? (
+    <DialogFooter>
+      <Button
+        type="button"
+        onClick={onDone}
+        className={primaryButtonClassName}
+      >
+        Close
+      </Button>
+    </DialogFooter>
+  ) : paying ? null : (
+    <>
+      {apply.isError ? (
+        <p
+          role="alert"
+          className="rounded-md bg-destructive/10 px-3.5 py-2.5 text-sm text-destructive"
+        >
+          {getApiErrorMessage(
+            apply.error,
+            "We couldn't apply the extension. Try again."
+          )}
+        </p>
+      ) : null}
+      <DialogFooter>
+        <DialogClose asChild>
+          <Button
+            type="button"
+            variant="outline"
+            disabled={apply.isPending}
+            className="h-11 rounded-full px-5"
+          >
+            Cancel
+          </Button>
+        </DialogClose>
+        {!owesPayment ? (
+          <Button
+            type="button"
+            disabled={apply.isPending}
+            onClick={() => apply.mutate("")}
+            className={primaryButtonClassName}
+          >
+            {apply.isPending ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader aria-hidden="true" className="animate-spin" />
+                Extending
+              </span>
+            ) : (
+              <>
+                <CalendarPlus aria-hidden="true" />
+                Apply extension
+              </>
+            )}
+          </Button>
+        ) : paymentId ? (
+          <Button
+            type="button"
+            disabled={apply.isPending}
+            onClick={() => apply.mutate(paymentId)}
+            className={primaryButtonClassName}
+          >
+            {apply.isPending ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader aria-hidden="true" className="animate-spin" />
+                Extending
+              </span>
+            ) : (
+              <>
+                <CalendarPlus aria-hidden="true" />
+                Apply extension
+              </>
+            )}
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            onClick={() => setPaying(true)}
+            className={primaryButtonClassName}
+          >
+            <HandCoins aria-hidden="true" />
+            Record extension payment
+          </Button>
+        )}
+      </DialogFooter>
+    </>
+  )
+
   return (
     <BookingChangeSummary
-      title="Stay extended"
-      guestName={guestName}
+      title={applied ? "Stay extended" : "Review extension"}
+      icon={applied ? undefined : null}
+      guestName={booking.guest_name}
       description={
-        <>
-          {guestName}&apos;s booking{" "}
-          <span className="font-semibold text-foreground">
-            {result.reference}
-          </span>{" "}
-          now checks out on{" "}
-          <span className="font-semibold text-foreground">
-            {formatDate(result.check_out_date)}
-          </span>
-          , {pluralizeNights(result.nights)} in room {result.room_number}.
-        </>
+        applied ? (
+          <>
+            {booking.guest_name}&apos;s booking{" "}
+            <span className="font-semibold text-foreground">
+              {result.reference}
+            </span>{" "}
+            now checks out on{" "}
+            <span className="font-semibold text-foreground">
+              {formatDate(result.check_out_date)}
+            </span>
+            , {pluralizeNights(result.nights)} in room {result.room_number}.
+          </>
+        ) : (
+          <>
+            Extending booking{" "}
+            <span className="font-semibold text-foreground">
+              {result.reference}
+            </span>{" "}
+            to{" "}
+            <span className="font-semibold text-foreground">
+              {formatDate(result.check_out_date)}
+            </span>
+            . The extension is applied once its payment is recorded.
+          </>
+        )
       }
       rows={[
         {
           label: "Extra nights",
-          value: pluralizeNights(extension.extra_nights),
+          value: pluralizeNights(extra.extra_nights),
         },
         {
           label: "Rate per night",
-          value: formatAmount(extension.plan_rate_per_night, currency),
+          value: formatAmount(extra.plan_rate_per_night, currency),
         },
         {
           label: "Meal plan",
-          value: getMealPlanLabel(
-            (extension.meal_plan as string) ?? "room_only"
-          ),
+          value: getMealPlanLabel((extra.meal_plan as string) ?? "room_only"),
         },
         {
           label: "Extension total",
-          value: formatAmount(extension.total_extra_charge, currency),
+          value: formatAmount(extra.total_extra_charge, currency),
           emphasis: true,
         },
         {
           label: "Previous total",
-          value: formatAmount(getPreviousTotal(extension), currency),
+          value: formatAmount(getPreviousTotal(extra), currency),
         },
         {
           label: "New booking total",
-          value: formatAmount(extension.new_total, currency),
+          value: formatAmount(extra.new_total, currency),
         },
       ]}
       payment={{
-        required: extension.payment_required,
-        amount: extension.total_extra_charge,
+        required: extra.payment_required,
+        settled: Boolean(applied),
+        amount: extra.total_extra_charge,
         currency,
-        reference: extension.booking_ref,
+        reference: extra.booking_ref,
         reason: "for the extra nights",
       }}
-      footer={
-        !owesPayment ? undefined : paying ? null : (
-          <DialogFooter>
-            <Button
-              type="button"
-              onClick={() => setPaying(true)}
-              className={primaryButtonClassName}
-            >
-              <HandCoins aria-hidden="true" />
-              Add payment
-            </Button>
-          </DialogFooter>
-        )
-      }
+      footer={footer}
     >
-      {owesPayment && paying ? (
+      {!applied && owesPayment && !paying && recordedPayments.length > 0 ? (
+        <div className="grid gap-2">
+          <Label
+            htmlFor="extension-recorded-payment"
+            className={labelClassName}
+          >
+            Recorded extension payment
+          </Label>
+          <Select
+            value={paymentId}
+            onValueChange={setChosenPaymentId}
+            disabled={apply.isPending}
+          >
+            <SelectTrigger id="extension-recorded-payment" className="w-full">
+              <SelectValue placeholder="Choose a recorded payment" />
+            </SelectTrigger>
+            <SelectContent>
+              {recordedPayments.map((payment) => (
+                <SelectItem
+                  key={payment.payment_id}
+                  value={payment.payment_id}
+                >
+                  {formatAmount(payment.amount, payment.currency)} ·{" "}
+                  {payment.method} · {payment.status}
+                  {payment.reference ? ` · ${payment.reference}` : ""}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
+
+      {!applied && owesPayment && paying ? (
         <StayChangePaymentForm
-          bookingId={bookingId}
+          bookingId={booking.booking_id}
           bookingRef={extension.booking_ref || result.reference}
           amount={extension.total_extra_charge}
           currency={currency}
           paymentType="extension"
           onCancel={() => setPaying(false)}
-          onRecorded={onDone}
+          onRecorded={onPaymentRecorded}
         />
       ) : null}
     </BookingChangeSummary>

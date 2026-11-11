@@ -182,8 +182,8 @@ function BookingActionsMenu({
               ) : null}
               {hasOutstandingStayPayment(booking) ? (
                 <DropdownMenuLabel className="max-w-56 text-xs font-normal text-muted-foreground">
-                  Check-out and further changes open once the payment for the
-                  added nights or guests is verified.
+                  Check-out opens once the outstanding payment is verified.
+                  Extending the stay records its payment first.
                 </DropdownMenuLabel>
               ) : null}
               <DropdownMenuSeparator />
