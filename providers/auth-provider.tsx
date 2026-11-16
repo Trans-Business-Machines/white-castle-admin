@@ -13,6 +13,7 @@ import {
 } from "react"
 import { useRouter } from "next/navigation"
 import { getHomeNavItem } from "@/components/dashboard/nav"
+import { SessionTimeoutDialog } from "@/components/auth/session-timeout-dialog"
 import { WorkspaceLoader } from "@/components/workspace-loader"
 import * as authApi from "@/lib/api/auth"
 import {
@@ -22,6 +23,7 @@ import {
 } from "@/lib/auth-token"
 import { onUnauthorized, refreshAccessToken } from "@/lib/axios"
 import type { LoginValues } from "@/lib/schemas/auth"
+import { getSessionExpiresAt, IDLE_TIMEOUT_MS, IDLE_WARNING_MS } from "@/lib/session"
 import type { AuthUser } from "@/lib/types"
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated"
@@ -106,6 +108,14 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [status, setStatus] = useState<AuthStatus>("loading")
   const bootstrapped = useRef(false)
+  const [timeoutDialog, setTimeoutDialog] = useState<{
+    endsAt: number
+    reason: "idle" | "absolute"
+  } | null>(null)
+  const lastActivityRef = useRef(Date.now())
+  const idleTimerRef = useRef<number | null>(null)
+  const warningTimerRef = useRef<number | null>(null)
+  const signedIn = status === "authenticated" && user !== null
 
   // Mirrors the module-level token, so consumers re-render when the axios
   // interceptor refreshes it behind the scenes.
@@ -114,6 +124,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     getAccessToken,
     getServerToken
   )
+  const sessionEndsAt = getSessionExpiresAt(accessToken)
 
   const endSession = useCallback(() => {
     clearAccessToken()
@@ -185,6 +196,109 @@ export function AuthProvider({ children }: PropsWithChildren) {
     }
   }, [endSession])
 
+  const clearSessionTimers = useCallback(() => {
+    if (idleTimerRef.current !== null) {
+      window.clearTimeout(idleTimerRef.current)
+      idleTimerRef.current = null
+    }
+    if (warningTimerRef.current !== null) {
+      window.clearTimeout(warningTimerRef.current)
+      warningTimerRef.current = null
+    }
+  }, [])
+
+  const forceLogout = useCallback(async () => {
+    setTimeoutDialog(null)
+    clearSessionTimers()
+    await logout()
+    router.replace("/login")
+  }, [clearSessionTimers, logout, router])
+
+  const scheduleSessionTimers = useCallback(() => {
+    clearSessionTimers()
+    if (!signedIn) return
+
+    const now = Date.now()
+    lastActivityRef.current = now
+    const idleAt = now + IDLE_TIMEOUT_MS
+    const endsAt =
+      sessionEndsAt !== null ? Math.min(idleAt, sessionEndsAt) : idleAt
+    const reason: "idle" | "absolute" =
+      sessionEndsAt !== null && sessionEndsAt <= idleAt ? "absolute" : "idle"
+
+    warningTimerRef.current = window.setTimeout(
+      () => setTimeoutDialog({ endsAt, reason }),
+      Math.max(0, endsAt - IDLE_WARNING_MS - now)
+    )
+    idleTimerRef.current = window.setTimeout(
+      () => void forceLogout(),
+      Math.max(0, endsAt - now)
+    )
+  }, [clearSessionTimers, forceLogout, sessionEndsAt, signedIn])
+
+  const staySignedIn = useCallback(() => {
+    setTimeoutDialog(null)
+    scheduleSessionTimers()
+  }, [scheduleSessionTimers])
+
+  // Reset the idle clock on real interaction, and enforce it when the tab
+  // becomes visible again after being left unattended.
+  useEffect(() => {
+    if (!signedIn) {
+      clearSessionTimers()
+      setTimeoutDialog(null)
+      return
+    }
+
+    const onActivity = () => {
+      const now = Date.now()
+      if (now - lastActivityRef.current < 1000) return
+      setTimeoutDialog(null)
+      scheduleSessionTimers()
+    }
+
+    const onVisibility = () => {
+      if (document.visibilityState !== "visible") return
+      const now = Date.now()
+      if (
+        now - lastActivityRef.current >= IDLE_TIMEOUT_MS ||
+        (sessionEndsAt !== null && now >= sessionEndsAt)
+      ) {
+        void forceLogout()
+        return
+      }
+      setTimeoutDialog(null)
+      scheduleSessionTimers()
+    }
+
+    const events = [
+      "mousedown",
+      "pointerdown",
+      "keydown",
+      "touchstart",
+      "scroll",
+    ] as const
+    events.forEach((event) =>
+      window.addEventListener(event, onActivity, { passive: true })
+    )
+    document.addEventListener("visibilitychange", onVisibility)
+    scheduleSessionTimers()
+
+    return () => {
+      events.forEach((event) =>
+        window.removeEventListener(event, onActivity)
+      )
+      document.removeEventListener("visibilitychange", onVisibility)
+      clearSessionTimers()
+    }
+  }, [
+    clearSessionTimers,
+    forceLogout,
+    scheduleSessionTimers,
+    sessionEndsAt,
+    signedIn,
+  ])
+
   const value = useMemo<AuthContextValue>(
     () => ({
       user,
@@ -201,6 +315,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
   return (
     <AuthContext.Provider value={value}>
       {status === "loading" ? <WorkspaceLoader /> : children}
+      <SessionTimeoutDialog
+        open={timeoutDialog !== null}
+        endsAt={timeoutDialog?.endsAt ?? null}
+        reason={timeoutDialog?.reason ?? "idle"}
+        onStay={staySignedIn}
+        onLogout={() => void forceLogout()}
+      />
     </AuthContext.Provider>
   )
 }
