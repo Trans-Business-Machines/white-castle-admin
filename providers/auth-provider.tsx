@@ -210,8 +210,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const forceLogout = useCallback(async () => {
     setTimeoutDialog(null)
     clearSessionTimers()
-    await logout()
-    router.replace("/login")
+    try {
+      await logout()
+    } finally {
+      router.replace("/login")
+    }
   }, [clearSessionTimers, logout, router])
 
   const scheduleSessionTimers = useCallback(() => {
