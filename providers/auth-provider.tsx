@@ -64,6 +64,7 @@ const APP_ROUTES = [
   "/requests",
   "/bookings",
   "/guests",
+  "/housekeeping",
   "/units",
   "/payments",
   "/catering",

@@ -737,3 +737,39 @@ export interface ServicesAuditLog {
   pagination: { limit: number; offset: number; total: number }
   entries: AuditLogEntry[]
 }
+
+/** Housekeeping task states shown in the cleaning queue. */
+export type HousekeepingTaskStatus =
+  | "pending"
+  | "in_progress"
+  | "completed"
+  | "skipped"
+
+export type HousekeepingPriority = "low" | "normal" | "high" | "urgent"
+
+/** A cleaning / turnover task created on checkout or by the front desk. */
+export interface HousekeepingTask {
+  task_id: string
+  room_id: string
+  room_number: string
+  task_type: string
+  status: HousekeepingTaskStatus
+  priority: HousekeepingPriority
+  /** motel.staff id when the task is assigned; null when unassigned. */
+  assigned_to: string | null
+  notes: string | null
+  started_at: string | null
+  completed_at: string | null
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  photos: string[]
+}
+
+export interface HousekeepingStats {
+  total: number
+  pending: number
+  in_progress: number
+  completed: number
+  completion_rate: number
+}

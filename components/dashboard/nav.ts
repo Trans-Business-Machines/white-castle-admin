@@ -4,6 +4,7 @@ import {
   ChartColumnBig,
   NotebookPen,
   Settings,
+  Sparkles,
   UserCog,
   Users,
   Banknote,
@@ -16,6 +17,7 @@ import {
   AUDIT_ROLES,
   CATERING_ROLES,
   GUESTS_ROLES,
+  HOUSEKEEPING_ROLES,
   OPERATIONS_ROLES,
   PAYMENTS_ROLES,
   REPORTS_ROLES,
@@ -62,6 +64,13 @@ export const dashboardNav: NavItem[] = [
     href: "/guests",
     icon: Users,
     roles: GUESTS_ROLES,
+  },
+  {
+    title: "Housekeeping",
+    description: "Cleaning queue and rooms waiting to be turned over",
+    href: "/housekeeping",
+    icon: Sparkles,
+    roles: HOUSEKEEPING_ROLES,
   },
   {
     title: "Units",
@@ -147,8 +156,8 @@ export function canAccessPath(pathname: string, role: string | undefined) {
 
 /**
  * Where a role starts: the first nav page it can open. That's the dashboard
- * for most staff, the bed and breakfast list for catering and the units page
- * for housekeeping.
+ * for most staff, the bed and breakfast list for catering and the
+ * housekeeping queue for housekeeping.
  */
 export function getHomeNavItem(role: string | undefined) {
   return dashboardNav.find((item) => canSeeNavItem(item, role)) ?? profileNav

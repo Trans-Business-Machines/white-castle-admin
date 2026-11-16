@@ -73,6 +73,14 @@ export const GUESTS_ROLES: readonly RoleName[] = [
   "receptionist",
 ]
 
+/** Roles allowed into the housekeeping queue (`/housekeeping`). */
+export const HOUSEKEEPING_ROLES: readonly RoleName[] = [
+  "super_admin",
+  "admin",
+  "receptionist",
+  "housekeeping",
+]
+
 /** Roles allowed into the units pages (`/units`); housekeeping but not finance. */
 export const UNITS_ROLES: readonly RoleName[] = [
   "super_admin",
