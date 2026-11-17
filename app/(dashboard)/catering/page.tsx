@@ -1,11 +1,10 @@
-import { RequireRole } from "@/components/auth/require-role"
+import { RequirePermission } from "@/components/auth/require-permission"
 import { CateringView } from "@/components/catering/catering-view"
-import { CATERING_ROLES } from "@/lib/roles"
 
 export default function CateringPage() {
   return (
-    <RequireRole roles={CATERING_ROLES} area="catering">
+    <RequirePermission permission="catering:view" area="catering">
       <CateringView />
-    </RequireRole>
+    </RequirePermission>
   )
 }

@@ -1,7 +1,6 @@
 import { type Metadata } from "next"
-import { RequireRole } from "@/components/auth/require-role"
+import { RequirePermission } from "@/components/auth/require-permission"
 import { SettingsList } from "@/components/settings/settings-list"
-import { SETTINGS_ROLES } from "@/lib/roles"
 
 export const metadata: Metadata = {
   title: "Settings",
@@ -9,10 +8,10 @@ export const metadata: Metadata = {
 
 export default function SettingsPage() {
   return (
-    <RequireRole roles={SETTINGS_ROLES} area="settings">
+    <RequirePermission permission="settings:view" area="settings">
       <section>
         <SettingsList />
       </section>
-    </RequireRole>
+    </RequirePermission>
   )
 }

@@ -36,7 +36,7 @@ import {
   type UserListFilters,
 } from "@/lib/api/users"
 import { formatDate, getInitials, humanizeSlug } from "@/lib/format"
-import { ROLE_NAMES, getRoleClasses, isRoleName } from "@/lib/roles"
+import { getRoleClasses } from "@/lib/roles"
 import { usePagination } from "@/hooks/use-pagination"
 
 const COLUMNS = 6
@@ -85,7 +85,7 @@ export function UsersTable() {
   }
 
   function handleRoleChange(value: string) {
-    setFilters({ role: isRoleName(value) ? value : "" })
+    setFilters({ role: value === ALL_ROLES ? "" : value })
     setPage(1)
   }
 
@@ -118,9 +118,9 @@ export function UsersTable() {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value={ALL_ROLES}>All roles</SelectItem>
-            {ROLE_NAMES.map((role) => (
-              <SelectItem key={role} value={role}>
-                {getRoleLabel(role)}
+            {roles.data?.map((role) => (
+              <SelectItem key={role.name} value={role.name}>
+                {role.label}
               </SelectItem>
             ))}
           </SelectContent>
@@ -198,7 +198,17 @@ export function UsersTable() {
                 <TableCell className="px-4">{user.username}</TableCell>
                 <TableCell className="px-4">{user.email}</TableCell>
                 <TableCell className="px-4">
-                  <RoleBadge role={user.role} label={getRoleLabel(user.role)} />
+                  <span className="flex flex-wrap gap-1">
+                    {(user.roles?.length ? user.roles : [user.role]).map(
+                      (role) => (
+                        <RoleBadge
+                          key={role}
+                          role={role}
+                          label={getRoleLabel(role)}
+                        />
+                      )
+                    )}
+                  </span>
                 </TableCell>
                 <TableCell className="px-4">
                   {formatDate(user.created_at)}

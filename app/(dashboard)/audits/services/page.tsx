@@ -1,8 +1,7 @@
 import type { Metadata } from "next"
 import { ServicesAuditLogView } from "@/components/audits/services-audit-log-view"
-import { RequireRole } from "@/components/auth/require-role"
+import { RequirePermission } from "@/components/auth/require-permission"
 import { parseServicesAuditFilters, type AuditSearchParams } from "@/lib/audit"
-import { AUDIT_ROLES } from "@/lib/roles"
 
 export const metadata: Metadata = { title: "Cross-service audit log" }
 
@@ -16,8 +15,8 @@ export default async function ServicesAuditLogPage({
   const filters = parseServicesAuditFilters(await searchParams)
 
   return (
-    <RequireRole roles={AUDIT_ROLES} area="the audit log">
+    <RequirePermission permission="reports:audit" area="the audit log">
       <ServicesAuditLogView filters={filters} />
-    </RequireRole>
+    </RequirePermission>
   )
 }

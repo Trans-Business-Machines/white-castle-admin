@@ -13,27 +13,17 @@ import {
   ScrollText,
   type LucideIcon,
 } from "lucide-react"
-import {
-  AUDIT_ROLES,
-  CATERING_ROLES,
-  GUESTS_ROLES,
-  HOUSEKEEPING_ROLES,
-  OPERATIONS_ROLES,
-  PAYMENTS_ROLES,
-  REPORTS_ROLES,
-  SETTINGS_ROLES,
-  UNITS_ROLES,
-  USER_MANAGEMENT_ROLES,
-  hasRole,
-  type RoleName,
-} from "@/lib/roles"
+import { hasAnyPermission, hasPermission } from "@/lib/roles"
 
 export interface NavItem {
   title: string
   description: string
   href: string
   icon: LucideIcon
-  roles?: readonly RoleName[]
+  /** Permission required to see and open the page. */
+  permission?: string
+  /** Alternative: any one of these permissions opens the page. */
+  anyPermission?: readonly string[]
 }
 
 export const dashboardNav: NavItem[] = [
@@ -42,77 +32,77 @@ export const dashboardNav: NavItem[] = [
     description: "Live room status across the property",
     href: "/dashboard",
     icon: ChartColumnBig,
-    roles: OPERATIONS_ROLES,
+    permission: "dashboard:view",
   },
   {
     title: "Requests",
     description: "Booking requests waiting for approval",
     href: "/requests",
     icon: NotebookPen,
-    roles: OPERATIONS_ROLES,
+    permission: "bookings:view",
   },
   {
     title: "Bookings",
     description: "Confirmed stays, arrivals and departures",
     href: "/bookings",
     icon: Calendars,
-    roles: OPERATIONS_ROLES,
+    permission: "bookings:view",
   },
   {
     title: "Guest Management",
     description: "Everyone who has stayed at the property",
     href: "/guests",
     icon: Users,
-    roles: GUESTS_ROLES,
+    permission: "guests:view",
   },
   {
     title: "Housekeeping",
     description: "Cleaning queue and rooms waiting to be turned over",
     href: "/housekeeping",
     icon: Sparkles,
-    roles: HOUSEKEEPING_ROLES,
+    permission: "housekeeping:view",
   },
   {
     title: "Units",
     description: "Rooms, rates and availability",
     href: "/units",
     icon: Bed,
-    roles: UNITS_ROLES,
+    permission: "units:view",
   },
   {
     title: "Payments",
     description: "Booking payments and confirmations",
     href: "/payments",
     icon: Banknote,
-    roles: PAYMENTS_ROLES,
+    permission: "payments:view",
   },
   {
     title: "Catering",
     description: "Guests on the breakfast list",
     href: "/catering",
     icon: Coffee,
-    roles: CATERING_ROLES,
+    permission: "catering:view",
   },
   {
     title: "Reports",
     description: "Bookings, revenue and guest reports on demand",
     href: "/reports",
     icon: FileChartColumn,
-    roles: REPORTS_ROLES,
+    permission: "reports:view",
   },
   {
     title: "User Management",
-    description: "Staff account's and permissions",
+    description: "Staff accounts, roles and permissions",
     href: "/users",
     icon: UserCog,
-    roles: USER_MANAGEMENT_ROLES,
+    permission: "users:view",
   },
   {
     title: "Audit Log",
     description: "Sign-ins, account changes and activity across services",
     href: "/audits",
     icon: ScrollText,
-    roles: AUDIT_ROLES,
+    anyPermission: ["audit:view", "reports:audit"],
   },
 ]
 
@@ -123,13 +113,13 @@ export const profileNav: NavItem = {
   icon: Users,
 }
 
-/** Lives in the sidebar footer rather than the main list; super admins only. */
+/** Lives in the sidebar footer rather than the main list. */
 export const settingsNav: NavItem = {
   title: "Settings",
   description: "Motel-wide rules, deadlines and contacts",
   href: "/settings",
   icon: Settings,
-  roles: SETTINGS_ROLES,
+  permission: "settings:view",
 }
 
 export function findNavItem(pathname: string) {
@@ -138,27 +128,37 @@ export function findNavItem(pathname: string) {
   )
 }
 
-/** Whether a nav item should be shown to a user with the given role. */
-export function canSeeNavItem(item: NavItem, role: string | undefined) {
-  if (!item.roles) return true
-  return hasRole(role, item.roles)
+/** Whether a nav item should be shown to a user with these permissions. */
+export function canSeeNavItem(
+  item: NavItem,
+  permissions: readonly string[] | undefined
+) {
+  if (item.anyPermission) {
+    return hasAnyPermission(permissions, item.anyPermission)
+  }
+  if (item.permission) return hasPermission(permissions, item.permission)
+  return true
 }
 
 /**
- * Whether `role` may open `pathname`: the page's nav item decides, so hiding
+ * Whether a user may open `pathname`: the page's nav item decides, so hiding
  * a link and blocking its route can't drift apart. Paths outside the nav
  * (404s) are left for the not-found screen.
  */
-export function canAccessPath(pathname: string, role: string | undefined) {
+export function canAccessPath(
+  pathname: string,
+  permissions: readonly string[] | undefined
+) {
   const item = findNavItem(pathname)
-  return !item || canSeeNavItem(item, role)
+  return !item || canSeeNavItem(item, permissions)
 }
 
 /**
- * Where a role starts: the first nav page it can open. That's the dashboard
- * for most staff, the bed and breakfast list for catering and the
- * housekeeping queue for housekeeping.
+ * Where a user starts: the first nav page their permissions can open.
+ * Falls back to the profile when they have no module access yet.
  */
-export function getHomeNavItem(role: string | undefined) {
-  return dashboardNav.find((item) => canSeeNavItem(item, role)) ?? profileNav
+export function getHomeNavItem(permissions: readonly string[] | undefined) {
+  return (
+    dashboardNav.find((item) => canSeeNavItem(item, permissions)) ?? profileNav
+  )
 }

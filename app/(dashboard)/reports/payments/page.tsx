@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
-import { RequireRole } from "@/components/auth/require-role"
+import { RequirePermission } from "@/components/auth/require-permission"
 import { PaymentsReportView } from "@/components/reports/payments-report-view"
-import { REPORTS_ROLES } from "@/lib/roles"
 import {
   parsePaymentsReportFilters,
   type ReportSearchParams,
@@ -19,8 +18,8 @@ export default async function PaymentsReportPage({
   const filters = parsePaymentsReportFilters(await searchParams)
 
   return (
-    <RequireRole roles={REPORTS_ROLES} area="reports">
+    <RequirePermission permission="reports:payments" area="reports">
       <PaymentsReportView filters={filters} />
-    </RequireRole>
+    </RequirePermission>
   )
 }

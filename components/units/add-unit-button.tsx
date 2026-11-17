@@ -3,14 +3,14 @@
 import { Plus } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { NewRoomDialog } from "@/components/units/add-unit-dialog"
-import { hasRole, UNIT_MANAGE_ROLES } from "@/lib/roles"
+import { hasPermission } from "@/lib/roles"
 import { useAuth } from "@/providers/auth-provider"
 
 /** The Add Unit CTA row; super admins and admins only (`UNIT_MANAGE_ROLES`). */
 export function AddUnitButton() {
   const { user } = useAuth()
 
-  if (!hasRole(user?.role, UNIT_MANAGE_ROLES)) return null
+  if (!hasPermission(user?.permissions, "units:create")) return null
 
   return (
     <div className="mb-4 flex justify-end gap-2">

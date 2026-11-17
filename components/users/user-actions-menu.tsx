@@ -5,12 +5,14 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   EllipsisVertical,
   LockOpen,
+  ShieldCheck,
   Trash2,
   UserRoundCheck,
   UserRoundX,
 } from "lucide-react"
 import toast from "react-hot-toast"
 import { ConfirmDialog } from "@/components/confirm-dialog"
+import { EditUserRolesDialog } from "@/components/users/edit-user-roles-dialog"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -27,7 +29,7 @@ import {
   unlockUser,
   usersQueryKey,
 } from "@/lib/api/users"
-import { isSuperAdmin } from "@/lib/roles"
+import { hasPermission, holdsSuperAdmin } from "@/lib/roles"
 import type { AuthUser } from "@/lib/types"
 import { useAuth } from "@/providers/auth-provider"
 
@@ -101,14 +103,19 @@ function UserActionsMenu({ user }: { user: AuthUser }) {
   const queryClient = useQueryClient()
   const [action, setAction] = useState<UserAction | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [rolesOpen, setRolesOpen] = useState(false)
 
   const isSelf = currentUser?.user_id === user.user_id
-  const actorIsSuperAdmin = isSuperAdmin(currentUser?.role)
-  // Only a super admin may delete accounts; everyone else doesn't see the item.
-  const canDelete = actorIsSuperAdmin
-  // A super admin sits above admins, so only another super admin may
-  // disable their account.
-  const outranked = isSuperAdmin(user.role) && !actorIsSuperAdmin
+  const actorIsSuperAdmin = hasPermission(
+    currentUser?.permissions,
+    "system:full"
+  )
+  // Deleting an account needs the matching permission (super admins by default).
+  const canDelete = hasPermission(currentUser?.permissions, "users:delete")
+  const canAssignRoles = hasPermission(currentUser?.permissions, "users:roles")
+  // A super admin sits above everyone else, so only another super admin may
+  // disable or edit their account.
+  const outranked = holdsSuperAdmin(user) && !actorIsSuperAdmin
 
   const mutation = useMutation({
     mutationFn: (pending: UserAction) => actionRequest[pending](user.user_id),
@@ -150,6 +157,18 @@ function UserActionsMenu({ user }: { user: AuthUser }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
+          {canAssignRoles ? (
+            <>
+              <DropdownMenuItem
+                disabled={outranked}
+                onSelect={() => setRolesOpen(true)}
+              >
+                <ShieldCheck aria-hidden="true" />
+                Edit roles
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          ) : null}
           <DropdownMenuItem
             disabled={user.active}
             onSelect={() => openConfirm("enable")}
@@ -186,6 +205,12 @@ function UserActionsMenu({ user }: { user: AuthUser }) {
           ) : null}
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <EditUserRolesDialog
+        user={user}
+        open={rolesOpen}
+        onOpenChange={setRolesOpen}
+      />
 
       {action && copy ? (
         <ConfirmDialog

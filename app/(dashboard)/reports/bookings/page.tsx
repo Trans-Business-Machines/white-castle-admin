@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
-import { RequireRole } from "@/components/auth/require-role"
+import { RequirePermission } from "@/components/auth/require-permission"
 import { BookingsReportView } from "@/components/reports/bookings-report-view"
-import { REPORTS_ROLES } from "@/lib/roles"
 import {
   parseBookingsReportFilters,
   type ReportSearchParams,
@@ -19,8 +18,8 @@ export default async function BookingsReportPage({
   const filters = parseBookingsReportFilters(await searchParams)
 
   return (
-    <RequireRole roles={REPORTS_ROLES} area="reports">
+    <RequirePermission permission="reports:bookings" area="reports">
       <BookingsReportView filters={filters} />
-    </RequireRole>
+    </RequirePermission>
   )
 }

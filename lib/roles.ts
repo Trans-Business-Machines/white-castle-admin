@@ -1,23 +1,11 @@
-/** The fixed set of staff roles defined by the backend, highest first. */
-export const ROLE_NAMES = [
-  "super_admin",
-  "admin",
-  "receptionist",
-  "finance",
-  "housekeeping",
-  "catering",
-] as const
-
-export type RoleName = (typeof ROLE_NAMES)[number]
-
-export function isRoleName(value: string): value is RoleName {
-  return (ROLE_NAMES as readonly string[]).includes(value)
-}
+/** Role slugs are dynamic: built-in roles plus any custom roles an admin creates. */
+export type RoleName = string
 
 export type RoleTone =
   "crimson" | "flame" | "green" | "violet" | "amber" | "blue"
 
-const toneByRole: Record<RoleName, RoleTone> = {
+/** Known roles get a stable colour; custom roles fall back to blue. */
+const toneByRole: Record<string, RoleTone> = {
   super_admin: "crimson",
   admin: "flame",
   receptionist: "blue",
@@ -27,8 +15,7 @@ const toneByRole: Record<RoleName, RoleTone> = {
 }
 
 export function getRoleTone(role: string): RoleTone {
-  const slug = roleSlug(role)
-  return isRoleName(slug) ? toneByRole[slug] : "blue"
+  return toneByRole[roleSlug(role)] ?? "blue"
 }
 
 /** Accepts a slug ("super_admin") or a label ("Super Admin") and returns the slug. */
@@ -39,163 +26,46 @@ export function roleSlug(value: string) {
     .replace(/[\s-]+/g, "_")
 }
 
-/** The top role: outranks every other, including `admin`. */
+/** The top role: used only to protect super-admin accounts from lower staff. */
 export function isSuperAdmin(role: string | undefined) {
   return role ? roleSlug(role) === "super_admin" : false
 }
 
-/** Whether `role` (a slug or a label) is one of `allowed`. */
-export function hasRole(
-  role: string | undefined,
-  allowed: readonly RoleName[]
-) {
-  if (!role) return false
-  const slug = roleSlug(role)
-  return isRoleName(slug) && allowed.includes(slug)
+/** Whether an account holds the super-admin role, whatever its primary role is. */
+export function holdsSuperAdmin(user: {
+  role?: string
+  roles?: readonly string[]
+}) {
+  return (
+    isSuperAdmin(user.role) ||
+    (user.roles ?? []).some((role) => isSuperAdmin(role))
+  )
 }
 
 /**
- * Roles allowed into the dashboard, requests and bookings. Catering only get
- * the bed and breakfast list and housekeeping only the units page (plus
- * their profile).
+ * Permission checks mirror the backend: a `system:full` grant opens
+ * everything, and a module wildcard (`bookings:*`) covers its child actions.
  */
-export const OPERATIONS_ROLES: readonly RoleName[] = [
-  "super_admin",
-  "admin",
-  "receptionist",
-  "finance",
-]
+export function hasPermission(
+  permissions: readonly string[] | undefined | null,
+  required: string
+) {
+  if (!permissions?.length) return false
+  if (permissions.includes("system:full") || permissions.includes("*")) {
+    return true
+  }
+  if (permissions.includes(required)) return true
+  const moduleName = required.split(":", 1)[0]
+  return permissions.includes(`${moduleName}:*`)
+}
 
-/** Roles allowed into the guests pages (`/guests`); not finance. */
-export const GUESTS_ROLES: readonly RoleName[] = [
-  "super_admin",
-  "admin",
-  "receptionist",
-]
-
-/** Roles allowed into the housekeeping queue (`/housekeeping`). */
-export const HOUSEKEEPING_ROLES: readonly RoleName[] = [
-  "super_admin",
-  "admin",
-  "receptionist",
-  "housekeeping",
-]
-
-/** Roles allowed into the units pages (`/units`); housekeeping but not finance. */
-export const UNITS_ROLES: readonly RoleName[] = [
-  "super_admin",
-  "admin",
-  "receptionist",
-  "housekeeping",
-]
-
-/**
- * Roles allowed to add, edit and delete rooms. Receptionists and
- * housekeeping can only view them and set their status (`UNIT_STATUS_ROLES`).
- */
-export const UNIT_MANAGE_ROLES: readonly RoleName[] = ["super_admin", "admin"]
-
-/**
- * Roles allowed to change a room's nightly rates. Admins can manage rooms,
- * but their rates stay as the room type set them.
- */
-export const UNIT_RATE_EDIT_ROLES: readonly RoleName[] = ["super_admin"]
-
-/** Roles allowed into the user management module (`/users`). */
-export const USER_MANAGEMENT_ROLES: readonly RoleName[] = [
-  "super_admin",
-  "admin",
-]
-
-/** Roles allowed into the motel settings page (`/settings`). */
-export const SETTINGS_ROLES: readonly RoleName[] = ["super_admin"]
-
-/** Roles allowed into the audit logs (`/audits` and each log under it). */
-export const AUDIT_ROLES: readonly RoleName[] = ["super_admin"]
-
-/** Roles allowed into the reports page (`/reports` and each report under it). */
-export const REPORTS_ROLES: readonly RoleName[] = ["super_admin", "admin"]
-
-/** Roles allowed into the payments page (`/payments`). */
-export const PAYMENTS_ROLES: readonly RoleName[] = [
-  "super_admin",
-  "admin",
-  "receptionist",
-  "finance",
-]
-
-/** Roles allowed into the catering page (`/catering`, the bed and breakfast list). */
-export const CATERING_ROLES: readonly RoleName[] = [
-  "super_admin",
-  "admin",
-  "catering",
-]
-
-/** Roles allowed to verify or reject a payment. */
-export const PAYMENT_REVIEW_ROLES: readonly RoleName[] = [
-  "super_admin",
-  "admin",
-  "finance",
-]
-
-/** Roles allowed to delete a guest record. */
-export const GUEST_DELETE_ROLES: readonly RoleName[] = ["super_admin", "admin"]
-
-/**
- * Roles allowed to act on a booking (approve / reject, check in / out,
- * extend, extra person, cancel). Finance can only view bookings.
- */
-export const BOOKING_ACTION_ROLES: readonly RoleName[] = [
-  "super_admin",
-  "admin",
-  "receptionist",
-]
-
-/** Roles shown the month-to-date stat cards on `/bookings`; not receptionist. */
-export const BOOKING_STATS_ROLES: readonly RoleName[] = [
-  "super_admin",
-  "admin",
-  "finance",
-]
-
-/** Roles shown this month's payment stat cards on `/payments`; not receptionist. */
-export const PAYMENT_STATS_ROLES: readonly RoleName[] = [
-  "super_admin",
-  "admin",
-  "finance",
-]
-
-/** Roles allowed to export payments as CSV from `/payments`; not receptionist. */
-export const PAYMENT_EXPORT_ROLES: readonly RoleName[] = [
-  "super_admin",
-  "admin",
-  "finance",
-]
-
-/** Roles allowed to create a booking; not finance. */
-export const BOOKING_CREATE_ROLES: readonly RoleName[] = [
-  "super_admin",
-  "admin",
-  "receptionist",
-]
-
-/** Roles allowed to delete a booking. */
-export const BOOKING_DELETE_ROLES: readonly RoleName[] = ["super_admin"]
-
-/** Roles shown the occupancy stat cards on the units page. */
-export const UNIT_STATS_ROLES: readonly RoleName[] = [
-  "super_admin",
-  "admin",
-  "receptionist",
-]
-
-/** Roles allowed to set a room's status (available / housekeeping / maintenance). */
-export const UNIT_STATUS_ROLES: readonly RoleName[] = [
-  "super_admin",
-  "admin",
-  "receptionist",
-  "housekeeping",
-]
+/** True when the user holds at least one of the listed permissions. */
+export function hasAnyPermission(
+  permissions: readonly string[] | undefined | null,
+  required: readonly string[]
+) {
+  return required.some((slug) => hasPermission(permissions, slug))
+}
 
 interface RoleToneClasses {
   /** Tinted pill: background + text. */

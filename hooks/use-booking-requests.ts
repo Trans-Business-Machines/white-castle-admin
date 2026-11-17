@@ -6,7 +6,7 @@ import {
   fetchBookings,
   type BookingListFilters,
 } from "@/lib/api/bookings"
-import { hasRole, OPERATIONS_ROLES } from "@/lib/roles"
+import { hasPermission } from "@/lib/roles"
 import { useAuth } from "@/providers/auth-provider"
 
 /** Bookings raised from the website sit in this status until staff decide. */
@@ -45,7 +45,7 @@ export function useBookingRequests() {
   const { user } = useAuth()
   const query = useBookingsList(
     { ...ALL_DATES, status: BOOKING_REQUEST_STATUS },
-    { enabled: hasRole(user?.role, OPERATIONS_ROLES) }
+    { enabled: hasPermission(user?.permissions, "bookings:view") }
   )
 
   return {

@@ -41,11 +41,7 @@ import {
   canStartStayChange,
   hasOutstandingStayPayment,
 } from "@/lib/bookings"
-import {
-  BOOKING_ACTION_ROLES,
-  BOOKING_DELETE_ROLES,
-  hasRole,
-} from "@/lib/roles"
+import { hasPermission } from "@/lib/roles"
 import type { Booking } from "@/lib/types"
 import { useAuth } from "@/providers/auth-provider"
 
@@ -97,9 +93,9 @@ function BookingActionsMenu({
 
   const isRequest = variant === "request"
   // Finance only get View booking; with that hidden too there's no menu.
-  const canAct = hasRole(user?.role, BOOKING_ACTION_ROLES)
+  const canAct = hasPermission(user?.permissions, "bookings:manage")
   // Super admins only; a guest who is in the room keeps their booking.
-  const showDelete = hasRole(user?.role, BOOKING_DELETE_ROLES)
+  const showDelete = hasPermission(user?.permissions, "bookings:delete")
 
   if (!canAct && !showView) return null
 

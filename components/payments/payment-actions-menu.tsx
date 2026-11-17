@@ -21,7 +21,7 @@ import { getApiErrorMessage } from "@/lib/api/errors"
 import { paymentsQueryKey, verifyPayment } from "@/lib/api/payments"
 import { formatAmount } from "@/lib/format"
 import { getPaymentMethodLabel } from "@/lib/payments"
-import { hasRole, PAYMENT_REVIEW_ROLES } from "@/lib/roles"
+import { hasPermission } from "@/lib/roles"
 import type { Payment } from "@/lib/types"
 import { useAuth } from "@/providers/auth-provider"
 
@@ -49,7 +49,9 @@ function PaymentActionsMenu({ payment }: { payment: Payment }) {
 
   const isPending = payment.status.toLowerCase() === PENDING_STATUS
   const isDeposit = payment.payment_type.toLowerCase() === DEPOSIT_TYPE
-  const canReview = hasRole(user?.role, PAYMENT_REVIEW_ROLES)
+  const canVerify = hasPermission(user?.permissions, "payments:verify")
+  const canReject = hasPermission(user?.permissions, "payments:reject")
+  const canComplete = hasPermission(user?.permissions, "payments:create")
 
   const verify = useMutation({
     mutationFn: () => verifyPayment(payment.payment_id),
@@ -69,7 +71,7 @@ function PaymentActionsMenu({ payment }: { payment: Payment }) {
     setDialog("verify")
   }
 
-  if (!canReview && !isDeposit) {
+  if (!canVerify && !canReject && !(isDeposit && canComplete)) {
     return <span className="text-muted-foreground">—</span>
   }
 
@@ -87,30 +89,34 @@ function PaymentActionsMenu({ payment }: { payment: Payment }) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
-          {canReview ? (
+          {canVerify || canReject ? (
             <>
               {!isPending ? (
                 <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
                   This payment is already {payment.status.toLowerCase()}.
                 </DropdownMenuLabel>
               ) : null}
-              <DropdownMenuItem disabled={!isPending} onSelect={openVerify}>
-                <BadgeCheck aria-hidden="true" />
-                Verify payment
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                variant="destructive"
-                disabled={!isPending}
-                onSelect={() => setDialog("reject")}
-              >
-                <CircleX aria-hidden="true" />
-                Reject payment
-              </DropdownMenuItem>
+              {canVerify ? (
+                <DropdownMenuItem disabled={!isPending} onSelect={openVerify}>
+                  <BadgeCheck aria-hidden="true" />
+                  Verify payment
+                </DropdownMenuItem>
+              ) : null}
+              {canReject ? (
+                <DropdownMenuItem
+                  variant="destructive"
+                  disabled={!isPending}
+                  onSelect={() => setDialog("reject")}
+                >
+                  <CircleX aria-hidden="true" />
+                  Reject payment
+                </DropdownMenuItem>
+              ) : null}
             </>
           ) : null}
-          {isDeposit ? (
+          {isDeposit && canComplete ? (
             <>
-              {canReview ? <DropdownMenuSeparator /> : null}
+              {canVerify || canReject ? <DropdownMenuSeparator /> : null}
               <DropdownMenuItem onSelect={() => setDialog("complete")}>
                 <HandCoins aria-hidden="true" />
                 Complete payment
@@ -120,59 +126,61 @@ function PaymentActionsMenu({ payment }: { payment: Payment }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      {canReview ? (
-        <>
-          <ConfirmDialog
-            open={dialog === "verify"}
-            onOpenChange={(open) => setDialog(open ? "verify" : null)}
-            title="Verify this payment?"
-            description={
-              <>
-                Confirm you&apos;ve received the{" "}
-                {formatAmount(payment.amount, payment.currency)}{" "}
-                {getPaymentMethodLabel(payment.method)} payment
-                {payment.reference ? ` (${payment.reference})` : ""} on booking{" "}
-                <span className="font-semibold text-foreground">
-                  {payment.booking_ref}
-                </span>
-                .
-                {payment.evidence_url ? null : (
-                  <>
-                    {" "}
-                    <span className="font-semibold text-foreground">
-                      No proof was attached to this payment.
-                    </span>
-                  </>
-                )}
-              </>
-            }
-            confirmLabel="Verify payment"
-            pendingLabel="Verifying"
-            isPending={verify.isPending}
-            error={
-              verify.isError
-                ? getApiErrorMessage(
-                    verify.error,
-                    "We couldn't verify this payment. Try again."
-                  )
-                : null
-            }
-            onConfirm={() => verify.mutate()}
-          />
-
-          <RejectPaymentDialog
-            payment={payment}
-            open={dialog === "reject"}
-            onOpenChange={(open) => setDialog(open ? "reject" : null)}
-          />
-        </>
+      {canVerify ? (
+        <ConfirmDialog
+          open={dialog === "verify"}
+          onOpenChange={(open) => setDialog(open ? "verify" : null)}
+          title="Verify this payment?"
+          description={
+            <>
+              Confirm you&apos;ve received the{" "}
+              {formatAmount(payment.amount, payment.currency)}{" "}
+              {getPaymentMethodLabel(payment.method)} payment
+              {payment.reference ? ` (${payment.reference})` : ""} on booking{" "}
+              <span className="font-semibold text-foreground">
+                {payment.booking_ref}
+              </span>
+              .
+              {payment.evidence_url ? null : (
+                <>
+                  {" "}
+                  <span className="font-semibold text-foreground">
+                    No proof was attached to this payment.
+                  </span>
+                </>
+              )}
+            </>
+          }
+          confirmLabel="Verify payment"
+          pendingLabel="Verifying"
+          isPending={verify.isPending}
+          error={
+            verify.isError
+              ? getApiErrorMessage(
+                  verify.error,
+                  "We couldn't verify this payment. Try again."
+                )
+              : null
+          }
+          onConfirm={() => verify.mutate()}
+        />
       ) : null}
 
-      <CompletePaymentDialog
-        payment={payment}
-        open={dialog === "complete"}
-        onOpenChange={(open) => setDialog(open ? "complete" : null)}
-      />
+      {canReject ? (
+        <RejectPaymentDialog
+          payment={payment}
+          open={dialog === "reject"}
+          onOpenChange={(open) => setDialog(open ? "reject" : null)}
+        />
+      ) : null}
+
+      {isDeposit && canComplete ? (
+        <CompletePaymentDialog
+          payment={payment}
+          open={dialog === "complete"}
+          onOpenChange={(open) => setDialog(open ? "complete" : null)}
+        />
+      ) : null}
     </>
   )
 }

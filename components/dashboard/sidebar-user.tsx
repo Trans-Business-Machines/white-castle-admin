@@ -62,7 +62,9 @@ function SidebarUser({
                   {user.full_name}
                 </span>
                 <span className="truncate text-xs text-white/70">
-                  {humanizeSlug(user.role)}
+                  {(user.roles?.length ? user.roles : [user.role])
+                    .map(humanizeSlug)
+                    .join(" · ")}
                 </span>
               </span>
             </SidebarMenuButton>

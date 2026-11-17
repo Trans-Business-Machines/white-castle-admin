@@ -16,7 +16,9 @@ import {
   groupSettings,
   type SettingCategory,
 } from "@/lib/settings"
+import { hasPermission } from "@/lib/roles"
 import type { MotelSetting } from "@/lib/types"
+import { useAuth } from "@/providers/auth-provider"
 
 /** One surface per section: its header on top, rows beneath. */
 const sectionClassName =
@@ -116,6 +118,8 @@ function SettingsSection({
 
 function SettingRow({ setting }: { setting: MotelSetting }) {
   const [editing, setEditing] = useState(false)
+  const { user } = useAuth()
+  const canEdit = hasPermission(user?.permissions, "settings:manage")
   const label = getSettingLabel(setting.key)
   const value = formatSettingValue(setting)
 
@@ -160,24 +164,28 @@ function SettingRow({ setting }: { setting: MotelSetting }) {
           </p>
         </div>
 
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => setEditing(true)}
-          aria-label={`Edit ${label}`}
-          className="shrink-0 rounded-md"
-        >
-          <SquarePen aria-hidden="true" />
-          Edit
-        </Button>
+        {canEdit ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={() => setEditing(true)}
+            aria-label={`Edit ${label}`}
+            className="shrink-0 rounded-md"
+          >
+            <SquarePen aria-hidden="true" />
+            Edit
+          </Button>
+        ) : null}
       </div>
 
-      <EditSettingDialog
-        setting={setting}
-        open={editing}
-        onOpenChange={setEditing}
-      />
+      {canEdit ? (
+        <EditSettingDialog
+          setting={setting}
+          open={editing}
+          onOpenChange={setEditing}
+        />
+      ) : null}
     </li>
   )
 }

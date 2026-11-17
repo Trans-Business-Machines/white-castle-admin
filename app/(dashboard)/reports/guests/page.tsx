@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
-import { RequireRole } from "@/components/auth/require-role"
+import { RequirePermission } from "@/components/auth/require-permission"
 import { GuestsReportView } from "@/components/reports/guests-report-view"
-import { REPORTS_ROLES } from "@/lib/roles"
 import { parseReportDateRange, type ReportSearchParams } from "@/lib/reports"
 
 export const metadata: Metadata = { title: "Guests report" }
@@ -16,8 +15,8 @@ export default async function GuestsReportPage({
   const range = parseReportDateRange(await searchParams)
 
   return (
-    <RequireRole roles={REPORTS_ROLES} area="reports">
+    <RequirePermission permission="reports:guests" area="reports">
       <GuestsReportView range={range} />
-    </RequireRole>
+    </RequirePermission>
   )
 }

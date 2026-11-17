@@ -51,7 +51,7 @@ import { getApiErrorStatus } from "@/lib/api/errors"
 import { fetchUnits, unitsQueryKey } from "@/lib/api/units"
 import { isPendingBooking, sortBookings } from "@/lib/bookings"
 import { formatAmount, formatDate } from "@/lib/format"
-import { BOOKING_ACTION_ROLES, hasRole } from "@/lib/roles"
+import { hasPermission } from "@/lib/roles"
 import { useAuth } from "@/providers/auth-provider"
 
 /** Columns before the optional Actions column. */
@@ -67,16 +67,16 @@ const PREFETCH_STALE_MS = 30_000
  * row menu offers the approve / reject decisions instead of the
  * lifecycle actions. `highlightPending` tints pending rows on `/bookings`
  * to flag the requests still waiting on a decision; on `/requests` every
- * row is pending, so it's off there. `actionRoles` limits who sees the
- * Actions column: on `/requests` it only holds approve / reject, so roles
- * that can't decide (finance) don't get the column at all.
+ * row is pending, so it's off there. `actionPermission` limits who sees
+ * the Actions column: on `/requests` it only holds approve / reject, so
+ * users who can't decide don't get the column at all.
  */
 const VARIANTS = {
   bookings: {
     lockedStatus: "",
     menu: "booking",
     highlightPending: true,
-    actionRoles: null,
+    actionPermission: null,
     noun: "booking",
     plural: "bookings",
     empty: "No bookings yet. Create the first one above.",
@@ -85,7 +85,7 @@ const VARIANTS = {
     lockedStatus: BOOKING_REQUEST_STATUS,
     menu: "request",
     highlightPending: false,
-    actionRoles: BOOKING_ACTION_ROLES,
+    actionPermission: "bookings:manage",
     noun: "booking request",
     plural: "booking requests",
     empty: "No pending booking requests right now.",
@@ -115,7 +115,8 @@ export function BookingsTable({
   const config = VARIANTS[variant]
   const { user } = useAuth()
   const showActions =
-    config.actionRoles === null || hasRole(user?.role, config.actionRoles)
+    config.actionPermission === null ||
+    hasPermission(user?.permissions, config.actionPermission)
   const columns = showActions ? DATA_COLUMNS + 1 : DATA_COLUMNS
   const [filters, setFilters] = useState(EMPTY_BOOKING_FILTERS)
   const [search, setSearch] = useState("")

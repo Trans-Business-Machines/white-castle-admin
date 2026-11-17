@@ -24,7 +24,7 @@ export function UnauthorizedCard({ area }: Props) {
   const { user } = useAuth()
   // The dashboard for most roles; catering can't open it, so they go back
   // to the bed and breakfast list instead.
-  const home = getHomeNavItem(user?.role)
+  const home = getHomeNavItem(user?.permissions)
 
   return (
     <div className="flex justify-center py-12">

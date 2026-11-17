@@ -5,7 +5,7 @@ import {
   fetchPendingPayments,
   pendingPaymentsQueryKey,
 } from "@/lib/api/payments"
-import { hasRole, PAYMENTS_ROLES } from "@/lib/roles"
+import { hasPermission } from "@/lib/roles"
 import { useAuth } from "@/providers/auth-provider"
 
 /**
@@ -18,7 +18,7 @@ export function usePendingPaymentsCount() {
   const query = useQuery({
     queryKey: pendingPaymentsQueryKey,
     queryFn: fetchPendingPayments,
-    enabled: hasRole(user?.role, PAYMENTS_ROLES),
+    enabled: hasPermission(user?.permissions, "payments:view"),
   })
   return query.data?.length ?? 0
 }

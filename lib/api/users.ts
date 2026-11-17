@@ -34,6 +34,23 @@ export async function createUser(payload: CreateUserPayload) {
   return response.data
 }
 
+/** PATCH /auth/users/{id} → updates details, including the role bundle. */
+export async function updateUser(
+  userId: string,
+  payload: {
+    roles?: string[]
+    role?: string
+    full_name?: string
+    email?: string
+  }
+) {
+  const response = await axiosInstance.patch<AuthUser>(
+    `/auth/users/${encodeURIComponent(userId)}`,
+    payload
+  )
+  return response.data
+}
+
 /** POST /auth/users/{id}/enable → lets the user sign in again. */
 export async function enableUser(userId: string) {
   const response = await axiosInstance.post<AuthUser>(

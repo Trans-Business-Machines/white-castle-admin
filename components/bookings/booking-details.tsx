@@ -156,8 +156,8 @@ function BookingDetails({ bookingId }: { bookingId: string }) {
   const router = useRouter()
   const { user } = useAuth()
   // Finance can't open the room or guest pages, so they get plain text.
-  const canOpenUnits = canAccessPath("/units", user?.role)
-  const canOpenGuests = canAccessPath("/guests", user?.role)
+  const canOpenUnits = canAccessPath("/units", user?.permissions)
+  const canOpenGuests = canAccessPath("/guests", user?.permissions)
   const query = useQuery({
     queryKey: bookingQueryKey(bookingId),
     queryFn: () => fetchBookingDetails(bookingId),

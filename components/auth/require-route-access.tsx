@@ -17,7 +17,7 @@ function RequireRouteAccess({ children }: PropsWithChildren) {
   const { user } = useAuth()
 
   if (!user) return null
-  if (!canAccessPath(pathname, user.role)) {
+  if (!canAccessPath(pathname, user.permissions)) {
     const page = findNavItem(pathname)
     return <UnauthorizedCard area={page?.title.toLowerCase() ?? "this page"} />
   }

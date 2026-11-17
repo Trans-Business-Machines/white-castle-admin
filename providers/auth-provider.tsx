@@ -23,7 +23,11 @@ import {
 } from "@/lib/auth-token"
 import { onUnauthorized, refreshAccessToken } from "@/lib/axios"
 import type { LoginValues } from "@/lib/schemas/auth"
-import { getSessionExpiresAt, IDLE_TIMEOUT_MS, IDLE_WARNING_MS } from "@/lib/session"
+import {
+  getSessionExpiresAt,
+  IDLE_TIMEOUT_MS,
+  IDLE_WARNING_MS,
+} from "@/lib/session"
 import type { AuthUser } from "@/lib/types"
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated"
@@ -93,11 +97,11 @@ function shouldRedirectToLogin(pathname: string) {
  * new password.
  */
 export function getLandingPath(
-  user: Pick<AuthUser, "must_change_password" | "role">
+  user: Pick<AuthUser, "must_change_password" | "permissions">
 ) {
   return user.must_change_password
     ? CHANGE_PASSWORD_ROUTE
-    : getHomeNavItem(user.role).href
+    : getHomeNavItem(user.permissions).href
 }
 
 export const AuthContext = createContext<AuthContextValue | null>(null)
@@ -289,9 +293,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
     scheduleSessionTimers()
 
     return () => {
-      events.forEach((event) =>
-        window.removeEventListener(event, onActivity)
-      )
+      events.forEach((event) => window.removeEventListener(event, onActivity))
       document.removeEventListener("visibilitychange", onVisibility)
       clearSessionTimers()
     }

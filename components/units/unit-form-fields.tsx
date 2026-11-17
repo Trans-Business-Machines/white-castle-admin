@@ -32,7 +32,7 @@ import {
   roomTypesQueryKey,
   type RoomTypeDefault,
 } from "@/lib/api/units"
-import { hasRole, UNIT_RATE_EDIT_ROLES } from "@/lib/roles"
+import { hasPermission } from "@/lib/roles"
 import { useAuth } from "@/providers/auth-provider"
 
 const labelClassName =
@@ -147,7 +147,7 @@ export function UnitFormFields({
     formState: { errors },
   } = form
   const { user } = useAuth()
-  const canEditRates = hasRole(user?.role, UNIT_RATE_EDIT_ROLES)
+  const canEditRates = hasPermission(user?.permissions, "units:rates:edit")
   const [amenityInput, setAmenityInput] = useState("")
   const [amenityError, setAmenityError] = useState<string | null>(null)
 

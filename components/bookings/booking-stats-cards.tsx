@@ -10,7 +10,7 @@ import {
 } from "@/lib/api/bookings"
 import { getApiErrorMessage } from "@/lib/api/errors"
 import { BOOKING_STAT_CARDS, getMonthToDateRange } from "@/lib/bookings"
-import { BOOKING_STATS_ROLES, hasRole } from "@/lib/roles"
+import { hasPermission } from "@/lib/roles"
 import { useAuth } from "@/providers/auth-provider"
 
 // 15rem columns: wide enough for a "KES 1,250,000" value, so with the
@@ -25,7 +25,7 @@ const gridClassName =
 export function BookingStatsCards() {
   const { user } = useAuth()
 
-  if (!hasRole(user?.role, BOOKING_STATS_ROLES)) return null
+  if (!hasPermission(user?.permissions, "bookings:stats:view")) return null
 
   return (
     <div className="mb-6">

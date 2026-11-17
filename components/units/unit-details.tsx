@@ -24,7 +24,7 @@ import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/errors"
 import { fetchUnitDetails, unitQueryKey } from "@/lib/api/units"
 import { useRateCurrency } from "@/hooks/use-rate-currency"
 import { formatAmount, formatDate, humanizeSlug } from "@/lib/format"
-import { hasRole, UNIT_MANAGE_ROLES, UNIT_STATUS_ROLES } from "@/lib/roles"
+import { hasPermission } from "@/lib/roles"
 import { isSettableUnitStatus } from "@/lib/schemas/units"
 import { getRoomTypeLabel, getUnitRates } from "@/lib/units"
 import { useAuth } from "@/providers/auth-provider"
@@ -119,9 +119,9 @@ function UnitDetails({ roomId }: { roomId: string }) {
   const [action, setAction] = useState<"edit" | "status" | "delete" | null>(
     null
   )
-  // Receptionists and housekeeping only get the Update status CTA.
-  const canManage = hasRole(user?.role, UNIT_MANAGE_ROLES)
-  const canSetStatus = hasRole(user?.role, UNIT_STATUS_ROLES)
+  const canEdit = hasPermission(user?.permissions, "units:update")
+  const canDelete = hasPermission(user?.permissions, "units:delete")
+  const canSetStatus = hasPermission(user?.permissions, "units:status")
 
   const unit = useQuery({
     queryKey: unitQueryKey(roomId),
@@ -183,7 +183,7 @@ function UnitDetails({ roomId }: { roomId: string }) {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          {canManage ? (
+          {canEdit ? (
             <Button
               type="button"
               variant="default"
@@ -206,7 +206,7 @@ function UnitDetails({ roomId }: { roomId: string }) {
               Update status
             </Button>
           ) : null}
-          {canManage ? (
+          {canDelete ? (
             <Button
               type="button"
               variant="destructive"
@@ -302,22 +302,26 @@ function UnitDetails({ roomId }: { roomId: string }) {
         </CardContent>
       </Card>
 
-      <EditUnitDialog
-        unit={room}
-        open={action === "edit"}
-        onOpenChange={(open) => setAction(open ? "edit" : null)}
-      />
+      {canEdit ? (
+        <EditUnitDialog
+          unit={room}
+          open={action === "edit"}
+          onOpenChange={(open) => setAction(open ? "edit" : null)}
+        />
+      ) : null}
       <UpdateUnitStatusDialog
         unit={room}
         open={action === "status"}
         onOpenChange={(open) => setAction(open ? "status" : null)}
       />
-      <DeleteUnitDialog
-        unit={room}
-        open={action === "delete"}
-        onOpenChange={(open) => setAction(open ? "delete" : null)}
-        onDeleted={() => router.replace("/units")}
-      />
+      {canDelete ? (
+        <DeleteUnitDialog
+          unit={room}
+          open={action === "delete"}
+          onOpenChange={(open) => setAction(open ? "delete" : null)}
+          onDeleted={() => router.replace("/units")}
+        />
+      ) : null}
     </div>
   )
 }

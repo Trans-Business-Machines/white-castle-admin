@@ -9,7 +9,7 @@ import { StatCard } from "@/components/stat-card"
 import { getApiErrorMessage } from "@/lib/api/errors"
 import { fetchPaymentStats, paymentStatsQueryKey } from "@/lib/api/payments"
 import { getCurrentMonthRange, PAYMENT_STAT_CARDS } from "@/lib/payments"
-import { hasRole, PAYMENT_STATS_ROLES } from "@/lib/roles"
+import { hasPermission } from "@/lib/roles"
 import { useAuth } from "@/providers/auth-provider"
 
 // Same grid as the bookings page's cards so the pages line up.
@@ -23,7 +23,7 @@ const gridClassName =
 export function PaymentStatsCards() {
   const { user } = useAuth()
 
-  if (!hasRole(user?.role, PAYMENT_STATS_ROLES)) return null
+  if (!hasPermission(user?.permissions, "payments:stats:view")) return null
 
   return (
     <div className="mb-6">

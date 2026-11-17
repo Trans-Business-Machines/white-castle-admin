@@ -59,9 +59,9 @@ function AppSidebar() {
     "/payments": pendingPayments,
   }
   const visibleNav = dashboardNav.filter((item) =>
-    canSeeNavItem(item, user?.role)
+    canSeeNavItem(item, user?.permissions)
   )
-  const showSettings = canSeeNavItem(settingsNav, user?.role)
+  const showSettings = canSeeNavItem(settingsNav, user?.permissions)
   const settingsActive =
     pathname === settingsNav.href || pathname.startsWith(`${settingsNav.href}/`)
 
@@ -84,7 +84,7 @@ function AppSidebar() {
               <Menu aria-hidden="true" className="size-5" />
             </button>
             <Link
-              href={getHomeNavItem(user?.role).href}
+              href={getHomeNavItem(user?.permissions).href}
               className={cn(
                 "overflow-hidden font-heading text-lg font-bold tracking-[0.12em] whitespace-nowrap uppercase",
                 labelClassName

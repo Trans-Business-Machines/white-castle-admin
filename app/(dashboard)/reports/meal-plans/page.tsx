@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
-import { RequireRole } from "@/components/auth/require-role"
+import { RequirePermission } from "@/components/auth/require-permission"
 import { MealPlanReportView } from "@/components/reports/meal-plan-report-view"
-import { REPORTS_ROLES } from "@/lib/roles"
 import {
   parseMealPlanReportFilters,
   type ReportSearchParams,
@@ -19,8 +18,8 @@ export default async function MealPlanReportPage({
   const filters = parseMealPlanReportFilters(await searchParams)
 
   return (
-    <RequireRole roles={REPORTS_ROLES} area="reports">
+    <RequirePermission permission="reports:meal_plans" area="reports">
       <MealPlanReportView filters={filters} />
-    </RequireRole>
+    </RequirePermission>
   )
 }

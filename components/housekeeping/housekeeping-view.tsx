@@ -31,11 +31,13 @@ import {
 import { bookingsQueryKey } from "@/lib/api/bookings"
 import { unitsQueryKey } from "@/lib/api/units"
 import { formatTimestamp, humanizeSlug } from "@/lib/format"
+import { hasPermission } from "@/lib/roles"
 import type {
   HousekeepingPriority,
   HousekeepingTask,
   HousekeepingTaskStatus,
 } from "@/lib/types"
+import { useAuth } from "@/providers/auth-provider"
 
 type QueueFilter = "pending" | "in_progress" | "completed" | "all"
 
@@ -47,8 +49,7 @@ const FILTERS: { value: QueueFilter; label: string }[] = [
 ]
 
 const PRIORITY_CLASSES: Record<HousekeepingPriority, string> = {
-  urgent:
-    "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
+  urgent: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
   high: "bg-amber-100 text-amber-800 dark:bg-amber-500/15 dark:text-amber-300",
   normal:
     "bg-brand-azure/10 text-brand-azure dark:bg-brand-azure/20 dark:text-sky-300",
@@ -95,6 +96,10 @@ function StatusBadge({ status }: { status: HousekeepingTaskStatus }) {
 function TaskCard({ task }: { task: HousekeepingTask }) {
   const queryClient = useQueryClient()
   const fileInput = useRef<HTMLInputElement>(null)
+  const { user } = useAuth()
+  const canStart = hasPermission(user?.permissions, "housekeeping:start")
+  const canComplete = hasPermission(user?.permissions, "housekeeping:complete")
+  const canAddPhoto = hasPermission(user?.permissions, "housekeeping:photos")
 
   const invalidate = () =>
     Promise.all([
@@ -208,7 +213,7 @@ function TaskCard({ task }: { task: HousekeepingTask }) {
       ) : null}
 
       <div className="flex flex-wrap items-center gap-2 border-t pt-3">
-        {task.status === "pending" ? (
+        {task.status === "pending" && canStart ? (
           <Button
             type="button"
             size="sm"
@@ -225,7 +230,7 @@ function TaskCard({ task }: { task: HousekeepingTask }) {
           </Button>
         ) : null}
 
-        {task.status === "in_progress" ? (
+        {task.status === "in_progress" && canComplete ? (
           <Button
             type="button"
             size="sm"
@@ -242,32 +247,36 @@ function TaskCard({ task }: { task: HousekeepingTask }) {
           </Button>
         ) : null}
 
-        <Button
-          type="button"
-          size="sm"
-          variant="outline"
-          disabled={busy}
-          onClick={() => fileInput.current?.click()}
-          className="rounded-full"
-        >
-          {photo.isPending ? (
-            <Loader aria-hidden="true" className="animate-spin" />
-          ) : (
-            <ImagePlus aria-hidden="true" />
-          )}
-          Add photo
-        </Button>
-        <input
-          ref={fileInput}
-          type="file"
-          accept="image/*"
-          className="sr-only"
-          onChange={(event) => {
-            const file = event.target.files?.[0]
-            event.target.value = ""
-            if (file) photo.mutate(file)
-          }}
-        />
+        {canAddPhoto ? (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={busy}
+            onClick={() => fileInput.current?.click()}
+            className="rounded-full"
+          >
+            {photo.isPending ? (
+              <Loader aria-hidden="true" className="animate-spin" />
+            ) : (
+              <ImagePlus aria-hidden="true" />
+            )}
+            Add photo
+          </Button>
+        ) : null}
+        {canAddPhoto ? (
+          <input
+            ref={fileInput}
+            type="file"
+            accept="image/*"
+            className="sr-only"
+            onChange={(event) => {
+              const file = event.target.files?.[0]
+              event.target.value = ""
+              if (file) photo.mutate(file)
+            }}
+          />
+        ) : null}
       </div>
     </Card>
   )
@@ -335,8 +344,8 @@ export function HousekeepingView() {
             Housekeeping
           </h1>
           <p className="mt-1 max-w-2xl text-sm text-muted-foreground">
-            Turnover tasks are created automatically on checkout. Start a
-            clean, add a photo and mark the room clean.
+            Turnover tasks are created automatically on checkout. Start a clean,
+            add a photo and mark the room clean.
           </p>
         </div>
         <Button

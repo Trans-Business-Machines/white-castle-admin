@@ -6,7 +6,7 @@ import {
 } from "@/components/export-csv-dialog"
 import { exportPayments } from "@/lib/api/payments"
 import { getCurrentMonthRange, PAYMENT_EXPORT_STATUSES } from "@/lib/payments"
-import { hasRole, PAYMENT_EXPORT_ROLES } from "@/lib/roles"
+import { hasPermission } from "@/lib/roles"
 import { useAuth } from "@/providers/auth-provider"
 
 /**
@@ -17,7 +17,7 @@ import { useAuth } from "@/providers/auth-provider"
 export function ExportPaymentsDialog() {
   const { user } = useAuth()
 
-  if (!hasRole(user?.role, PAYMENT_EXPORT_ROLES)) return null
+  if (!hasPermission(user?.permissions, "payments:export")) return null
 
   return (
     <ExportCsvDialog

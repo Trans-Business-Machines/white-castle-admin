@@ -1,11 +1,10 @@
-import { RequireRole } from "@/components/auth/require-role"
+import { RequirePermission } from "@/components/auth/require-permission"
 import { ReportCards } from "@/components/reports/report-cards"
-import { REPORTS_ROLES } from "@/lib/roles"
 
 export default function ReportsPage() {
   return (
-    <RequireRole roles={REPORTS_ROLES} area="reports">
+    <RequirePermission permission="reports:view" area="reports">
       <ReportCards />
-    </RequireRole>
+    </RequirePermission>
   )
 }

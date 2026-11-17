@@ -7,6 +7,8 @@ import { EMPTY_BOOKING_FILTERS } from "@/components/bookings/bookings-filters"
 import { RecordPaymentDialog } from "@/components/payments/record-payment-dialog"
 import { Button } from "@/components/ui/button"
 import { bookingsListQueryKey, fetchBookings } from "@/lib/api/bookings"
+import { hasPermission } from "@/lib/roles"
+import { useAuth } from "@/providers/auth-provider"
 
 /** How long a prefetched bookings list is reused before refetching. */
 const PREFETCH_STALE_MS = 30_000
@@ -15,6 +17,8 @@ const PREFETCH_STALE_MS = 30_000
 export function RecordPaymentButton() {
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
+  const { user } = useAuth()
+  const canRecord = hasPermission(user?.permissions, "payments:create")
 
   // Warm the bookings list as soon as the page renders so the picker has
   // its options the moment the dialog opens. `query` is a no-op while the
@@ -29,6 +33,8 @@ export function RecordPaymentButton() {
       })
       .catch(() => undefined)
   }, [queryClient])
+
+  if (!canRecord) return null
 
   return (
     <>

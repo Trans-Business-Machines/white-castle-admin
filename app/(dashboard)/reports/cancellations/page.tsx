@@ -1,7 +1,6 @@
 import type { Metadata } from "next"
-import { RequireRole } from "@/components/auth/require-role"
+import { RequirePermission } from "@/components/auth/require-permission"
 import { CancellationsReportView } from "@/components/reports/cancellations-report-view"
-import { REPORTS_ROLES } from "@/lib/roles"
 import { parseReportDateRange, type ReportSearchParams } from "@/lib/reports"
 
 export const metadata: Metadata = { title: "Cancellations report" }
@@ -16,8 +15,8 @@ export default async function CancellationsReportPage({
   const range = parseReportDateRange(await searchParams)
 
   return (
-    <RequireRole roles={REPORTS_ROLES} area="reports">
+    <RequirePermission permission="reports:cancellations" area="reports">
       <CancellationsReportView range={range} />
-    </RequireRole>
+    </RequirePermission>
   )
 }

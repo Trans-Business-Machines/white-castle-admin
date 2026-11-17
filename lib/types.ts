@@ -5,7 +5,12 @@ export interface AuthUser {
   username: string
   email: string
   full_name: string
+  /** Primary role, kept for display and legacy sorting. */
   role: RoleName
+  /** Every role held by the account; access is the union of their permissions. */
+  roles: string[]
+  /** Effective permission slugs resolved by the backend. */
+  permissions: string[]
   active: boolean
   must_change_password: boolean
   last_login_at: string
@@ -21,8 +26,17 @@ export interface AuthUser {
 export interface Role {
   name: RoleName
   label: string
-  description: string
+  description: string | null
   created_at: string
+  is_system_default: boolean
+  permission_count: number
+}
+
+export interface Permission {
+  permission_id: string
+  module: string
+  slug: string
+  description: string | null
 }
 
 export interface Unit {
@@ -740,10 +754,7 @@ export interface ServicesAuditLog {
 
 /** Housekeeping task states shown in the cleaning queue. */
 export type HousekeepingTaskStatus =
-  | "pending"
-  | "in_progress"
-  | "completed"
-  | "skipped"
+  "pending" | "in_progress" | "completed" | "skipped"
 
 export type HousekeepingPriority = "low" | "normal" | "high" | "urgent"
 

@@ -34,7 +34,7 @@ import {
   toCreateBookingPayload,
   type CreateBookingValues,
 } from "@/lib/schemas/bookings"
-import { BOOKING_CREATE_ROLES, hasRole } from "@/lib/roles"
+import { hasPermission } from "@/lib/roles"
 import type { Guest } from "@/lib/types"
 import { useAuth } from "@/providers/auth-provider"
 
@@ -63,7 +63,7 @@ const emptyValues: CreateBookingValues = {
 export function CreateBookingDialog() {
   const { user } = useAuth()
 
-  if (!hasRole(user?.role, BOOKING_CREATE_ROLES)) return null
+  if (!hasPermission(user?.permissions, "bookings:create")) return null
 
   return <CreateBookingCta />
 }

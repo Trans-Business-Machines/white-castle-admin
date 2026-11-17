@@ -72,7 +72,9 @@ function ProfileView() {
                 {user.full_name}
               </h2>
               <div className="mt-1 flex flex-wrap items-center gap-2">
-                <RoleBadge role={user.role} />
+                {(user.roles?.length ? user.roles : [user.role]).map((role) => (
+                  <RoleBadge key={role} role={role} />
+                ))}
                 <span
                   className={
                     user.active

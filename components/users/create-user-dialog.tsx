@@ -24,13 +24,7 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
+import { RoleMultiSelect } from "@/components/users/role-multiselect"
 import {
   FieldError,
   TemporaryPasswordField,
@@ -47,11 +41,11 @@ import {
   type CreateUserValues,
 } from "@/lib/schemas/users"
 
-// `role` stays unset until one is picked, so the Select shows its placeholder.
 const emptyValues: DefaultValues<CreateUserValues> = {
   full_name: "",
   username: "",
   email: "",
+  roles: [],
   password: "",
 }
 
@@ -115,7 +109,7 @@ export function CreateUserDialog({ children }: PropsWithChildren) {
     // Ignore Escape / backdrop clicks while a request is in flight.
     if (mutation.isPending) return
     if (next) {
-      reset({ ...emptyValues, password: generatePassword() })
+      reset({ ...emptyValues, roles: [], password: generatePassword() })
       setOpen(true)
     } else {
       closeDialog()
@@ -229,42 +223,20 @@ export function CreateUserDialog({ children }: PropsWithChildren) {
             </div>
 
             <div className="grid gap-2">
-              <Label htmlFor="user-role" className={labelClassName}>
-                Role
-              </Label>
+              <Label className={labelClassName}>Roles</Label>
               <Controller
                 control={control}
-                name="role"
+                name="roles"
                 render={({ field }) => (
-                  <Select
-                    value={field.value ?? ""}
-                    onValueChange={field.onChange}
-                    disabled={roles.isPending || roles.isError}
-                  >
-                    <SelectTrigger
-                      id="user-role"
-                      ref={field.ref}
-                      onBlur={field.onBlur}
-                      className={`${inputClassName} w-full data-[size=default]:h-11`}
-                      aria-invalid={Boolean(errors.role)}
-                      aria-describedby={
-                        errors.role ? "user-role-error" : undefined
-                      }
-                    >
-                      <SelectValue
-                        placeholder={
-                          roles.isPending ? "Loading roles…" : "Choose a role"
-                        }
-                      />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {roles.data?.map((role) => (
-                        <SelectItem key={role.name} value={role.name}>
-                          {role.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <RoleMultiSelect
+                    roles={roles.data ?? []}
+                    value={field.value ?? []}
+                    onChange={field.onChange}
+                    disabled={
+                      roles.isPending || roles.isError || mutation.isPending
+                    }
+                    idPrefix="new-user-role"
+                  />
                 )}
               />
               {roles.isError ? (
@@ -281,9 +253,13 @@ export function CreateUserDialog({ children }: PropsWithChildren) {
               ) : (
                 <FieldError
                   id="user-role-error"
-                  message={errors.role?.message}
+                  message={errors.roles?.message}
                 />
               )}
+              <p className="text-xs text-muted-foreground">
+                Pick every role this person needs. Access is the union of those
+                roles&apos; permissions.
+              </p>
             </div>
 
             <TemporaryPasswordField

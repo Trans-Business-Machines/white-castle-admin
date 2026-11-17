@@ -29,7 +29,7 @@ function HeaderUser() {
   if (!user) return null
 
   // Same rule as the sidebar footer link: super admins only.
-  const showSettings = canSeeNavItem(settingsNav, user.role)
+  const showSettings = canSeeNavItem(settingsNav, user.permissions)
   const linkClassName = cn(
     menuItemClassName,
     "text-foreground hover:bg-brand-azure/10 hover:text-brand-azure focus-visible:bg-brand-azure/10 focus-visible:text-brand-azure"
@@ -52,7 +52,9 @@ function HeaderUser() {
             {user.full_name}
           </span>
           <span className="truncate text-xs text-muted-foreground capitalize">
-            {humanizeSlug(user.role)}
+            {(user.roles?.length ? user.roles : [user.role])
+              .map(humanizeSlug)
+              .join(" · ")}
           </span>
         </span>
         <ChevronDown
@@ -72,7 +74,12 @@ function HeaderUser() {
             {user.full_name}
           </p>
           <p className="truncate text-xs text-muted-foreground">{user.email}</p>
-          <RoleBadge role={humanizeSlug(user.role)} className="mt-1.5 w-fit" />
+          <RoleBadge
+            role={(user.roles?.length ? user.roles : [user.role])
+              .map(humanizeSlug)
+              .join(" · ")}
+            className="mt-1.5 w-fit"
+          />
         </div>
 
         <Separator className="my-1.5" />

@@ -21,7 +21,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { GUEST_DELETE_ROLES, hasRole } from "@/lib/roles"
+import { hasPermission } from "@/lib/roles"
 import type { Guest } from "@/lib/types"
 import { useAuth } from "@/providers/auth-provider"
 
@@ -36,8 +36,9 @@ function GuestActionsMenu({ guest }: { guest: Guest }) {
   const router = useRouter()
   const { user } = useAuth()
   const [action, setAction] = useState<GuestAction | null>(null)
-  // Only admins and super admins see the item at all.
-  const canDelete = hasRole(user?.role, GUEST_DELETE_ROLES)
+  const canUpdate = hasPermission(user?.permissions, "guests:update")
+  const canBlacklist = hasPermission(user?.permissions, "guests:blacklist")
+  const canDelete = hasPermission(user?.permissions, "guests:delete")
 
   return (
     <>
@@ -59,25 +60,31 @@ function GuestActionsMenu({ guest }: { guest: Guest }) {
             <Eye aria-hidden="true" />
             View guest
           </DropdownMenuItem>
-          <DropdownMenuItem onSelect={() => setAction("edit")}>
-            <SquarePen aria-hidden="true" />
-            Update
-          </DropdownMenuItem>
-          <DropdownMenuSeparator />
-          {guest.blacklisted ? (
-            <DropdownMenuItem onSelect={() => setAction("blacklist")}>
-              <ShieldCheck aria-hidden="true" />
-              Remove from blacklist
+          {canUpdate ? (
+            <DropdownMenuItem onSelect={() => setAction("edit")}>
+              <SquarePen aria-hidden="true" />
+              Update
             </DropdownMenuItem>
-          ) : (
-            <DropdownMenuItem
-              variant="destructive"
-              onSelect={() => setAction("blacklist")}
-            >
-              <Ban aria-hidden="true" />
-              Blacklist guest
-            </DropdownMenuItem>
-          )}
+          ) : null}
+          {canBlacklist ? (
+            <>
+              <DropdownMenuSeparator />
+              {guest.blacklisted ? (
+                <DropdownMenuItem onSelect={() => setAction("blacklist")}>
+                  <ShieldCheck aria-hidden="true" />
+                  Remove from blacklist
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem
+                  variant="destructive"
+                  onSelect={() => setAction("blacklist")}
+                >
+                  <Ban aria-hidden="true" />
+                  Blacklist guest
+                </DropdownMenuItem>
+              )}
+            </>
+          ) : null}
           {canDelete ? (
             <DropdownMenuItem
               variant="destructive"
@@ -90,16 +97,20 @@ function GuestActionsMenu({ guest }: { guest: Guest }) {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <EditGuestDialog
-        guest={guest}
-        open={action === "edit"}
-        onOpenChange={(open) => setAction(open ? "edit" : null)}
-      />
-      <BlacklistGuestDialog
-        guest={guest}
-        open={action === "blacklist"}
-        onOpenChange={(open) => setAction(open ? "blacklist" : null)}
-      />
+      {canUpdate ? (
+        <EditGuestDialog
+          guest={guest}
+          open={action === "edit"}
+          onOpenChange={(open) => setAction(open ? "edit" : null)}
+        />
+      ) : null}
+      {canBlacklist ? (
+        <BlacklistGuestDialog
+          guest={guest}
+          open={action === "blacklist"}
+          onOpenChange={(open) => setAction(open ? "blacklist" : null)}
+        />
+      ) : null}
       {canDelete ? (
         <DeleteGuestDialog
           guest={guest}
