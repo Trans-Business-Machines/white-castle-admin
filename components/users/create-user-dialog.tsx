@@ -35,6 +35,8 @@ import { getApiErrorMessage } from "@/lib/api/errors"
 import { fetchRoles, rolesQueryKey } from "@/lib/api/roles"
 import { createUser, usersQueryKey } from "@/lib/api/users"
 import { generatePassword } from "@/lib/password"
+import { hasPermission } from "@/lib/roles"
+import { useAuth } from "@/providers/auth-provider"
 import {
   createUserSchema,
   toCreateUserPayload,
@@ -52,6 +54,8 @@ const emptyValues: DefaultValues<CreateUserValues> = {
 export function CreateUserDialog({ children }: PropsWithChildren) {
   const [open, setOpen] = useState(false)
   const queryClient = useQueryClient()
+  const { user } = useAuth()
+  const canGrantSuperAdmin = hasPermission(user?.permissions, "system:full")
 
   const {
     control,
@@ -229,7 +233,10 @@ export function CreateUserDialog({ children }: PropsWithChildren) {
                 name="roles"
                 render={({ field }) => (
                   <RoleMultiSelect
-                    roles={roles.data ?? []}
+                    roles={(roles.data ?? []).filter(
+                      (role) =>
+                        canGrantSuperAdmin || role.name !== "super_admin"
+                    )}
                     value={field.value ?? []}
                     onChange={field.onChange}
                     disabled={
