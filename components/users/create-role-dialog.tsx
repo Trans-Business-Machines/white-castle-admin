@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, type PropsWithChildren } from "react"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Loader } from "lucide-react"
 import toast from "react-hot-toast"
 import { Button } from "@/components/ui/button"
@@ -17,8 +17,15 @@ import {
 } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { PermissionPicker } from "@/components/users/permission-picker"
 import { getApiErrorMessage } from "@/lib/api/errors"
-import { createRole, rolesQueryKey } from "@/lib/api/roles"
+import {
+  createRole,
+  fetchPermissions,
+  permissionsQueryKey,
+  rolesQueryKey,
+  updateRolePermissions,
+} from "@/lib/api/roles"
 import { roleSlug } from "@/lib/roles"
 
 interface Props extends PropsWithChildren {
@@ -26,26 +33,40 @@ interface Props extends PropsWithChildren {
   onCreated?: () => void
 }
 
-/** Creates a custom role with an empty permission bundle. */
+/** Creates a custom role and lets the manager pick its permission bundle. */
 export function CreateRoleDialog({ children, onCreated }: Props) {
   const [open, setOpen] = useState(false)
   const [label, setLabel] = useState("")
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [nameTouched, setNameTouched] = useState(false)
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([])
   const queryClient = useQueryClient()
 
+  const permissions = useQuery({
+    queryKey: permissionsQueryKey,
+    queryFn: fetchPermissions,
+    enabled: open,
+  })
+
   const mutation = useMutation({
-    mutationFn: () =>
-      createRole({
+    mutationFn: async () => {
+      const role = await createRole({
         name: roleSlug(name || label),
         label: label.trim(),
         description: description.trim() || undefined,
-      }),
+      })
+      if (selectedPermissions.length > 0) {
+        await updateRolePermissions(role.name, selectedPermissions)
+      }
+      return role
+    },
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: rolesQueryKey })
       toast.success(
-        `${label.trim()} role created. Assign its permissions next.`
+        selectedPermissions.length > 0
+          ? `${label.trim()} role created with ${selectedPermissions.length} permissions.`
+          : `${label.trim()} role created. You can add permissions any time.`
       )
       reset()
       setOpen(false)
@@ -61,6 +82,7 @@ export function CreateRoleDialog({ children, onCreated }: Props) {
     setName("")
     setDescription("")
     setNameTouched(false)
+    setSelectedPermissions([])
     mutation.reset()
   }
 
@@ -75,7 +97,7 @@ export function CreateRoleDialog({ children, onCreated }: Props) {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-bold">Create role</DialogTitle>
           <DialogDescription>
@@ -127,6 +149,34 @@ export function CreateRoleDialog({ children, onCreated }: Props) {
               className="h-11"
               onChange={(event) => setDescription(event.target.value)}
             />
+          </div>
+
+          <div className="grid gap-2">
+            <Label>Permissions</Label>
+            {permissions.isError ? (
+              <p className="flex items-center gap-2 text-sm text-destructive">
+                We couldn&apos;t load permissions.
+                <button
+                  type="button"
+                  onClick={() => permissions.refetch()}
+                  className="font-semibold underline underline-offset-4"
+                >
+                  Retry
+                </button>
+              </p>
+            ) : (
+              <PermissionPicker
+                permissions={permissions.data ?? []}
+                selected={selectedPermissions}
+                onChange={setSelectedPermissions}
+                disabled={mutation.isPending}
+                loading={permissions.isPending}
+              />
+            )}
+            <p className="text-xs text-muted-foreground">
+              Pick every capability this role needs. You can change the bundle
+              later from the Roles table.
+            </p>
           </div>
 
           <DialogFooter>
