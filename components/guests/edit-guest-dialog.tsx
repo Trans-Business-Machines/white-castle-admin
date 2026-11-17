@@ -1,7 +1,7 @@
 "use client"
 
 import { zodResolver } from "@hookform/resolvers/zod"
-import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { useState } from "react"
 import { Loader } from "lucide-react"
 import { useForm } from "react-hook-form"
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog"
 import { getApiErrorMessage } from "@/lib/api/errors"
 import {
+  fetchGuestDetails,
   guestsQueryKey,
   IdDocumentUploadError,
   updateGuest,
@@ -30,7 +31,9 @@ import {
   toGuestPayload,
   type GuestValues,
 } from "@/lib/schemas/guests"
+import { hasPermission } from "@/lib/roles"
 import type { Guest } from "@/lib/types"
+import { useAuth } from "@/providers/auth-provider"
 
 interface EditGuestDialogProps {
   guest: Guest
@@ -46,7 +49,69 @@ interface EditGuestDialogProps {
  */
 function EditGuestDialog(props: EditGuestDialogProps) {
   if (!props.open) return null
-  return <EditGuestForm {...props} />
+  return <EditGuestGate {...props} />
+}
+
+/**
+ * PII is masked for receptionists, so the form must fetch the real values
+ * (an audited reveal) before it can seed its inputs. Seeding masked values
+ * would overwrite the guest's real contact details on save.
+ */
+function EditGuestGate({ guest, onOpenChange }: EditGuestDialogProps) {
+  const { user } = useAuth()
+  const canViewPii = hasPermission(user?.permissions, "guests:pii:view")
+  const canRevealPii = hasPermission(user?.permissions, "guests:pii:reveal")
+  const needsReveal = guest.pii_masked && !canViewPii
+
+  const reveal = useQuery({
+    queryKey: ["guests", guest.guest_id, "edit-pii"],
+    queryFn: () => fetchGuestDetails(guest.guest_id, true),
+    enabled: needsReveal && canRevealPii,
+    staleTime: 0,
+    gcTime: 0,
+  })
+
+  if (!needsReveal) {
+    return <EditGuestForm guest={guest} open onOpenChange={onOpenChange} />
+  }
+
+  if (!canRevealPii) return null
+
+  if (reveal.isPending) {
+    return (
+      <Dialog open onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-heading text-xl font-bold">
+              Revealing contact details…
+            </DialogTitle>
+            <DialogDescription>
+              The reveal is recorded in the audit log before the form opens.
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  if (reveal.isError || !reveal.data) {
+    return (
+      <Dialog open onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-heading text-xl font-bold">
+              We couldn&apos;t reveal this guest
+            </DialogTitle>
+            <DialogDescription>
+              Try again, or ask a manager to update the record.
+            </DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
+    )
+  }
+
+  return <EditGuestForm guest={reveal.data} open onOpenChange={onOpenChange} />
 }
 
 function EditGuestForm({ guest, onOpenChange }: EditGuestDialogProps) {

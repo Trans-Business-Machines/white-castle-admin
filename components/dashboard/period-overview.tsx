@@ -62,12 +62,14 @@ function PeriodCard({
           </p>
         </div>
         <dl className="flex flex-wrap gap-x-10 gap-y-3">
-          <div>
-            <dt className="font-poppins text-sm text-ring">Revenue</dt>
-            <dd className="font-poppins text-3xl font-bold text-navy-azul">
-              {formatCurrency(period.revenue)}
-            </dd>
-          </div>
+          {period.revenue !== null ? (
+            <div>
+              <dt className="font-poppins text-sm text-ring">Revenue</dt>
+              <dd className="font-poppins text-3xl font-bold text-navy-azul">
+                {formatCurrency(period.revenue)}
+              </dd>
+            </div>
+          ) : null}
           <div>
             <dt className="font-poppins text-sm text-ring">Bookings</dt>
             <dd className="font-poppins text-3xl font-bold text-navy-azul">

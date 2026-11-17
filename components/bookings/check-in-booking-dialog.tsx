@@ -35,6 +35,8 @@ import {
 import { unitsQueryKey } from "@/lib/api/units"
 import type { BookingSubject } from "@/lib/bookings"
 import { getMissingIdDetails } from "@/lib/guests"
+import { hasPermission } from "@/lib/roles"
+import { useAuth } from "@/providers/auth-provider"
 
 interface CheckInBookingDialogProps {
   booking: BookingSubject
@@ -71,6 +73,8 @@ function CheckInForm({
   onClose: () => void
 }) {
   const queryClient = useQueryClient()
+  const { user } = useAuth()
+  const canViewPayments = hasPermission(user?.permissions, "payments:view")
   const needsGuest = !booking.guest_id
   const [guestId, setGuestId] = useState(booking.guest_id ?? "")
   const [error, setError] = useState<string | null>(null)
@@ -93,12 +97,12 @@ function CheckInForm({
   const payments = useQuery({
     queryKey: bookingPaymentsQueryKey(booking.booking_id),
     queryFn: () => fetchBookingPayments(booking.booking_id),
+    enabled: canViewPayments,
   })
   const latestPayment = (payments.data ?? []).find(
     (payment) => payment.status !== "rejected"
   )
-  const overrideReady =
-    allowUnpaid && overrideReason.trim().length >= 5
+  const overrideReady = allowUnpaid && overrideReason.trim().length >= 5
 
   // The chosen guest's full record, to confirm their ID is on file.
   const guest = useQuery({
@@ -147,7 +151,9 @@ function CheckInForm({
       return
     }
     if (needsOverride && overrideReason.trim().length < 5) {
-      setError("Give a short reason for checking in without a recorded payment.")
+      setError(
+        "Give a short reason for checking in without a recorded payment."
+      )
       return
     }
     setError(null)
@@ -268,20 +274,22 @@ function CheckInForm({
                 {humanizeSlug(booking.payment_status)}
               </span>
             </div>
-            {latestPayment ? (
-              <p className="text-muted-foreground">
-                {formatAmount(latestPayment.amount, latestPayment.currency)}{" "}
-                recorded ({latestPayment.status}
-                {latestPayment.reference
-                  ? `, ${latestPayment.reference}`
-                  : ""}
-                ). It can be checked in while finance verifies it.
-              </p>
-            ) : (
-              <p className="text-muted-foreground">
-                No payment is recorded on this booking.
-              </p>
-            )}
+            {canViewPayments ? (
+              latestPayment ? (
+                <p className="text-muted-foreground">
+                  {formatAmount(latestPayment.amount, latestPayment.currency)}{" "}
+                  recorded ({latestPayment.status}
+                  {latestPayment.reference
+                    ? `, ${latestPayment.reference}`
+                    : ""}
+                  ). It can be checked in while finance verifies it.
+                </p>
+              ) : (
+                <p className="text-muted-foreground">
+                  No payment is recorded on this booking.
+                </p>
+              )
+            ) : null}
           </div>
 
           {needsOverride ? (

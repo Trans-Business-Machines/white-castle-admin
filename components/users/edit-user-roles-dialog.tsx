@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useState } from "react"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Loader } from "lucide-react"
 import toast from "react-hot-toast"
@@ -27,26 +27,26 @@ interface Props {
 
 /** Lets a manager add or remove roles from an account. */
 export function EditUserRolesDialog({ user, open, onOpenChange }: Props) {
+  if (!open) return null
+  return <EditUserRolesForm user={user} onOpenChange={onOpenChange} />
+}
+
+function EditUserRolesForm({ user, onOpenChange }: Omit<Props, "open">) {
   const queryClient = useQueryClient()
-  const [selected, setSelected] = useState<string[]>([])
+  // The form is mounted fresh each time the dialog opens, so this starts
+  // from the account's current roles without an effect.
+  const [selected, setSelected] = useState<string[]>(
+    user.roles?.length ? user.roles : [user.role]
+  )
 
   const roles = useQuery({
     queryKey: rolesQueryKey,
     queryFn: fetchRoles,
-    enabled: open,
   })
 
-  // Start from the account's current roles every time the dialog opens.
-  useEffect(() => {
-    if (open) {
-      const current = user.roles?.length ? user.roles : [user.role]
-      setSelected(current)
-    }
-  }, [open, user.roles, user.role])
-
   const mutation = useMutation({
-    mutationFn: (roles: string[]) =>
-      updateUser(user.user_id, { roles, role: roles[0] }),
+    mutationFn: (roleNames: string[]) =>
+      updateUser(user.user_id, { roles: roleNames, role: roleNames[0] }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: usersQueryKey })
       toast.success(`${user.full_name}'s roles were updated.`)
@@ -66,7 +66,7 @@ export function EditUserRolesDialog({ user, open, onOpenChange }: Props) {
 
   return (
     <Dialog
-      open={open}
+      open
       onOpenChange={(next) => {
         if (!mutation.isPending) onOpenChange(next)
       }}

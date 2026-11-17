@@ -304,7 +304,9 @@ function GuestListTable({
                   {formatCount(guest.total_stays)}
                 </TableCell>
                 <TableCell className="px-4 text-right font-mono tabular-nums">
-                  {formatCurrency(guest.total_spent)}
+                  {guest.total_spent === null
+                    ? "—"
+                    : formatCurrency(guest.total_spent)}
                 </TableCell>
                 {blacklist ? (
                   <TableCell className="max-w-64 px-4 whitespace-normal">

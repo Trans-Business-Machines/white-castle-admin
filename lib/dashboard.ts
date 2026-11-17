@@ -8,6 +8,8 @@ export const TODAY_STAT_CARDS: ReadonlyArray<{
   title: string
   titleClassName: string
   label: string
+  /** Permission needed to see this card; omitted cards are always shown. */
+  permission?: string
 }> = [
   {
     key: "arrivals",
@@ -32,6 +34,7 @@ export const TODAY_STAT_CARDS: ReadonlyArray<{
     title: "Pending payments",
     titleClassName: "text-rose-700 dark:text-rose-300",
     label: "Bookings awaiting payment",
+    permission: "payments:view",
   },
 ]
 

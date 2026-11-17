@@ -16,10 +16,14 @@ export async function fetchGuests() {
   return response.data
 }
 
-/** GET /guests/{id} → a single guest's record. */
-export async function fetchGuestDetails(guestId: string) {
+/**
+ * GET /guests/{id} → a single guest's record. Pass `reveal` to ask for
+ * unmasked PII; the backend audit-logs that request.
+ */
+export async function fetchGuestDetails(guestId: string, reveal = false) {
   const response = await axiosInstance.get<Guest>(
-    `/guests/${encodeURIComponent(guestId)}`
+    `/guests/${encodeURIComponent(guestId)}`,
+    reveal ? { params: { reveal: true } } : undefined
   )
   return response.data
 }
@@ -113,6 +117,34 @@ export async function blacklistGuest(
   const response = await axiosInstance.patch<Guest>(
     `/guests/${encodeURIComponent(guestId)}/blacklist`,
     payload
+  )
+  return response.data
+}
+
+/** PATCH /guests/{id}/blacklist-recommend → asks a manager to blacklist. */
+export async function recommendBlacklistGuest(
+  guestId: string,
+  payload: BlacklistPayload
+) {
+  const response = await axiosInstance.patch<Guest>(
+    `/guests/${encodeURIComponent(guestId)}/blacklist-recommend`,
+    payload
+  )
+  return response.data
+}
+
+/** PATCH /guests/{id}/blacklist-recommend/approve → manager approves. */
+export async function approveBlacklistRecommendation(guestId: string) {
+  const response = await axiosInstance.patch<Guest>(
+    `/guests/${encodeURIComponent(guestId)}/blacklist-recommend/approve`
+  )
+  return response.data
+}
+
+/** PATCH /guests/{id}/blacklist-recommend/reject → manager dismisses. */
+export async function dismissBlacklistRecommendation(guestId: string) {
+  const response = await axiosInstance.patch<Guest>(
+    `/guests/${encodeURIComponent(guestId)}/blacklist-recommend/reject`
   )
   return response.data
 }

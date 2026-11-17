@@ -91,9 +91,16 @@ export interface Guest {
   nationality: string | null
   date_of_birth: string | null
   total_stays: number
-  total_spent: number
+  /** Null when the caller may not see lifetime spend. */
+  total_spent: number | null
   blacklisted: boolean
   blacklist_reason: string | null
+  blacklist_recommended: boolean
+  blacklist_recommendation_reason: string | null
+  blacklist_recommended_by: string | null
+  blacklist_recommended_at: string | null
+  /** True when the API masked phone, email, ID number and date of birth. */
+  pii_masked: boolean
   notes: string | null
   created_at: string
   updated_at: string
@@ -307,7 +314,7 @@ export type BookingStatus =
  */
 export interface Booking {
   booking_id: string
-  /** Human-readable reference shown to guests, e.g. "WCM-2026-30A19E61". */
+  /** Human-readable reference shown to guests, e.g. "WCM-JD11-4F2A9C". */
   reference: string
   guest_id: string | null
   room_id: string
@@ -364,7 +371,8 @@ export interface BookingsOccupancyStats {
 export interface DashboardPeriod {
   from: string
   bookings: number
-  revenue: number
+  /** Null when the caller may not see revenue. */
+  revenue: number | null
 }
 
 /**
@@ -379,7 +387,8 @@ export interface DashboardReport {
     arrivals: number
     departures: number
     pending_approvals: number
-    pending_payments: number
+    /** Null when the caller may not see payment records. */
+    pending_payments: number | null
   }
   this_week: DashboardPeriod
   this_month: DashboardPeriod

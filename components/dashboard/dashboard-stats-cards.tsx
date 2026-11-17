@@ -8,6 +8,8 @@ import { StatCard } from "@/components/stat-card"
 import { useDashboardReport } from "@/hooks/use-dashboard-report"
 import { getApiErrorMessage } from "@/lib/api/errors"
 import { TODAY_STAT_CARDS } from "@/lib/dashboard"
+import { hasPermission } from "@/lib/roles"
+import { useAuth } from "@/providers/auth-provider"
 
 const statGridClassName =
   "grid grid-cols-[repeat(auto-fit,minmax(min(15rem,100%),1fr))] gap-4"
@@ -15,11 +17,16 @@ const statGridClassName =
 /** Today's arrivals, departures and bookings waiting on staff. */
 export function DashboardStatsCards() {
   const report = useDashboardReport()
+  const { user } = useAuth()
+  const cards = TODAY_STAT_CARDS.filter(
+    (card) =>
+      !card.permission || hasPermission(user?.permissions, card.permission)
+  )
 
   if (report.isPending) {
     return (
       <div className={statGridClassName}>
-        {TODAY_STAT_CARDS.map((card) => (
+        {cards.map((card) => (
           <StatCardSkeleton key={card.key} />
         ))}
       </div>
@@ -40,12 +47,12 @@ export function DashboardStatsCards() {
 
   return (
     <div className={statGridClassName}>
-      {TODAY_STAT_CARDS.map((card) => (
+      {cards.map((card) => (
         <StatCard
           key={card.key}
           title={card.title}
           titleClassName={card.titleClassName}
-          text={String(report.data.today[card.key])}
+          text={String(report.data.today[card.key] ?? 0)}
           label={card.label}
         />
       ))}

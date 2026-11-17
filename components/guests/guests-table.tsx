@@ -42,13 +42,16 @@ const PREFETCH_STALE_MS = 30_000
 
 export function GuestsTable() {
   const [search, setSearch] = useState("")
+  const [recommendationsOnly, setRecommendationsOnly] = useState(false)
   const router = useRouter()
   const queryClient = useQueryClient()
 
   const guests = useQuery({ queryKey: guestsQueryKey, queryFn: fetchGuests })
 
   const visibleGuests = useMemo(() => {
-    const list = guests.data ?? []
+    const list = (guests.data ?? []).filter(
+      (guest) => !recommendationsOnly || guest.blacklist_recommended
+    )
     const term = search.trim().toLowerCase()
     if (!term) return list
     return list.filter((guest) =>
@@ -56,7 +59,7 @@ export function GuestsTable() {
         value?.toLowerCase().includes(term)
       )
     )
-  }, [guests.data, search])
+  }, [guests.data, search, recommendationsOnly])
 
   // Paged client-side; the endpoint returns every guest at once.
   const pagination = usePagination(visibleGuests)
@@ -64,6 +67,11 @@ export function GuestsTable() {
 
   function handleSearchChange(value: string) {
     setSearch(value)
+    setPage(1)
+  }
+
+  function toggleRecommendations() {
+    setRecommendationsOnly((current) => !current)
     setPage(1)
   }
 
@@ -91,6 +99,19 @@ export function GuestsTable() {
           placeholder="Search name, phone or email"
           label="Search guests"
         />
+        <button
+          type="button"
+          aria-pressed={recommendationsOnly}
+          onClick={toggleRecommendations}
+          className={cn(
+            "h-11 rounded-lg border px-4 text-sm font-semibold transition-colors",
+            recommendationsOnly
+              ? "border-amber-500 bg-amber-500/10 text-amber-800 dark:text-amber-300"
+              : "border-border bg-background text-muted-foreground hover:text-foreground"
+          )}
+        >
+          Recommendations
+        </button>
       </div>
 
       <Table>
@@ -120,7 +141,9 @@ export function GuestsTable() {
             <TableMessageRow columns={COLUMNS}>
               {search
                 ? `No guests match "${search.trim()}".`
-                : "No guests yet. Add the first one above."}
+                : recommendationsOnly
+                  ? "No blacklist recommendations waiting."
+                  : "No guests yet. Add the first one above."}
             </TableMessageRow>
           ) : (
             pagination.pageItems.map((guest) => (
@@ -149,6 +172,10 @@ export function GuestsTable() {
                       </p>
                       {guest.blacklisted ? (
                         <GuestBlacklistBadge className="mt-0.5" />
+                      ) : guest.blacklist_recommended ? (
+                        <span className="mt-0.5 inline-flex w-fit items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-semibold text-amber-800 dark:bg-amber-500/15 dark:text-amber-300">
+                          Blacklist recommended
+                        </span>
                       ) : null}
                     </div>
                   </div>

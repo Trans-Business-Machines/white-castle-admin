@@ -2,23 +2,27 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import { useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import { cn } from "cn"
 import { differenceInYears, isValid, parseISO } from "date-fns"
 import {
   ArrowLeft,
   Ban,
   Cake,
+  Eye,
   FileImage,
   IdCard,
   Globe,
   Mail,
   Phone,
+  ShieldAlert,
   ShieldCheck,
   SquarePen,
 } from "lucide-react"
 import { FilePreviewDialog } from "@/components/file-preview-dialog"
+import { ConfirmDialog } from "@/components/confirm-dialog"
 import { BlacklistGuestDialog } from "@/components/guests/blacklist-guest-dialog"
+import { BlacklistRecommendDialog } from "@/components/guests/blacklist-recommend-dialog"
 import { EditGuestDialog } from "@/components/guests/edit-guest-dialog"
 import { GuestBlacklistBadge } from "@/components/guests/guest-blacklist-badge"
 import { GuestBookingsTable } from "@/components/guests/guest-bookings-table"
@@ -34,10 +38,13 @@ import {
 import { Skeleton } from "@/components/ui/skeleton"
 import { getApiErrorMessage, getApiErrorStatus } from "@/lib/api/errors"
 import {
+  approveBlacklistRecommendation,
+  dismissBlacklistRecommendation,
   fetchGuestDetails,
   fetchGuestDocument,
   guestDocumentQueryKey,
   guestQueryKey,
+  guestsQueryKey,
 } from "@/lib/api/guests"
 import { getUrlFileId } from "@/lib/download"
 import {
@@ -51,7 +58,10 @@ import {
   getIdNumberLabel,
   getIdTypeLabel,
 } from "@/lib/schemas/guests"
+import { hasPermission } from "@/lib/roles"
 import type { Guest } from "@/lib/types"
+import { useAuth } from "@/providers/auth-provider"
+import toast from "react-hot-toast"
 
 function formatBirthDate(value: string | null) {
   if (!value) return "—"
@@ -199,12 +209,52 @@ function GuestDetailsSkeleton() {
 }
 
 function GuestDetails({ guestId }: { guestId: string }) {
-  const [action, setAction] = useState<"edit" | "blacklist" | null>(null)
+  const [action, setAction] = useState<
+    "edit" | "blacklist" | "recommend" | null
+  >(null)
+  const [revealed, setRevealed] = useState<Guest | null>(null)
+  const [revealing, setRevealing] = useState(false)
+  const [recommendDecision, setRecommendDecision] = useState<
+    "approve" | "dismiss" | null
+  >(null)
+  const [recommendError, setRecommendError] = useState<string | null>(null)
+  const queryClient = useQueryClient()
+  const { user } = useAuth()
+  const canViewPii = hasPermission(user?.permissions, "guests:pii:view")
+  const canRevealPii = hasPermission(user?.permissions, "guests:pii:reveal")
+  const canBlacklist = hasPermission(user?.permissions, "guests:blacklist")
+  const canRecommend = hasPermission(
+    user?.permissions,
+    "guests:blacklist:recommend"
+  )
 
   const query = useQuery({
     queryKey: guestQueryKey(guestId),
     queryFn: () => fetchGuestDetails(guestId),
     retry: (count, error) => getApiErrorStatus(error) !== 404 && count < 2,
+  })
+
+  const recommendation = useMutation({
+    mutationFn: (decision: "approve" | "dismiss") =>
+      decision === "approve"
+        ? approveBlacklistRecommendation(guestId)
+        : dismissBlacklistRecommendation(guestId),
+    onSuccess: async (_, decision) => {
+      await queryClient.invalidateQueries({ queryKey: guestsQueryKey })
+      setRevealed(null)
+      toast.success(
+        decision === "approve"
+          ? `${query.data?.full_name ?? "The guest"} was blacklisted.`
+          : "Blacklist recommendation dismissed."
+      )
+      setRecommendDecision(null)
+      setRecommendError(null)
+    },
+    onError: (error) => {
+      setRecommendError(
+        getApiErrorMessage(error, "We couldn't update this recommendation.")
+      )
+    },
   })
 
   if (query.isPending) return <GuestDetailsSkeleton />
@@ -242,7 +292,34 @@ function GuestDetails({ guestId }: { guestId: string }) {
     )
   }
 
-  const guest: Guest = query.data
+  const guest: Guest = revealed ?? query.data
+
+  async function revealPii(): Promise<boolean> {
+    if (revealing) return false
+    setRevealing(true)
+    try {
+      const full = await fetchGuestDetails(guestId, true)
+      setRevealed(full)
+      queryClient.setQueryData(guestQueryKey(guestId), full)
+      toast.success("Contact details revealed and logged.")
+      return true
+    } catch (error) {
+      toast.error(
+        getApiErrorMessage(error, "We couldn't reveal these details.")
+      )
+      return false
+    } finally {
+      setRevealing(false)
+    }
+  }
+
+  async function startEdit() {
+    if (guest.pii_masked && !canViewPii) {
+      if (!canRevealPii) return
+      if (!(await revealPii())) return
+    }
+    setAction("edit")
+  }
 
   return (
     <div className="grid gap-6">
@@ -281,37 +358,122 @@ function GuestDetails({ guestId }: { guestId: string }) {
         </div>
 
         <div className="flex flex-wrap gap-2">
-          <Button
-            type="button"
-            variant="default"
-            className="h-11 rounded-md bg-brand-azure px-5"
-            onClick={() => setAction("edit")}
-          >
-            <SquarePen aria-hidden="true" />
-            Update guest
-          </Button>
-          {guest.blacklisted ? (
+          {guest.pii_masked && canRevealPii ? (
             <Button
               type="button"
-              className="h-11 rounded-md bg-emerald-600 px-5 text-white hover:bg-emerald-600/90 focus-visible:ring-emerald-600/30"
-              onClick={() => setAction("blacklist")}
-            >
-              <ShieldCheck aria-hidden="true" />
-              Remove from blacklist
-            </Button>
-          ) : (
-            <Button
-              type="button"
-              variant="destructive"
+              variant="outline"
               className="h-11 rounded-md px-5"
-              onClick={() => setAction("blacklist")}
+              disabled={revealing}
+              onClick={() => void revealPii()}
             >
-              <Ban aria-hidden="true" />
-              Blacklist guest
+              <Eye aria-hidden="true" />
+              {revealing ? "Revealing…" : "Reveal contact details"}
             </Button>
-          )}
+          ) : null}
+          {!guest.pii_masked || canViewPii || canRevealPii ? (
+            <Button
+              type="button"
+              variant="default"
+              className="h-11 rounded-md bg-brand-azure px-5"
+              onClick={() => void startEdit()}
+            >
+              <SquarePen aria-hidden="true" />
+              Update guest
+            </Button>
+          ) : null}
+          {canRecommend &&
+          !guest.blacklisted &&
+          !guest.blacklist_recommended ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 rounded-md px-5"
+              onClick={() => setAction("recommend")}
+            >
+              <ShieldAlert aria-hidden="true" />
+              Recommend blacklist
+            </Button>
+          ) : null}
+          {canBlacklist ? (
+            guest.blacklisted ? (
+              <Button
+                type="button"
+                className="h-11 rounded-md bg-emerald-600 px-5 text-white hover:bg-emerald-600/90 focus-visible:ring-emerald-600/30"
+                onClick={() => setAction("blacklist")}
+              >
+                <ShieldCheck aria-hidden="true" />
+                Remove from blacklist
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                variant="destructive"
+                className="h-11 rounded-md px-5"
+                onClick={() => setAction("blacklist")}
+              >
+                <Ban aria-hidden="true" />
+                Blacklist guest
+              </Button>
+            )
+          ) : null}
         </div>
       </div>
+
+      {guest.blacklist_recommended && !guest.blacklisted ? (
+        <div
+          role="status"
+          className="flex flex-wrap items-start justify-between gap-4 rounded-lg border border-amber-300 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-500/30 dark:bg-amber-500/10 dark:text-amber-200"
+        >
+          <div className="flex items-start gap-3">
+            <ShieldAlert
+              aria-hidden="true"
+              className="mt-0.5 size-5 shrink-0"
+            />
+            <span className="grid gap-1">
+              <span className="font-semibold">
+                Blacklist recommended
+                {guest.blacklist_recommended_by
+                  ? ` by ${guest.blacklist_recommended_by}`
+                  : ""}
+                .
+              </span>
+              <span>
+                {guest.blacklist_recommendation_reason?.trim()
+                  ? `Reason: ${guest.blacklist_recommendation_reason.trim()}`
+                  : "No reason was recorded."}
+              </span>
+            </span>
+          </div>
+          {canBlacklist ? (
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive"
+                className="rounded-full"
+                onClick={() => {
+                  setRecommendError(null)
+                  setRecommendDecision("approve")
+                }}
+              >
+                Approve
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="rounded-full"
+                onClick={() => {
+                  setRecommendError(null)
+                  setRecommendDecision("dismiss")
+                }}
+              >
+                Dismiss
+              </Button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       {guest.blacklisted ? (
         <p
@@ -341,19 +503,25 @@ function GuestDetails({ guestId }: { guestId: string }) {
           text={String(guest.total_stays)}
           label={guest.total_stays === 1 ? "completed stay" : "completed stays"}
         />
-        <StatCard
-          title="Total spent"
-          titleClassName="text-emerald-700 dark:text-emerald-300"
-          text={formatCurrency(guest.total_spent)}
-          label="across all bookings"
-        />
+        {guest.total_spent !== null ? (
+          <StatCard
+            title="Total spent"
+            titleClassName="text-emerald-700 dark:text-emerald-300"
+            text={formatCurrency(guest.total_spent)}
+            label="across all bookings"
+          />
+        ) : null}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card className="border-iron/30 shadow-md">
           <CardHeader>
             <CardTitle className="text-lg font-bold">Contact</CardTitle>
-            <CardDescription>How to reach this guest.</CardDescription>
+            <CardDescription>
+              {guest.pii_masked
+                ? "Contact details are masked. Revealing them is audit-logged."
+                : "How to reach this guest."}
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <dl className="grid gap-5">
@@ -471,10 +639,55 @@ function GuestDetails({ guestId }: { guestId: string }) {
         open={action === "edit"}
         onOpenChange={(open) => setAction(open ? "edit" : null)}
       />
-      <BlacklistGuestDialog
-        guest={guest}
-        open={action === "blacklist"}
-        onOpenChange={(open) => setAction(open ? "blacklist" : null)}
+      {canBlacklist ? (
+        <BlacklistGuestDialog
+          guest={guest}
+          open={action === "blacklist"}
+          onOpenChange={(open) => setAction(open ? "blacklist" : null)}
+        />
+      ) : null}
+      {canRecommend ? (
+        <BlacklistRecommendDialog
+          guest={guest}
+          open={action === "recommend"}
+          onOpenChange={(open) => setAction(open ? "recommend" : null)}
+        />
+      ) : null}
+
+      <ConfirmDialog
+        open={Boolean(recommendDecision)}
+        onOpenChange={(next) => {
+          if (!next && !recommendation.isPending) {
+            setRecommendDecision(null)
+            setRecommendError(null)
+          }
+        }}
+        title={
+          recommendDecision === "approve"
+            ? `Blacklist ${guest.full_name}?`
+            : "Dismiss this recommendation?"
+        }
+        description={
+          recommendDecision === "approve"
+            ? `This confirms the recommendation${
+                guest.blacklist_recommendation_reason
+                  ? `: "${guest.blacklist_recommendation_reason}"`
+                  : ""
+              }. ${guest.full_name} won't be able to make new bookings.`
+            : `The recommendation will be cleared. ${guest.full_name} stays in good standing.`
+        }
+        confirmLabel={
+          recommendDecision === "approve" ? "Blacklist guest" : "Dismiss"
+        }
+        pendingLabel={
+          recommendDecision === "approve" ? "Blacklisting" : "Dismissing"
+        }
+        destructive={recommendDecision === "approve"}
+        isPending={recommendation.isPending}
+        error={recommendError}
+        onConfirm={() =>
+          recommendDecision && recommendation.mutate(recommendDecision)
+        }
       />
     </div>
   )

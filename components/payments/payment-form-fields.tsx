@@ -398,7 +398,7 @@ export function PaymentFormFields({
               }
               accept={EVIDENCE_TYPES}
               validate={getEvidenceError}
-              hint="JPG, PNG or WebP, up to 10 MB — a screenshot or receipt"
+              hint="JPG, PNG, WebP or PDF — a screenshot, receipt or bank slip (PDF up to 5 MB)"
               fullMessage="One proof image is attached. Remove it to pick another."
               overflowMessage={(count) =>
                 `Only one proof image can be attached, so ${count} ${

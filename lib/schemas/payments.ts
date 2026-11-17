@@ -7,23 +7,29 @@ import type {
   StayChangePaymentType,
 } from "@/lib/types"
 
-/** Image types accepted as proof of payment (an M-Pesa or bank screenshot). */
+/** File types accepted as proof of payment: a screenshot image or a PDF. */
 export const EVIDENCE_TYPES = [
   "image/jpeg",
   "image/jpg",
   "image/png",
   "image/webp",
+  "application/pdf",
 ] as const
 
 /** Largest proof image the picker accepts; it's uploaded as picked. */
 export const EVIDENCE_MAX_BYTES = 10 * 1024 * 1024
 
+/** Largest proof PDF the picker accepts; it's uploaded as picked. */
+export const EVIDENCE_PDF_MAX_BYTES = 5 * 1024 * 1024
+
 /** Returns a message when `file` can't be uploaded as proof of payment. */
 export function getEvidenceError(file: File) {
   if (!(EVIDENCE_TYPES as readonly string[]).includes(file.type)) {
-    return "Use a JPG, PNG or WebP image."
+    return "Use a JPG, PNG, WebP image or a PDF."
   }
-  if (file.size > EVIDENCE_MAX_BYTES) {
+  if (file.type === "application/pdf") {
+    if (file.size > EVIDENCE_PDF_MAX_BYTES) return "Keep a PDF under 5 MB."
+  } else if (file.size > EVIDENCE_MAX_BYTES) {
     return "Keep the image under 10 MB."
   }
   return null

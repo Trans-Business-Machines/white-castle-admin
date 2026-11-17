@@ -65,6 +65,7 @@ import type {
   ExtendBookingResponse,
   Payment,
 } from "@/lib/types"
+import { hasPermission } from "@/lib/roles"
 import { useAuth } from "@/providers/auth-provider"
 import { getMealPlanLabel } from "@/lib/bookings"
 
@@ -274,6 +275,8 @@ function ExtensionReview({
   onDone: () => void
 }) {
   const queryClient = useQueryClient()
+  const { user } = useAuth()
+  const canViewPayments = hasPermission(user?.permissions, "payments:view")
   const [applied, setApplied] = useState<ExtendBookingResponse | null>(null)
   const [chosenPaymentId, setChosenPaymentId] = useState("")
   const [paying, setPaying] = useState(false)
@@ -288,7 +291,7 @@ function ExtensionReview({
   const payments = useQuery({
     queryKey: bookingPaymentsQueryKey(booking.booking_id),
     queryFn: () => fetchBookingPayments(booking.booking_id),
-    enabled: owesPayment,
+    enabled: owesPayment && canViewPayments,
   })
   const recordedPayments = (payments.data ?? []).filter(
     (payment) =>
@@ -330,11 +333,7 @@ function ExtensionReview({
 
   const footer = applied ? (
     <DialogFooter>
-      <Button
-        type="button"
-        onClick={onDone}
-        className={primaryButtonClassName}
-      >
+      <Button type="button" onClick={onDone} className={primaryButtonClassName}>
         Close
       </Button>
     </DialogFooter>
@@ -501,10 +500,7 @@ function ExtensionReview({
             </SelectTrigger>
             <SelectContent>
               {recordedPayments.map((payment) => (
-                <SelectItem
-                  key={payment.payment_id}
-                  value={payment.payment_id}
-                >
+                <SelectItem key={payment.payment_id} value={payment.payment_id}>
                   {formatAmount(payment.amount, payment.currency)} ·{" "}
                   {payment.method} · {payment.status}
                   {payment.reference ? ` · ${payment.reference}` : ""}
