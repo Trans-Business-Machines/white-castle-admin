@@ -1,11 +1,13 @@
 "use client"
 
+import { useState } from "react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { Loader } from "lucide-react"
 import { useForm } from "react-hook-form"
 import { AuthField, AuthInput } from "@/components/auth/auth-field"
+import { OperatorStep } from "@/components/auth/operator-step"
 import { PasswordInput } from "@/components/auth/password-input"
 import { Button } from "@/components/ui/button"
 import { getLandingPath, useAuth } from "@/providers/auth-provider"
@@ -15,6 +17,10 @@ import { loginSchema, type LoginValues } from "@/lib/schemas/auth"
 function LoginForm() {
   const router = useRouter()
   const { login } = useAuth()
+  const [operator, setOperator] = useState<{
+    challenge: string
+    account: string
+  } | null>(null)
   const {
     register,
     handleSubmit,
@@ -27,8 +33,15 @@ function LoginForm() {
 
   async function onSubmit(values: LoginValues) {
     try {
-      const profile = await login(values)
-      router.replace(getLandingPath(profile))
+      const outcome = await login(values)
+      if (outcome.status === "operator") {
+        setOperator({
+          challenge: outcome.challenge,
+          account: outcome.account,
+        })
+        return
+      }
+      router.replace(getLandingPath(outcome.user))
     } catch (error) {
       setError("root", {
         message:
@@ -42,11 +55,21 @@ function LoginForm() {
     }
   }
 
+  if (operator) {
+    return (
+      <OperatorStep
+        challenge={operator.challenge}
+        account={operator.account}
+        onBack={() => setOperator(null)}
+      />
+    )
+  }
+
   return (
     <form onSubmit={handleSubmit(onSubmit)} noValidate>
       <fieldset disabled={isSubmitting} className="grid min-w-0 gap-4">
         <AuthField
-          label="Username or Email"
+          label="Email"
           htmlFor="username"
           error={errors.username?.message}
         >
@@ -54,7 +77,7 @@ function LoginForm() {
             id="username"
             autoComplete="username"
             autoFocus
-            placeholder="john@gmail.com"
+            placeholder="you@eldoretwhitecastle.com"
             aria-invalid={Boolean(errors.username)}
             aria-describedby={errors.username ? "username-error" : undefined}
             {...register("username")}

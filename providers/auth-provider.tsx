@@ -32,12 +32,22 @@ import type { AuthUser } from "@/lib/types"
 
 type AuthStatus = "loading" | "authenticated" | "unauthenticated"
 
+export type LoginOutcome =
+  | { status: "authenticated"; user: AuthUser }
+  | { status: "operator"; challenge: string; account: string }
+
 interface AuthContextValue {
   user: AuthUser | null
   accessToken: string | null
   status: AuthStatus
   isLoggedIn: boolean
-  login: (values: LoginValues) => Promise<AuthUser>
+  login: (values: LoginValues) => Promise<LoginOutcome>
+  /** Second step for shared accounts: operator username + PIN. */
+  completeOperatorLogin: (
+    challenge: string,
+    username: string,
+    pin: string
+  ) => Promise<{ user: AuthUser; mustChangePin: boolean }>
   logout: () => Promise<void>
   /** Re-fetches `/auth/me` and updates `user` (e.g. after a password change). */
   refreshUser: () => Promise<AuthUser>
@@ -179,13 +189,31 @@ export function AuthProvider({ children }: PropsWithChildren) {
     })
   }, [router, endSession])
 
-  const login = useCallback(async (values: LoginValues) => {
-    await authApi.login(values)
+  const login = useCallback(async (values: LoginValues): Promise<LoginOutcome> => {
+    const step = await authApi.login(values)
+    if (step.kind === "operator") {
+      return {
+        status: "operator",
+        challenge: step.challenge,
+        account: step.account,
+      }
+    }
     const profile = await authApi.fetchMe()
     setUser(profile)
     setStatus("authenticated")
-    return profile
+    return { status: "authenticated", user: profile }
   }, [])
+
+  const completeOperatorLogin = useCallback(
+    async (challenge: string, username: string, pin: string) => {
+      const result = await authApi.completeOperatorLogin(challenge, username, pin)
+      const profile = await authApi.fetchMe()
+      setUser(profile)
+      setStatus("authenticated")
+      return { user: profile, mustChangePin: Boolean(result.must_change_pin) }
+    },
+    []
+  )
 
   const refreshUser = useCallback(async () => {
     const profile = await authApi.fetchMe()
@@ -312,10 +340,11 @@ export function AuthProvider({ children }: PropsWithChildren) {
       status,
       isLoggedIn: status === "authenticated" && user !== null,
       login,
+      completeOperatorLogin,
       logout,
       refreshUser,
     }),
-    [user, accessToken, status, login, logout, refreshUser]
+    [user, accessToken, status, login, completeOperatorLogin, logout, refreshUser]
   )
 
   return (

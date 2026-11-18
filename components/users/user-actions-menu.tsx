@@ -4,6 +4,7 @@ import { useState } from "react"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   EllipsisVertical,
+  Fingerprint,
   LockOpen,
   ShieldCheck,
   Trash2,
@@ -13,6 +14,7 @@ import {
 import toast from "react-hot-toast"
 import { ConfirmDialog } from "@/components/confirm-dialog"
 import { EditUserRolesDialog } from "@/components/users/edit-user-roles-dialog"
+import { OperatorsDialog } from "@/components/users/operators-dialog"
 import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
@@ -104,6 +106,7 @@ function UserActionsMenu({ user }: { user: AuthUser }) {
   const [action, setAction] = useState<UserAction | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [rolesOpen, setRolesOpen] = useState(false)
+  const [operatorsOpen, setOperatorsOpen] = useState(false)
 
   const isSelf = currentUser?.user_id === user.user_id
   const actorIsSuperAdmin = hasPermission(
@@ -113,6 +116,9 @@ function UserActionsMenu({ user }: { user: AuthUser }) {
   // Deleting an account needs the matching permission (super admins by default).
   const canDelete = hasPermission(currentUser?.permissions, "users:delete")
   const canAssignRoles = hasPermission(currentUser?.permissions, "users:roles")
+  const canManageOperators =
+    hasPermission(currentUser?.permissions, "users:update") &&
+    !holdsSuperAdmin(user)
   // A super admin sits above everyone else, so only another super admin may
   // disable or edit their account.
   const outranked = holdsSuperAdmin(user) && !actorIsSuperAdmin
@@ -169,6 +175,15 @@ function UserActionsMenu({ user }: { user: AuthUser }) {
               <DropdownMenuSeparator />
             </>
           ) : null}
+          {canManageOperators ? (
+            <>
+              <DropdownMenuItem onSelect={() => setOperatorsOpen(true)}>
+                <Fingerprint aria-hidden="true" />
+                Operators
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+            </>
+          ) : null}
           <DropdownMenuItem
             disabled={user.active}
             onSelect={() => openConfirm("enable")}
@@ -210,6 +225,12 @@ function UserActionsMenu({ user }: { user: AuthUser }) {
         user={user}
         open={rolesOpen}
         onOpenChange={setRolesOpen}
+      />
+
+      <OperatorsDialog
+        user={user}
+        open={operatorsOpen}
+        onOpenChange={setOperatorsOpen}
       />
 
       {action && copy ? (

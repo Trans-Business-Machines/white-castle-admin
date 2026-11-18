@@ -10,13 +10,50 @@ import axios from "axios"
  * `withCredentials` is still needed so the backend can set the refresh cookie.
  */
 
-export async function login(values: LoginValues) {
+export type LoginStep =
+  | { kind: "tokens" }
+  | { kind: "operator"; challenge: string; account: string }
+
+export async function login(values: LoginValues): Promise<LoginStep> {
   const response = await axios.post(`${API_BASE}/auth/login`, values, {
     withCredentials: true,
   })
-  const token = pickAccessToken(response.data)
-  setAccessToken(token)
-  return token
+  // A shared role account asks for the operator's username + PIN first.
+  if (response.data?.operator_required) {
+    return {
+      kind: "operator",
+      challenge: String(response.data.challenge),
+      account: String(response.data.account ?? values.username),
+    }
+  }
+  setAccessToken(pickAccessToken(response.data))
+  return { kind: "tokens" }
+}
+
+/** Second login step for shared accounts. */
+export async function completeOperatorLogin(
+  challenge: string,
+  username: string,
+  pin: string
+) {
+  const response = await axios.post(
+    `${API_BASE}/auth/login/operator`,
+    { challenge, username, pin },
+    { withCredentials: true }
+  )
+  setAccessToken(pickAccessToken(response.data))
+  return response.data as {
+    must_change_password?: boolean
+    must_change_pin?: boolean
+  }
+}
+
+/** Sets a new PIN for the signed-in operator. */
+export async function changeOperatorPin(currentPin: string, newPin: string) {
+  await axiosInstance.patch("/auth/operator/pin", {
+    current_pin: currentPin,
+    new_pin: newPin,
+  })
 }
 
 export async function fetchMe() {
