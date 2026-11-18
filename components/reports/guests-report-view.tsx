@@ -14,7 +14,7 @@ import {
   ChangeFiltersButton,
   ReportHeader,
 } from "@/components/reports/report-header"
-import { ReportCsvDownload } from "@/components/reports/report-csv"
+import { ReportExcelDownload } from "@/components/reports/report-download"
 import { StatCard } from "@/components/stat-card"
 import { TablePagination } from "@/components/table-pagination"
 import {
@@ -72,7 +72,7 @@ export function GuestsReportView({ range }: { range: ReportDateRange }) {
         to={range.to_date}
         action={
           <>
-            <ReportCsvDownload
+            <ReportExcelDownload
               filters={range}
               noun="guests report"
               exportFile={exportGuestsReport}

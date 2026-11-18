@@ -4,7 +4,7 @@ import {
   inputClassName,
   labelClassName,
 } from "@/components/bookings/booking-form-fields"
-import { ExportCsvDialog } from "@/components/export-csv-dialog"
+import { ExportExcelDialog } from "@/components/export-file-dialog"
 import {
   ReportDateRangeFields,
   ReportSelectField,
@@ -15,7 +15,7 @@ import { exportAuthAuditLog, type AuthAuditFilters } from "@/lib/api/audit"
 import { AUTH_AUDIT_ACTION_OPTIONS } from "@/lib/audit"
 
 /**
- * Auth audit log CSV export (`GET /auth/audit-log/export`): optional date
+ * Auth audit log Excel export (`GET /auth/audit-log/export`): optional date
  * range, username and action. Each open starts on the table's applied
  * username and action.
  */
@@ -25,7 +25,7 @@ export function ExportAuthAuditDialog({
   filters: AuthAuditFilters
 }) {
   return (
-    <ExportCsvDialog
+    <ExportExcelDialog
       noun="audit log"
       description="Every filter is optional. Leave them empty to download the whole authentication audit log."
       initialFilters={() => ({

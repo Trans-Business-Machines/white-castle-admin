@@ -2,16 +2,16 @@
 
 import { EMPTY_BOOKING_FILTERS } from "@/components/bookings/bookings-filters"
 import {
-  ExportCsvDialog,
+  ExportExcelDialog,
   ExportStatusDateFields,
-} from "@/components/export-csv-dialog"
+} from "@/components/export-file-dialog"
 import { exportBookings } from "@/lib/api/bookings"
 import { BOOKING_STATUSES } from "@/lib/bookings"
 
-/** Bookings CSV export (`GET /bookings/export/bookings`); starts unfiltered. */
+/** Bookings Excel export (`GET /bookings/export/bookings`); starts unfiltered. */
 export function ExportBookingsDialog() {
   return (
-    <ExportCsvDialog
+    <ExportExcelDialog
       noun="bookings"
       description="Narrow the export down, or leave everything blank to export every booking."
       initialFilters={() => EMPTY_BOOKING_FILTERS}

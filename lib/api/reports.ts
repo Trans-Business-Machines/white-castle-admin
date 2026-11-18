@@ -1,5 +1,5 @@
 import { axiosInstance } from "@/lib/axios"
-import { downloadCsv } from "@/lib/api/files"
+import { downloadExcel } from "@/lib/api/files"
 import type {
   BookingsReport,
   CancellationsReport,
@@ -56,9 +56,9 @@ export async function fetchBookingsReport(filters: BookingsReportFilters) {
   return response.data
 }
 
-/** GET /motel/reports/bookings/export: the same params as the report, as a CSV file. */
+/** GET /motel/reports/bookings/export: the same params as the report, as an Excel file. */
 export function exportBookingsReport(filters: BookingsReportFilters) {
-  return downloadCsv(
+  return downloadExcel(
     "/motel/reports/bookings/export",
     filters,
     "bookings-report"
@@ -78,9 +78,9 @@ export async function fetchRevenueReport(range: ReportDateRange) {
   return response.data
 }
 
-/** GET /motel/reports/revenue/export: the same params as the report, as a CSV file. */
+/** GET /motel/reports/revenue/export: the same params as the report, as an Excel file. */
 export function exportRevenueReport(range: ReportDateRange) {
-  return downloadCsv("/motel/reports/revenue/export", range, "revenue-report")
+  return downloadExcel("/motel/reports/revenue/export", range, "revenue-report")
 }
 
 /** Query params of `GET /motel/reports/payments`; "" means "not filtered". */
@@ -102,9 +102,9 @@ export async function fetchPaymentsReport(filters: PaymentsReportFilters) {
   return response.data
 }
 
-/** GET /motel/reports/payments/export: the same params as the report, as a CSV file. */
+/** GET /motel/reports/payments/export: the same params as the report, as an Excel file. */
 export function exportPaymentsReport(filters: PaymentsReportFilters) {
-  return downloadCsv(
+  return downloadExcel(
     "/motel/reports/payments/export",
     filters,
     "payments-report"
@@ -124,9 +124,9 @@ export async function fetchGuestsReport(range: ReportDateRange) {
   return response.data
 }
 
-/** GET /motel/reports/guests/export: the same params as the report, as a CSV file. */
+/** GET /motel/reports/guests/export: the same params as the report, as an Excel file. */
 export function exportGuestsReport(range: ReportDateRange) {
-  return downloadCsv("/motel/reports/guests/export", range, "guests-report")
+  return downloadExcel("/motel/reports/guests/export", range, "guests-report")
 }
 
 export function cancellationsReportQueryKey(range: ReportDateRange) {
@@ -142,9 +142,9 @@ export async function fetchCancellationsReport(range: ReportDateRange) {
   return response.data
 }
 
-/** GET /motel/reports/cancellations/export: the same params as the report, as a CSV file. */
+/** GET /motel/reports/cancellations/export: the same params as the report, as an Excel file. */
 export function exportCancellationsReport(range: ReportDateRange) {
-  return downloadCsv(
+  return downloadExcel(
     "/motel/reports/cancellations/export",
     range,
     "cancellations-report"
@@ -173,9 +173,9 @@ export async function fetchMealPlanReport(filters: MealPlanReportFilters) {
   return response.data
 }
 
-/** GET /motel/reports/meal-plan-report/export: the same params as the report, as a CSV file. */
+/** GET /motel/reports/meal-plan-report/export: the same params as the report, as an Excel file. */
 export function exportMealPlanReport(filters: MealPlanReportFilters) {
-  return downloadCsv(
+  return downloadExcel(
     "/motel/reports/meal-plan-report/export",
     filters,
     "meal-plan-report"

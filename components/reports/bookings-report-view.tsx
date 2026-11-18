@@ -17,7 +17,7 @@ import {
   ChangeFiltersButton,
   ReportHeader,
 } from "@/components/reports/report-header"
-import { ReportCsvDownload } from "@/components/reports/report-csv"
+import { ReportExcelDownload } from "@/components/reports/report-download"
 import { StatCard } from "@/components/stat-card"
 import { TablePagination } from "@/components/table-pagination"
 import {
@@ -143,7 +143,7 @@ function BookingsReportHeader({ filters }: { filters: BookingsReportFilters }) {
       chips={chips}
       action={
         <>
-          <ReportCsvDownload
+          <ReportExcelDownload
             filters={filters}
             noun="bookings report"
             exportFile={exportBookingsReport}

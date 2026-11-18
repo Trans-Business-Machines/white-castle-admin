@@ -1,5 +1,5 @@
 import { axiosInstance } from "@/lib/axios"
-import { downloadCsv, type ExportFilters } from "@/lib/api/files"
+import { downloadExcel, type ExportFilters } from "@/lib/api/files"
 import type {
   CompletePaymentParams,
   CreatePaymentPayload,
@@ -77,10 +77,10 @@ export async function fetchPaymentStats(range: DateRange) {
 
 /**
  * GET /payments/export/payments → the payments matching the filters as a
- * CSV file (empty filters are omitted).
+ * Excel file (empty filters are omitted).
  */
 export function exportPayments(filters: ExportFilters) {
-  return downloadCsv("/payments/export/payments", filters, "payments")
+  return downloadExcel("/payments/export/payments", filters, "payments")
 }
 
 /** POST /payments/create → records a payment against a booking. */

@@ -1,6 +1,6 @@
 /**
  * Pulls the file name out of a `Content-Disposition` header, e.g.
- * `attachment; filename="bookings.csv"`. Returns `null` when there isn't one.
+ * `attachment; filename="bookings.xlsx"`. Returns `null` when there isn't one.
  */
 export function getDispositionFilename(header: unknown) {
   if (typeof header !== "string") return null

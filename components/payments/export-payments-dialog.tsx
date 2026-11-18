@@ -1,16 +1,16 @@
 "use client"
 
 import {
-  ExportCsvDialog,
+  ExportExcelDialog,
   ExportStatusDateFields,
-} from "@/components/export-csv-dialog"
+} from "@/components/export-file-dialog"
 import { exportPayments } from "@/lib/api/payments"
 import { getCurrentMonthRange, PAYMENT_EXPORT_STATUSES } from "@/lib/payments"
 import { hasPermission } from "@/lib/roles"
 import { useAuth } from "@/providers/auth-provider"
 
 /**
- * Payments CSV export (`GET /payments/export/payments`). Starts on every
+ * Payments Excel export (`GET /payments/export/payments`). Starts on every
  * status (no `status` param) and the current month. Hidden from roles
  * outside `PAYMENT_EXPORT_ROLES` (receptionists).
  */
@@ -20,7 +20,7 @@ export function ExportPaymentsDialog() {
   if (!hasPermission(user?.permissions, "payments:export")) return null
 
   return (
-    <ExportCsvDialog
+    <ExportExcelDialog
       noun="payments"
       description="Defaults to this month's payments. Change the dates or pick a status to narrow it down, or clear the dates to export everything."
       initialFilters={() => ({ status: "", ...getCurrentMonthRange() })}

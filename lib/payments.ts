@@ -14,7 +14,7 @@ export function getCurrentMonthRange(today = new Date()): DateRange {
 }
 
 /**
- * Statuses offered by the payments CSV export. These are the *booking*
+ * Statuses offered by the payments Excel export. These are the *booking*
  * payment statuses the export endpoint filters on, not the `pending` /
  * `verified` / `rejected` of a payment record.
  */

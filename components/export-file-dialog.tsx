@@ -39,8 +39,8 @@ const labelClassName =
 const inputClassName =
   "h-11 rounded-lg border-border bg-canvas px-3.5 text-base focus-visible:border-brand-azure focus-visible:ring-brand-azure/20 md:text-base dark:bg-input/30"
 
-interface ExportCsvDialogProps<T extends object> {
-  /** The element that opens the dialog; defaults to an "Export as CSV" button. */
+interface ExportExcelDialogProps<T extends object> {
+  /** The element that opens the dialog; defaults to an "Export as Excel" button. */
   children?: ReactNode
   /** Plural noun for the copy, e.g. "bookings". */
   noun: string
@@ -60,19 +60,19 @@ interface ExportCsvDialogProps<T extends object> {
     blob: Blob
     filename: string
   }>
-  /** Footer button text; defaults to "Export CSV". */
+  /** Footer button text; defaults to "Export Excel". */
   submitLabel?: string
 }
 
 /**
- * "Export as CSV" button + dialog shared by every CSV export. The dialog
+ * "Export as Excel" button + dialog shared by every Excel export. The dialog
  * collects the filters via `renderFields` (bookings and payments use
  * `ExportStatusDateFields`), then saves whatever `exportFile` downloads.
  */
-export function ExportCsvDialog<T extends object>({
+export function ExportExcelDialog<T extends object>({
   children,
   ...props
-}: ExportCsvDialogProps<T>) {
+}: ExportExcelDialogProps<T>) {
   const [open, setOpen] = useState(false)
 
   return (
@@ -81,7 +81,7 @@ export function ExportCsvDialog<T extends object>({
         {children ?? (
           <Button className="h-11 rounded-md bg-brand-azure px-5 text-white hover:bg-brand-azure/90 focus-visible:ring-brand-azure/30">
             <Download aria-hidden="true" />
-            Export as CSV
+            Export as Excel
           </Button>
         )}
       </DialogTrigger>
@@ -97,9 +97,9 @@ function ExportForm<T extends object>({
   initialFilters,
   renderFields,
   exportFile,
-  submitLabel = "Export CSV",
+  submitLabel = "Export Excel",
   onDone,
-}: Omit<ExportCsvDialogProps<T>, "children"> & { onDone: () => void }) {
+}: Omit<ExportExcelDialogProps<T>, "children"> & { onDone: () => void }) {
   const [filters, setFilters] = useState(initialFilters)
 
   function update(patch: Partial<T>) {
@@ -126,7 +126,7 @@ function ExportForm<T extends object>({
     >
       <DialogHeader>
         <DialogTitle className="text-xl font-bold">
-          Export {noun} as CSV
+          Export {noun} as Excel
         </DialogTitle>
         <DialogDescription className="text-base text-muted-foreground">
           {description}

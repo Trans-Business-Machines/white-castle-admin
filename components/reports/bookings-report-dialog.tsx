@@ -1,12 +1,12 @@
 "use client"
 
 import type { ReactNode } from "react"
-import { ExportCsvDialog } from "@/components/export-csv-dialog"
+import { ExportExcelDialog } from "@/components/export-file-dialog"
 import {
   ReportDateRangeFields,
   ReportSelectField,
 } from "@/components/reports/report-param-fields"
-import { DownloadCsvButton } from "@/components/reports/report-csv"
+import { DownloadExcelButton } from "@/components/reports/report-download"
 import { ReportParamsDialog } from "@/components/reports/report-params-dialog"
 import {
   exportBookingsReport,
@@ -50,10 +50,10 @@ export function BookingsReportDialog({
   )
 }
 
-/** The report cards' Download CSV: same filters → `GET /motel/reports/bookings/export`. */
+/** The report cards' Download Excel: same filters → `GET /motel/reports/bookings/export`. */
 export function BookingsReportExportDialog() {
   return (
-    <ExportCsvDialog
+    <ExportExcelDialog
       noun="bookings report"
       description="Every filter is optional. Leave them empty to export all bookings."
       initialFilters={() => EMPTY_BOOKINGS_REPORT_FILTERS}
@@ -65,10 +65,10 @@ export function BookingsReportExportDialog() {
         />
       )}
       exportFile={exportBookingsReport}
-      submitLabel="Download CSV"
+      submitLabel="Download Excel"
     >
-      <DownloadCsvButton className="h-10" />
-    </ExportCsvDialog>
+      <DownloadExcelButton className="h-10" />
+    </ExportExcelDialog>
   )
 }
 

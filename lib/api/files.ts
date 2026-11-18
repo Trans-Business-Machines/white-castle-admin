@@ -3,7 +3,7 @@ import { isAxiosError } from "axios"
 import { axiosInstance } from "@/lib/axios"
 import { getDispositionFilename } from "@/lib/download"
 
-/** Query params for the CSV exports; "" means the filter isn't set. */
+/** Query params for the Excel exports; "" means the filter isn't set. */
 export interface ExportFilters {
   status: string
   /** yyyy-MM-dd */
@@ -12,12 +12,11 @@ export interface ExportFilters {
 }
 
 /**
- * GETs a file export, dropping empty params (any object of string params,
- * e.g. `ExportFilters`). The file name comes from
- * `Content-Disposition` when the server sends one, else
- * `<fallbackName>-<today>.csv`.
+ * GETs an `.xlsx` export, dropping empty params (any object of string params,
+ * e.g. `ExportFilters`). The file name comes from `Content-Disposition` when
+ * the server sends one, else `<fallbackName>-<today>.xlsx`.
  */
-export async function downloadCsv(
+export async function downloadExcel(
   path: string,
   filters: object,
   fallbackName: string
@@ -34,7 +33,7 @@ export async function downloadCsv(
       blob: response.data,
       filename:
         getDispositionFilename(response.headers["content-disposition"]) ??
-        `${fallbackName}-${format(new Date(), "yyyy-MM-dd")}.csv`,
+        `${fallbackName}-${format(new Date(), "yyyy-MM-dd")}.xlsx`,
     }
   } catch (error) {
     throw await parseBlobError(error)

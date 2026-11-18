@@ -10,18 +10,18 @@ import { getApiErrorMessage } from "@/lib/api/errors"
 import { saveBlob } from "@/lib/download"
 import { humanizeSlug } from "@/lib/format"
 
-interface DownloadCsvButtonProps extends ComponentProps<typeof Button> {
+interface DownloadExcelButtonProps extends ComponentProps<typeof Button> {
   /** Shows a spinner and "Downloading" while the file is being prepared. */
   pending?: boolean
 }
 
-/** "Download CSV" CTA: the report cards' export trigger and the report pages' download. */
-export function DownloadCsvButton({
+/** "Download Excel" CTA: the report cards' export trigger and the report pages' download. */
+export function DownloadExcelButton({
   pending = false,
   className,
   disabled,
   ...props
-}: DownloadCsvButtonProps) {
+}: DownloadExcelButtonProps) {
   return (
     <Button
       type="button"
@@ -38,12 +38,12 @@ export function DownloadCsvButton({
       ) : (
         <Download aria-hidden="true" />
       )}
-      {pending ? "Downloading" : "Download CSV"}
+      {pending ? "Downloading" : "Download Excel"}
     </Button>
   )
 }
 
-interface ReportCsvDownloadProps<T extends object> {
+interface ReportExcelDownloadProps<T extends object> {
   /** The report's applied filters, sent as-is. */
   filters: T
   /** Lower-case name for the copy, e.g. "bookings report". */
@@ -52,14 +52,14 @@ interface ReportCsvDownloadProps<T extends object> {
 }
 
 /**
- * A report page's Download CSV: no dialog, it exports with the filters
+ * A report page's Download Excel: no dialog, it exports with the filters
  * already in the URL. Failures surface as a toast since there's no form.
  */
-export function ReportCsvDownload<T extends object>({
+export function ReportExcelDownload<T extends object>({
   filters,
   noun,
   exportFile,
-}: ReportCsvDownloadProps<T>) {
+}: ReportExcelDownloadProps<T>) {
   const mutation = useMutation({
     mutationFn: () => exportFile(filters),
     onSuccess: ({ blob, filename }) => {
@@ -77,7 +77,7 @@ export function ReportCsvDownload<T extends object>({
   })
 
   return (
-    <DownloadCsvButton
+    <DownloadExcelButton
       className="h-11 px-5"
       pending={mutation.isPending}
       onClick={() => mutation.mutate()}

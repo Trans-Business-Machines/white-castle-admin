@@ -14,7 +14,7 @@ import {
   ChangeFiltersButton,
   ReportHeader,
 } from "@/components/reports/report-header"
-import { ReportCsvDownload } from "@/components/reports/report-csv"
+import { ReportExcelDownload } from "@/components/reports/report-download"
 import { ShareBreakdown } from "@/components/reports/share-breakdown"
 import { StatCard } from "@/components/stat-card"
 import { TablePagination } from "@/components/table-pagination"
@@ -73,7 +73,7 @@ export function CancellationsReportView({ range }: { range: ReportDateRange }) {
         to={range.to_date}
         action={
           <>
-            <ReportCsvDownload
+            <ReportExcelDownload
               filters={range}
               noun="cancellations report"
               exportFile={exportCancellationsReport}

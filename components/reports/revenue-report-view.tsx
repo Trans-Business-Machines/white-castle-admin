@@ -9,7 +9,7 @@ import {
   ChangeFiltersButton,
   ReportHeader,
 } from "@/components/reports/report-header"
-import { ReportCsvDownload } from "@/components/reports/report-csv"
+import { ReportExcelDownload } from "@/components/reports/report-download"
 import { RevenueReportDialog } from "@/components/reports/revenue-report-dialog"
 import {
   ReportPanel,
@@ -55,7 +55,7 @@ export function RevenueReportView({ range }: { range: ReportDateRange }) {
         to={range.to_date}
         action={
           <>
-            <ReportCsvDownload
+            <ReportExcelDownload
               filters={range}
               noun="revenue report"
               exportFile={exportRevenueReport}

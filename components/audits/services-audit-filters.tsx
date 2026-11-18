@@ -72,7 +72,7 @@ interface ServicesAuditFieldsProps {
 
 /**
  * Dates, username, service and the service's actions: the filters of
- * `GET /motel/reports/audit`, shared by the filter bar and the CSV export.
+ * `GET /motel/reports/audit`, shared by the filter bar and the Excel export.
  */
 export function ServicesAuditFields({
   idPrefix,

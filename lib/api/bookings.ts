@@ -1,5 +1,5 @@
 import { axiosInstance } from "@/lib/axios"
-import { downloadCsv, type ExportFilters } from "@/lib/api/files"
+import { downloadExcel, type ExportFilters } from "@/lib/api/files"
 import type {
   ApproveBookingPayload,
   BbList,
@@ -71,12 +71,13 @@ export async function fetchBookings(filters: BookingListFilters) {
   })
   return response.data
 }
+
 /**
- * GET /bookings/export/bookings → the bookings matching the filters as a CSV
+ * GET /bookings/export/bookings → the bookings matching the filters as an Excel
  * file (every filter is optional; empty ones are omitted).
  */
 export function exportBookings(filters: ExportFilters) {
-  return downloadCsv("/bookings/export/bookings", filters, "bookings")
+  return downloadExcel("/bookings/export/bookings", filters, "bookings")
 }
 
 export const bookingStatsQueryKey = (range: OccupancyRange) =>

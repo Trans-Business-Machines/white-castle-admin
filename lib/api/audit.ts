@@ -1,4 +1,4 @@
-import { downloadCsv } from "@/lib/api/files"
+import { downloadExcel } from "@/lib/api/files"
 import type { ReportDateRange } from "@/lib/api/reports"
 import { axiosInstance } from "@/lib/axios"
 import type { AuditService } from "@/lib/audit"
@@ -46,9 +46,9 @@ export interface AuthAuditExportFilters extends ReportDateRange {
   action: string
 }
 
-/** GET /auth/audit-log/export → the auth audit log as CSV, set filters only. */
+/** GET /auth/audit-log/export → the auth audit log as Excel, set filters only. */
 export function exportAuthAuditLog(filters: AuthAuditExportFilters) {
-  return downloadCsv(
+  return downloadExcel(
     "/auth/audit-log/export",
     { ...filters, username: filters.username.trim() },
     "auth-audit-log"
@@ -81,11 +81,11 @@ export async function fetchServicesAuditLog(params: ServicesAuditLogParams) {
 }
 
 /**
- * GET /motel/reports/audit/export → a service's audit log as CSV, with the
+ * GET /motel/reports/audit/export → a service's audit log as Excel, with the
  * same filters as the list (set ones only).
  */
 export function exportServicesAuditLog(filters: ServicesAuditFilters) {
-  return downloadCsv(
+  return downloadExcel(
     "/motel/reports/audit/export",
     { ...filters, username: filters.username.trim() },
     `${filters.service}-audit-log`

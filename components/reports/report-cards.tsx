@@ -44,7 +44,7 @@ const REPORT_DIALOGS: Record<
   cancellations: CancellationsReportDialog,
 }
 
-/** The Download CSV CTA beside Generate report (a dialog over the same filters). */
+/** The Download Excel CTA beside Generate report (a dialog over the same filters). */
 const REPORT_EXPORT_DIALOGS: Record<ReportSlug, ComponentType> = {
   bookings: BookingsReportExportDialog,
   "meal-plans": MealPlanReportExportDialog,
