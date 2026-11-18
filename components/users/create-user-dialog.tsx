@@ -44,8 +44,6 @@ import {
 } from "@/lib/schemas/users"
 
 const emptyValues: DefaultValues<CreateUserValues> = {
-  full_name: "",
-  username: "",
   email: "",
   roles: [],
   password: "",
@@ -84,7 +82,7 @@ export function CreateUserDialog({ children }: PropsWithChildren) {
       createUser(toCreateUserPayload(values)),
     onSuccess: async (user) => {
       await queryClient.invalidateQueries({ queryKey: usersQueryKey })
-      toast.success(`Account for ${user.full_name} created.`)
+      toast.success(`Account for ${user.full_name || user.email} created.`)
       closeDialog()
     },
     onError: (error) => {
@@ -158,72 +156,30 @@ export function CreateUserDialog({ children }: PropsWithChildren) {
             className="grid min-w-0 gap-4"
           >
             <div className="grid gap-2">
-              <Label htmlFor="user-full-name" className={labelClassName}>
-                Full name
+              <Label htmlFor="user-email" className={labelClassName}>
+                Email
               </Label>
               <Input
-                id="user-full-name"
+                id="user-email"
+                type="email"
                 autoFocus
                 autoComplete="off"
-                placeholder="John Doe"
+                placeholder="reservations@eldoretwhitecastle.com"
                 className={inputClassName}
-                aria-invalid={Boolean(errors.full_name)}
+                aria-invalid={Boolean(errors.email)}
                 aria-describedby={
-                  errors.full_name ? "user-full-name-error" : undefined
+                  errors.email ? "user-email-error" : undefined
                 }
-                {...register("full_name")}
+                {...register("email")}
               />
               <FieldError
-                id="user-full-name-error"
-                message={errors.full_name?.message}
+                id="user-email-error"
+                message={errors.email?.message}
               />
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="grid gap-2">
-                <Label htmlFor="user-username" className={labelClassName}>
-                  Username
-                </Label>
-                <Input
-                  id="user-username"
-                  autoComplete="off"
-                  autoCapitalize="none"
-                  spellCheck={false}
-                  placeholder="John"
-                  className={inputClassName}
-                  aria-invalid={Boolean(errors.username)}
-                  aria-describedby={
-                    errors.username ? "user-username-error" : undefined
-                  }
-                  {...register("username")}
-                />
-                <FieldError
-                  id="user-username-error"
-                  message={errors.username?.message}
-                />
-              </div>
-
-              <div className="grid gap-2">
-                <Label htmlFor="user-email" className={labelClassName}>
-                  Email
-                </Label>
-                <Input
-                  id="user-email"
-                  type="email"
-                  autoComplete="off"
-                  placeholder="john@gmail.com"
-                  className={inputClassName}
-                  aria-invalid={Boolean(errors.email)}
-                  aria-describedby={
-                    errors.email ? "user-email-error" : undefined
-                  }
-                  {...register("email")}
-                />
-                <FieldError
-                  id="user-email-error"
-                  message={errors.email?.message}
-                />
-              </div>
+              <p className="text-xs text-muted-foreground">
+                The account signs in with this address. Add the people who use
+                it under Operators once it exists.
+              </p>
             </div>
 
             <div className="grid gap-2">

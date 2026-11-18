@@ -175,11 +175,11 @@ export function UsersTable() {
                           : "bg-muted text-muted-foreground"
                       )}
                     >
-                      {getInitials(user.full_name)}
+                      {getInitials(user.full_name || user.email)}
                     </span>
                     <span className="grid leading-tight">
                       <span className="font-semibold text-foreground">
-                        {user.full_name}
+                        {user.full_name || user.email}
                       </span>
                       {!user.active ? (
                         <span className="text-xs text-muted-foreground">
