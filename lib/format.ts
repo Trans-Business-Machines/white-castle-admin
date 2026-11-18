@@ -32,6 +32,16 @@ export function formatAmount(amount: number, currency?: string | null) {
   return currency === "USD" ? formatCurrencyUsd(amount) : formatCurrency(amount)
 }
 
+/**
+ * Renders the support account's technical handles as the name staff know it.
+ * Everything else passes through unchanged.
+ */
+export function formatActor(value: string) {
+  return value === "wcm_support" || value === "super_admin"
+    ? "Super Admin"
+    : value
+}
+
 /** Formats a date as "16 Sep 2026" by default. */
 export function formatDate(
   date: Date | number | string,

@@ -41,7 +41,12 @@ import { bookingQueryKey, fetchBookingDetails } from "@/lib/api/bookings"
 import { getApiErrorStatus } from "@/lib/api/errors"
 import { fetchUnits, unitsQueryKey } from "@/lib/api/units"
 import { getMealPlanLabel, isBedAndBreakfast } from "@/lib/bookings"
-import { formatAmount, formatDate, formatTimestamp } from "@/lib/format"
+import {
+  formatActor,
+  formatAmount,
+  formatDate,
+  formatTimestamp,
+} from "@/lib/format"
 import type { Booking } from "@/lib/types"
 import { getRoomTypeLabel } from "@/lib/units"
 import { useAuth } from "@/providers/auth-provider"
@@ -503,7 +508,7 @@ function BookingDetails({ bookingId }: { bookingId: string }) {
                     {formatTimestamp(booking.cancelled_at)}
                     {booking.cancelled_by ? (
                       <span className="ml-2 text-xs font-normal text-muted-foreground">
-                        by {booking.cancelled_by}
+                        by {formatActor(booking.cancelled_by)}
                       </span>
                     ) : null}
                   </>
