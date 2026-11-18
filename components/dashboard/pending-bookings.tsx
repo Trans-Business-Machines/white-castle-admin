@@ -23,7 +23,9 @@ import {
   tableHeadClassName,
 } from "@/components/users/table-state"
 import { useDashboardReport } from "@/hooks/use-dashboard-report"
+import { useAuth } from "@/providers/auth-provider"
 import { bookingQueryKey, fetchBookingDetails } from "@/lib/api/bookings"
+import { hasPermission } from "@/lib/roles"
 import { getApiErrorMessage } from "@/lib/api/errors"
 import { formatAmount, formatDate } from "@/lib/format"
 
@@ -40,6 +42,12 @@ const PREFETCH_STALE_MS = 30_000
 export function PendingBookings() {
   const router = useRouter()
   const queryClient = useQueryClient()
+  const { user } = useAuth()
+  const canSeeTotals = hasPermission(
+    user?.permissions,
+    "bookings:amounts:view"
+  )
+  const columns = canSeeTotals ? COLUMNS : COLUMNS - 1
   const pending = useDashboardReport()
 
   const rows = useMemo(
@@ -92,15 +100,17 @@ export function PendingBookings() {
             <TableHead className={tableHeadClassName}>Reference</TableHead>
             <TableHead className={tableHeadClassName}>Guest</TableHead>
             <TableHead className={tableHeadClassName}>Stay</TableHead>
-            <TableHead className={tableHeadClassName}>Total</TableHead>
+            {canSeeTotals ? (
+              <TableHead className={tableHeadClassName}>Total</TableHead>
+            ) : null}
             <TableHead className={tableHeadClassName}>Payment</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {pending.isPending ? (
-            <TableSkeletonRows rows={3} columns={COLUMNS} />
+            <TableSkeletonRows rows={3} columns={columns} />
           ) : pending.isError ? (
-            <TableMessageRow columns={COLUMNS}>
+            <TableMessageRow columns={columns}>
               <TableError
                 message={getApiErrorMessage(
                   pending.error,
@@ -110,7 +120,7 @@ export function PendingBookings() {
               />
             </TableMessageRow>
           ) : rows.length === 0 ? (
-            <TableMessageRow columns={COLUMNS}>
+            <TableMessageRow columns={columns}>
               Nothing waiting for approval.
             </TableMessageRow>
           ) : (
@@ -138,9 +148,13 @@ export function PendingBookings() {
                   {formatDate(booking.check_in_date)} · {booking.nights}{" "}
                   {booking.nights === 1 ? "night" : "nights"}
                 </TableCell>
-                <TableCell className="px-4 font-mono">
-                  {formatAmount(booking.total_amount, booking.currency)}
-                </TableCell>
+                {canSeeTotals ? (
+                  <TableCell className="px-4 font-mono">
+                    {booking.total_amount != null
+                      ? formatAmount(booking.total_amount, booking.currency)
+                      : "—"}
+                  </TableCell>
+                ) : null}
                 <TableCell className="px-4">
                   <PaymentStatusBadge status={booking.payment_status} />
                 </TableCell>
